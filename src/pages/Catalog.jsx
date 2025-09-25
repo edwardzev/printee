@@ -11,6 +11,13 @@ const Catalog = () => {
   const { t, language } = useLanguage();
   const [selectedType, setSelectedType] = useState('all');
 
+  const formatILS = (v) =>
+    new Intl.NumberFormat('he-IL', {
+      style: 'currency',
+      currency: 'ILS',
+      maximumFractionDigits: 0
+    }).format(v);
+
   const productTypes = [
     { value: 'all', label: t('allTypes') },
     { value: 'tshirt', label: t('tshirt') },
@@ -25,7 +32,7 @@ const Catalog = () => {
   return (
     <>
       <Helmet>
-        <title>{t('catalogTitle')} - Print Market</title>
+        <title>{t('catalogTitle')} – Printee</title>
         <meta name="description" content={t('catalogSubtitle')} />
       </Helmet>
 
@@ -51,7 +58,7 @@ const Catalog = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="mb-8"
+            className="mb-8 sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-100 py-3"
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center">
@@ -83,11 +90,15 @@ const Catalog = () => {
                 transition={{ duration: 0.6, delay: index * 0.1 }}
                 className="bg-white rounded-xl shadow-lg overflow-hidden card-hover"
               >
-                <div className="aspect-square overflow-hidden">
+                <div className="aspect-square overflow-hidden bg-gray-50">
                   <img
                     src={product.images.white}
                     alt={language === 'he' ? product.nameHe : product.name}
-                    className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                    className="w-full h-full object-contain transition-transform duration-300 hover:scale-[1.02]"
+                    loading="lazy"
+                    decoding="async"
+                    onMouseEnter={e => { if (product.images?.mockup) e.currentTarget.src = product.images.mockup; }}
+                    onMouseLeave={e => { e.currentTarget.src = product.images.white; }}
                   />
                 </div>
                 
@@ -96,27 +107,32 @@ const Catalog = () => {
                     {language === 'he' ? product.nameHe : product.name}
                   </h3>
                   
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="inline-flex items-center text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-700">
+                      {product.tech}
+                    </span>
+                    <span className="text-[11px] px-2 py-1 rounded-full bg-blue-50 text-blue-700">
+                      מינימום 10 פריטים
+                    </span>
+                  </div>
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-sm text-gray-500">
-                      {product.tech} • {product.colors.length} colors
+                      {(language === 'he' ? 'צבעים' : 'colors')}: {product.colors.length}
                     </span>
                     <span className="text-lg font-bold text-blue-600">
-                      ₪{product.basePrice}+
+                      {formatILS(product.basePrice)}+
                     </span>
                   </div>
 
-                  {/* Color swatches */}
-                  <div className="flex space-x-2 mb-4">
+                  <div className="flex gap-2 mb-4" role="list" aria-label={language === 'he' ? 'צבעים זמינים' : 'Available colors'}>
                     {product.colors.slice(0, 4).map((color) => (
-                      <div
+                      <button
+                        type="button"
                         key={color}
-                        className={`w-6 h-6 rounded-full border-2 border-gray-200 ${
-                          color === 'white' ? 'bg-white' :
-                          color === 'black' ? 'bg-black' :
-                          color === 'navy' ? 'bg-blue-900' :
-                          color === 'red' ? 'bg-red-500' :
-                          color === 'gray' ? 'bg-gray-500' : 'bg-gray-300'
-                        }`}
+                        className="w-6 h-6 rounded-full border-2 border-gray-200"
+                        style={{ background: color === 'white' ? '#ffffff' : color }}
+                        title={color}
+                        aria-label={color}
                       />
                     ))}
                     {product.colors.length > 4 && (

@@ -5,6 +5,7 @@ import { Helmet } from 'react-helmet';
 import { ArrowRight, Zap, DollarSign, Palette } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
+import HeroImage from '@/components/HeroImage';
 
 const Home = () => {
   const { t, isRTL } = useLanguage();
@@ -36,40 +37,34 @@ const Home = () => {
 
       <div className="min-h-screen">
         {/* Hero Section */}
-        <section className="hero-gradient text-white py-20 lg:py-32">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-              <motion.div
-                initial={{ opacity: 0, y: 50 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8 }}
-                className={`${isRTL ? 'lg:order-2' : ''}`}
-              >
-                <h1 className="text-4xl lg:text-6xl font-bold mb-6 leading-tight">
-                  {t('heroTitle')}
-                </h1>
-                <p className="text-xl lg:text-2xl mb-8 text-blue-100">
-                  {t('heroSubtitle')}
-                </p>
+        <section className="bg-white py-14 lg:py-20 border-b border-gray-100">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+            {/* Copy column */}
+            <div className="text-right">
+              <h1 className="text-4xl lg:text-6xl font-extrabold leading-tight tracking-tight text-gray-900 mb-4">
+                הדפיסו את החולצות שלכם אונליין – פשוט, מהיר, משתלם
+              </h1>
+              <p className="text-lg lg:text-xl text-gray-600 mb-8">
+                מעלים עיצוב, בוחרים בגד, ומקבלים הזמנה מוכנה תוך ימים
+              </p>
+              <div className="flex gap-3 justify-end flex-wrap">
                 <Link to="/catalog">
-                  <Button size="lg" className="bg-white text-blue-600 hover:bg-blue-50 text-lg px-8 py-4">
-                    {t('startOrder')}
-                    <ArrowRight className={`h-5 w-5 ${isRTL ? 'mr-2' : 'ml-2'}`} />
+                  <Button size="lg" className="bg-gray-900 text-white hover:bg-black px-6 py-6">
+                    התחילו לעצב עכשיו
+                    <ArrowRight className="h-5 w-5 mr-2 rotate-180" />
                   </Button>
                 </Link>
-              </motion.div>
+                <a href="#how" className="inline-flex">
+                  <Button size="lg" variant="outline" className="px-6 py-6">
+                    ראו איך זה עובד
+                  </Button>
+                </a>
+              </div>
+            </div>
 
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.8, delay: 0.2 }}
-                className={`${isRTL ? 'lg:order-1' : ''}`}
-              >
-                <img 
-                  className="w-full h-auto rounded-lg shadow-2xl"
-                  alt="Custom apparel design interface"
-                 src="https://images.unsplash.com/photo-1677693944335-178ba4f745d2" />
-              </motion.div>
+            {/* Carousel column */}
+            <div className="rounded-xl overflow-hidden shadow-sm bg-[#f6f7f9]">
+              <HeroImage bg="#f6f7f9" />
             </div>
           </div>
         </section>
@@ -121,7 +116,7 @@ const Home = () => {
               transition={{ duration: 0.6 }}
             >
               <h2 className="text-3xl lg:text-4xl font-bold mb-6">
-                Ready to create amazing custom apparel?
+                מוכנים ליצור בגדים מודפסים מותאמים אישית?
               </h2>
               <p className="text-xl mb-8 text-blue-100">
                 Start designing your custom garments today with our easy-to-use configurator.
