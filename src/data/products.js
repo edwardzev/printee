@@ -3,15 +3,21 @@ export const products = [
     sku: 'tshirt',
     name: 'Classic T-Shirt',
     nameHe: 'חולצת טי קלאסית',
+    description: 
+'Our Classic T-Shirt is made from 100% organic cotton, offering a comfortable fit and vibrant colors. Perfect for everyday wear and custom designs.',
+    descriptionHe: 
+'חולצת הטי הקלאסית שלנו עשויה מ-100% כותנה אורגנית, ומציעה התאמה נוחה וצבעים חיים. מושלמת לשימוש יומיומי ולעיצובים מותאמים אישית.',
     tech: 'DTF',
     colors: ['white', 'black', 'navy', 'red', 'gray'],
     sizeRange: ['xs', 's', 'm', 'l', 'xl', 'xxl', 'xxxl', 'xxxxl', 'xxxxxl'],
     images: {
-      white: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800&h=800&fit=crop',
-      black: 'https://images.unsplash.com/photo-1503341504253-dff4815485f1?w=800&h=800&fit=crop',
-      navy: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=800&h=800&fit=crop',
-      red: 'https://images.unsplash.com/photo-1583743814966-8936f37f4678?w=800&h=800&fit=crop',
-      gray: 'https://images.unsplash.com/photo-1562157873-818bc0726f68?w=800&h=800&fit=crop'
+      white: ['/product_images/tshirt/white_tshirt.webp','/product_images/tshirt/white_tshirt.jpg','/product_images/tshirt/white_tshirt.png'],
+      black: ['/product_images/tshirt/black_tshirt.webp','/product_images/tshirt/black_tshirt.jpg','/product_images/tshirt/black_tshirt.png'],
+      navy:  ['/product_images/tshirt/navy_tshirt.webp','/product_images/tshirt/navy_tshirt.jpg','/product_images/tshirt/navy_tshirt.png'],
+      red:   ['/product_images/tshirt/red_tshirt.webp','/product_images/tshirt/red_tshirt.jpg','/product_images/tshirt/red_tshirt.png'],
+      gray:  ['/product_images/tshirt/gray_tshirt.webp','/product_images/tshirt/gray_tshirt.jpg','/product_images/tshirt/gray_tshirt.png'],
+      base1: ['/product_images/tshirt/base_1.webp','/product_images/tshirt/base_1.jpg','/product_images/tshirt/base_1.png'],
+      base2: ['/product_images/tshirt/base_2.webp','/product_images/tshirt/base_2.jpg','/product_images/tshirt/base_2.png']
     },
     activePrintAreas: ['leftChest', 'rightChest', 'frontA4', 'frontA3', 'backA4', 'backA3', 'leftSleeve', 'rightSleeve'],
     basePrice: 50
@@ -20,14 +26,18 @@ export const products = [
     sku: 'hoodie',
     name: 'Premium Hoodie',
     nameHe: 'הודי פרימיום',
+    description: 'Our Premium Hoodie is crafted from a heavyweight cotton blend for warmth and durability. Ideal for prints and comfortable layering.',
+    descriptionHe: 'הודי הפרימיום שלנו עשוי מתערובת כותנה עבה לנוחות וחמימות. מושלם להדפסות ולשכבות חמות.',
     tech: 'DTF',
     colors: ['white', 'black', 'navy', 'gray'],
     sizeRange: ['xs', 's', 'm', 'l', 'xl', 'xxl', 'xxxl', 'xxxxl', 'xxxxxl'],
     images: {
-      white: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=800&h=800&fit=crop',
-      black: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=800&h=800&fit=crop',
-      navy: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=800&h=800&fit=crop',
-      gray: 'https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=800&h=800&fit=crop'
+      white: ['/product_images/hoodie/white_hoodie.webp','/product_images/hoodie/white_hoodie.jpg','/product_images/hoodie/white_hoodie.png'],
+      black: ['/product_images/hoodie/black_hoodie.webp','/product_images/hoodie/black_hoodie.jpg','/product_images/hoodie/black_hoodie.png'],
+      navy:  ['/product_images/hoodie/navy_hoodie.webp','/product_images/hoodie/navy_hoodie.jpg','/product_images/hoodie/navy_hoodie.png'],
+      gray:  ['/product_images/hoodie/gray_hoodie.webp','/product_images/hoodie/gray_hoodie.jpg','/product_images/hoodie/gray_hoodie.png'],
+      base1: ['/product_images/hoodie/base_1.webp','/product_images/hoodie/base_1.jpg','/product_images/hoodie/base_1.png'],
+      base2: ['/product_images/hoodie/base_2.webp','/product_images/hoodie/base_2.jpg','/product_images/hoodie/base_2.png']
     },
     activePrintAreas: ['leftChest', 'rightChest', 'frontA4', 'frontA3', 'backA4', 'backA3'],
     basePrice: 100
@@ -36,15 +46,19 @@ export const products = [
     sku: 'sweatshirt',
     name: 'Comfort Sweatshirt',
     nameHe: 'סווטשירט נוח',
+    description: 'A soft, comfortable sweatshirt designed for everyday wear — breathable, warm and print-friendly.',
+    descriptionHe: 'סווטשירט רך ונוח המתאים ללבישה יומיומית — נושם, חם וידידותי להדפסה.',
     tech: 'DTF',
     colors: ['white', 'black', 'navy', 'red', 'gray'],
     sizeRange: ['xs', 's', 'm', 'l', 'xl', 'xxl', 'xxxl', 'xxxxl', 'xxxxxl'],
     images: {
-      white: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=800&h=800&fit=crop',
-      black: 'https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=800&h=800&fit=crop',
-      navy: 'https://images.unsplash.com/photo-1571945153237-4929e783af4a?w=800&h=800&fit=crop',
-      red: 'https://images.unsplash.com/photo-1571513722275-4b41940f54b8?w=800&h=800&fit=crop',
-      gray: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=800&h=800&fit=crop'
+      white: ['/product_images/sweatshirt/white_sweatshirt.webp','/product_images/sweatshirt/white_sweatshirt.jpg','/product_images/sweatshirt/white_sweatshirt.png'],
+      black: ['/product_images/sweatshirt/black_sweatshirt.webp','/product_images/sweatshirt/black_sweatshirt.jpg','/product_images/sweatshirt/black_sweatshirt.png'],
+      navy:  ['/product_images/sweatshirt/navy_sweatshirt.webp','/product_images/sweatshirt/navy_sweatshirt.jpg','/product_images/sweatshirt/navy_sweatshirt.png'],
+      red:   ['/product_images/sweatshirt/red_sweatshirt.webp','/product_images/sweatshirt/red_sweatshirt.jpg','/product_images/sweatshirt/red_sweatshirt.png'],
+      gray:  ['/product_images/sweatshirt/gray_sweatshirt.webp','/product_images/sweatshirt/gray_sweatshirt.jpg','/product_images/sweatshirt/gray_sweatshirt.png'],
+      base1: ['/product_images/sweatshirt/base_1.webp','/product_images/sweatshirt/base_1.jpg','/product_images/sweatshirt/base_1.png'],
+      base2: ['/product_images/sweatshirt/base_2.webp','/product_images/sweatshirt/base_2.jpg','/product_images/sweatshirt/base_2.png']
     },
     activePrintAreas: ['leftChest', 'rightChest', 'frontA4', 'frontA3', 'backA4', 'backA3', 'leftSleeve', 'rightSleeve'],
     basePrice: 80
@@ -84,8 +98,8 @@ export const printAreas = {
     key: 'frontA4',
     label: 'Front A4',
     labelHe: 'חזית A4',
-    maxWCm: 21,
-    maxHCm: 29.7,
+    maxWCm: 20,
+    maxHCm: 30,
     overlayX: 250,
     overlayY: 250,
     overlayW: 300,
@@ -98,8 +112,8 @@ export const printAreas = {
     key: 'frontA3',
     label: 'Front A3',
     labelHe: 'חזית A3',
-    maxWCm: 29.7,
-    maxHCm: 42,
+    maxWCm: 30,
+    maxHCm: 40,
     overlayX: 200,
     overlayY: 200,
     overlayW: 400,
@@ -112,8 +126,8 @@ export const printAreas = {
     key: 'backA4',
     label: 'Back A4',
     labelHe: 'גב A4',
-    maxWCm: 21,
-    maxHCm: 29.7,
+    maxWCm: 20,
+    maxHCm: 30,
     overlayX: 250,
     overlayY: 250,
     overlayW: 300,
@@ -126,8 +140,8 @@ export const printAreas = {
     key: 'backA3',
     label: 'Back A3',
     labelHe: 'גב A3',
-    maxWCm: 29.7,
-    maxHCm: 42,
+    maxWCm: 30,
+    maxHCm: 40,
     overlayX: 200,
     overlayY: 200,
     overlayW: 400,
@@ -141,28 +155,28 @@ export const printAreas = {
     label: 'Left Sleeve',
     labelHe: 'שרוול שמאל',
     maxWCm: 8,
-    maxHCm: 30,
+    maxHCm: 8,
     overlayX: 50,
     overlayY: 300,
     overlayW: 80,
     overlayH: 200,
     overlayRot: 0,
     priority: 7,
-    fee: 8
+    fee: 5
   },
   rightSleeve: {
     key: 'rightSleeve',
     label: 'Right Sleeve',
     labelHe: 'שרוול ימין',
     maxWCm: 8,
-    maxHCm: 30,
+    maxHCm: 8,
     overlayX: 670,
     overlayY: 300,
     overlayW: 80,
     overlayH: 200,
     overlayRot: 0,
     priority: 8,
-    fee: 8
+    fee: 5
   },
   neckLabel: {
     key: 'neckLabel',
@@ -203,3 +217,20 @@ export const pricingRules = {
     ]
   }
 };
+
+export const templatePresets = {
+  tshirt: {
+    frontA4:  { x: 35, y: 27, w: 30, h: 40, rot: 0 },
+    frontA3:  { x: 30.5, y: 25, w: 40, h: 55, rot: 0 },
+    backA4:   { x: 35, y: 23, w: 30, h: 40, rot: 0 },
+    backA3:   { x: 30, y: 22, w: 40, h: 55, rot: 0 },
+    leftChest:{ x: 58, y: 25, w: 16, h: 16, rot: 0 },
+    rightChest:{x: 28, y: 27, w: 16, h: 16, rot: 0 },
+    leftSleeve:{x: 84, y: 27, w: 12, h: 10, rot: -10 },
+    rightSleeve:{x: 3, y: 27, w: 12, h: 10, rot: 10 },
+    neckLabel: { x: 38, y: 4,  w: 24, h: 12, rot: 0 }
+  }
+  // hoodie, sweatshirt can be added later reusing or tweaking these
+};
+
+// end of file

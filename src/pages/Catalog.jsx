@@ -1,15 +1,13 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet';
-import { Filter } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { products } from '@/data/products';
+import { products, pricingRules } from '@/data/products';
 import { Button } from '@/components/ui/button';
 
 const Catalog = () => {
   const { t, language } = useLanguage();
-  const [selectedType, setSelectedType] = useState('all');
 
   const formatILS = (v) =>
     new Intl.NumberFormat('he-IL', {
@@ -17,17 +15,6 @@ const Catalog = () => {
       currency: 'ILS',
       maximumFractionDigits: 0
     }).format(v);
-
-  const productTypes = [
-    { value: 'all', label: t('allTypes') },
-    { value: 'tshirt', label: t('tshirt') },
-    { value: 'hoodie', label: t('hoodie') },
-    { value: 'sweatshirt', label: t('sweatshirt') }
-  ];
-
-  const filteredProducts = selectedType === 'all' 
-    ? products 
-    : products.filter(product => product.sku === selectedType);
 
   return (
     <>
@@ -53,36 +40,9 @@ const Catalog = () => {
             </p>
           </motion.div>
 
-          {/* Filters */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="mb-8 sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-gray-100 py-3"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                <Filter className="h-5 w-5 mr-2" />
-                {t('filterByType')}
-              </h3>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {productTypes.map((type) => (
-                <Button
-                  key={type.value}
-                  variant={selectedType === type.value ? 'default' : 'outline'}
-                  onClick={() => setSelectedType(type.value)}
-                  className="mb-2"
-                >
-                  {type.label}
-                </Button>
-              ))}
-            </div>
-          </motion.div>
-
           {/* Products Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredProducts.map((product, index) => (
+            {products.map((product, index) => (
               <motion.div
                 key={product.sku}
                 initial={{ opacity: 0, y: 30 }}
@@ -92,13 +52,34 @@ const Catalog = () => {
               >
                 <div className="aspect-square overflow-hidden bg-gray-50">
                   <img
-                    src={product.images.white}
+                    src={Array.isArray(product.images?.base1) ? product.images.base1[0] : `/product_images/${product.sku}/base_1.webp`}
                     alt={language === 'he' ? product.nameHe : product.name}
                     className="w-full h-full object-contain transition-transform duration-300 hover:scale-[1.02]"
                     loading="lazy"
                     decoding="async"
-                    onMouseEnter={e => { if (product.images?.mockup) e.currentTarget.src = product.images.mockup; }}
-                    onMouseLeave={e => { e.currentTarget.src = product.images.white; }}
+                    onMouseEnter={e => {
+                      const next = `/product_images/${product.sku}/base_2.webp`;
+                      e.currentTarget.dataset.prev = e.currentTarget.src;
+                      e.currentTarget.src = next;
+                    }}
+                    onMouseLeave={e => {
+                      const back = `/product_images/${product.sku}/base_1.webp`;
+                      e.currentTarget.src = back;
+                    }}
+                    onError={e => {
+                      const el = e.currentTarget;
+                      const list = Array.isArray(product.images?.base1) ? product.images.base1 : null;
+                      if (list) {
+                        const idx = list.indexOf(el.src);
+                        if (idx >= 0 && idx < list.length - 1) {
+                          el.src = list[idx + 1];
+                          return;
+                        }
+                      }
+                      if (el.src.endsWith('.webp')) el.src = el.src.replace('.webp', '.jpg');
+                      else if (el.src.endsWith('.jpg')) el.src = el.src.replace('.jpg', '.jpeg');
+                      else if (el.src.endsWith('.jpeg')) el.src = el.src.replace('.jpeg', '.png');
+                    }}
                   />
                 </div>
                 
@@ -107,39 +88,30 @@ const Catalog = () => {
                     {language === 'he' ? product.nameHe : product.name}
                   </h3>
                   
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="inline-flex items-center text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-700">
-                      {product.tech}
-                    </span>
-                    <span className="text-[11px] px-2 py-1 rounded-full bg-blue-50 text-blue-700">
-                      מינימום 10 פריטים
-                    </span>
-                  </div>
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-sm text-gray-500">
                       {(language === 'he' ? 'צבעים' : 'colors')}: {product.colors.length}
                     </span>
                     <span className="text-lg font-bold text-blue-600">
-                      {formatILS(product.basePrice)}+
+                      {(() => {
+                        const tiers = pricingRules[product.sku]?.tiers || [];
+                        const min = tiers.length ? Math.min(...tiers.map(t => t.price)) : product.basePrice;
+                        return `מ־${formatILS(min)}`;
+                      })()}
                     </span>
                   </div>
 
                   <div className="flex gap-2 mb-4" role="list" aria-label={language === 'he' ? 'צבעים זמינים' : 'Available colors'}>
-                    {product.colors.slice(0, 4).map((color) => (
-                      <button
-                        type="button"
+                    {product.colors.map((color) => (
+                      <span
                         key={color}
                         className="w-6 h-6 rounded-full border-2 border-gray-200"
                         style={{ background: color === 'white' ? '#ffffff' : color }}
                         title={color}
                         aria-label={color}
+                        role="listitem"
                       />
                     ))}
-                    {product.colors.length > 4 && (
-                      <div className="w-6 h-6 rounded-full bg-gray-100 border-2 border-gray-200 flex items-center justify-center">
-                        <span className="text-xs text-gray-600">+{product.colors.length - 4}</span>
-                      </div>
-                    )}
                   </div>
 
                   <Link to={`/product/${product.sku}`}>
