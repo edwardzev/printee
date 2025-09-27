@@ -51,7 +51,7 @@ const translations = {
     addToCart: 'הוסף לעגלה',
     priceBreakdown: 'פירוט מחיר',
     basePrice: 'מחיר בסיס',
-    placementFees: 'עלויות הדפסה',
+    placementFees: 'עלויות מיתוג',
     delivery: 'משלוח',
     total: 'סה"כ',
     addDelivery: 'הוסף משלוח',
@@ -92,6 +92,8 @@ const translations = {
     uploadSuccess: 'הקובץ הועלה בהצלחה!',
     uploadError: 'שגיאה בהעלאת הקובץ',
     addedToCart: 'הפריט נוסף לעגלה!',
+  addToCartCount: (count) => `התווסף ${count} פריטים לעגלה`,
+  updateCartCount: (count) => `עודכן ${count} פריטים בעגלה`,
     notImplemented: '🚧 התכונה הזו עדיין לא מוכנה - אבל אל תדאגו! תוכלו לבקש אותה בהודעה הבאה! 🚀',
     
     // Footer
@@ -194,6 +196,8 @@ const translations = {
     uploadSuccess: 'File uploaded successfully!',
     uploadError: 'Error uploading file',
     addedToCart: 'Item added to cart!',
+  addToCartCount: (count) => `${count} items added to cart`,
+  updateCartCount: (count) => `${count} items updated in cart`,
     notImplemented: '🚧 This feature isn\'t implemented yet—but don\'t worry! You can request it in your next prompt! 🚀',
     
     // Footer

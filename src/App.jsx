@@ -15,6 +15,7 @@ import Admin from '@/pages/Admin';
 import Terms from '@/pages/Terms';
 import Privacy from '@/pages/Privacy';
 import Returns from '@/pages/Returns';
+import FAQ from '@/pages/FAQ';
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
                 <Route path="/checkout/success" element={<CheckoutResult success={true} />} />
                 <Route path="/checkout/cancel" element={<CheckoutResult success={false} />} />
                 <Route path="/admin" element={<Admin />} />
+                <Route path="/faq" element={<FAQ />} />
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/returns" element={<Returns />} />

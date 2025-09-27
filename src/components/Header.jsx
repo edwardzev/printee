@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
+import { ShoppingCart } from 'lucide-react';
+import { useCart } from '@/contexts/CartContext';
+import { Link } from 'react-router-dom';
 
 export default function Header({ dir = "rtl" }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState("");
+  const { getTotalItems } = useCart();
 
   const goTo = (id) => (e) => {
     e.preventDefault();
@@ -108,28 +112,59 @@ export default function Header({ dir = "rtl" }) {
             { id: "pricing", label: "מחירים" },
             { id: "faq", label: "שאלות נפוצות" },
             { id: "contact", label: "התחל לעצב", cta: true },
-          ].map(({ id, label, cta }) => (
-            <a
-              key={id}
-              href={`#${id}`}
-              onClick={goTo(id)}
-              style={{
-                textDecoration: "none",
-                color: active === id ? "#000" : "#333",
-                padding: cta ? "10px 14px" : "8px 10px",
-                borderRadius: cta ? 999 : 10,
-                background: cta
-                  ? "#111"
-                  : active === id
-                  ? "#f0f0f0"
-                  : "transparent",
-                color: cta ? "#fff" : undefined,
-                fontWeight: 500,
-              }}
-            >
-              {label}
-            </a>
-          ))}
+          ].map(({ id, label, cta }) => {
+            const baseStyle = {
+              textDecoration: "none",
+              color: active === id ? "#000" : "#333",
+              padding: cta ? "10px 14px" : "8px 10px",
+              borderRadius: cta ? 999 : 10,
+              background: cta
+                ? "#111"
+                : active === id
+                ? "#f0f0f0"
+                : "transparent",
+              color: cta ? "#fff" : undefined,
+              fontWeight: 500,
+            };
+
+            // Render a routed Link for the FAQ item so it navigates to /faq
+            if (id === 'faq') {
+              return (
+                <Link key={id} to="/faq" style={baseStyle}>
+                  {label}
+                </Link>
+              );
+            }
+
+            return (
+              <a key={id} href={`#${id}`} onClick={goTo(id)} style={baseStyle}>
+                {label}
+              </a>
+            );
+          })}
+          {/* Cart icon */}
+          <Link
+            to="/cart"
+            aria-label="Cart"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              textDecoration: 'none',
+              color: '#111',
+              position: 'relative'
+            }}
+          >
+            <ShoppingCart size={20} />
+            <span style={{
+              background: '#ff3b30',
+              color: '#fff',
+              borderRadius: 999,
+              padding: '2px 6px',
+              fontSize: 12,
+              fontWeight: 600
+            }}>{getTotalItems()}</span>
+          </Link>
         </nav>
       </div>
     </header>

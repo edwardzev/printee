@@ -1,49 +1,166 @@
 export const products = [
   {
     sku: 'tshirt',
+    appearance: 10,
     name: 'Classic T-Shirt',
-    nameHe: 'חולצת טי קלאסית',
+    nameHe: 'חולצת טריקו קלאסית',
     description: 
 'Our Classic T-Shirt is made from 100% organic cotton, offering a comfortable fit and vibrant colors. Perfect for everyday wear and custom designs.',
     descriptionHe: 
 'חולצת הטי הקלאסית שלנו עשויה מ-100% כותנה אורגנית, ומציעה התאמה נוחה וצבעים חיים. מושלמת לשימוש יומיומי ולעיצובים מותאמים אישית.',
     tech: 'DTF',
-    colors: ['white', 'black', 'navy', 'red', 'gray'],
+  colors: ['white', 'black', 'navy', 'red', 'gray', 'blue', 'olive', 'purple', 'lightblue', 'bottlegreen', 'tourquise', 'babypink', 'yellow'],
     sizeRange: ['xs', 's', 'm', 'l', 'xl', 'xxl', 'xxxl', 'xxxxl', 'xxxxxl'],
     images: {
-      white: ['/product_images/tshirt/white_tshirt.webp','/product_images/tshirt/white_tshirt.jpg','/product_images/tshirt/white_tshirt.png'],
-      black: ['/product_images/tshirt/black_tshirt.webp','/product_images/tshirt/black_tshirt.jpg','/product_images/tshirt/black_tshirt.png'],
-      navy:  ['/product_images/tshirt/navy_tshirt.webp','/product_images/tshirt/navy_tshirt.jpg','/product_images/tshirt/navy_tshirt.png'],
-      red:   ['/product_images/tshirt/red_tshirt.webp','/product_images/tshirt/red_tshirt.jpg','/product_images/tshirt/red_tshirt.png'],
-      gray:  ['/product_images/tshirt/gray_tshirt.webp','/product_images/tshirt/gray_tshirt.jpg','/product_images/tshirt/gray_tshirt.png'],
-      base1: ['/product_images/tshirt/base_1.webp','/product_images/tshirt/base_1.jpg','/product_images/tshirt/base_1.png'],
-      base2: ['/product_images/tshirt/base_2.webp','/product_images/tshirt/base_2.jpg','/product_images/tshirt/base_2.png']
+      white: ['/product_images/tshirt/white_tshirt.jpg','/product_images/tshirt/white_tshirt.png'],
+      black: ['/product_images/tshirt/black_tshirt.jpg','/product_images/tshirt/black_tshirt.png'],
+      navy:  ['/product_images/tshirt/navy_tshirt.jpg','/product_images/tshirt/navy_tshirt.png'],
+      red:   ['/product_images/tshirt/red_tshirt.jpg','/product_images/tshirt/red_tshirt.png'],
+      gray:  ['/product_images/tshirt/gray_tshirt.jpeg','/product_images/tshirt/gray_tshirt.jpg','/product_images/tshirt/gray_tshirt.png'],
+      blue: ['/product_images/tshirt/blue_tshirt.jpg','/product_images/tshirt/blue_tshirt.png'],
+      olive: ['/product_images/tshirt/olive_tshirt.jpeg','/product_images/tshirt/olive_tshirt.png'],
+      purple: ['/product_images/tshirt/purple_tshirt.jpeg','/product_images/tshirt/purple_tshirt.png'],
+      lightblue: ['/product_images/tshirt/lightblue_tshirt.jpeg','/product_images/tshirt/lightblue_tshirt.png'],
+      bottlegreen: ['/product_images/tshirt/bottlegreen_tshirt.jpeg','/product_images/tshirt/bottlegreen_tshirt.png'],
+      tourquise: ['/product_images/tshirt/tourquise_tshirt.jpeg','/product_images/tshirt/tourquise_tshirt.png'],
+      babypink: ['/product_images/tshirt/babypink_tshirt.jpeg','/product_images/tshirt/babypink_tshirt.png'],
+      yellow: ['/product_images/tshirt/yellow_tshirt.jpeg','/product_images/tshirt/yellow_tshirt.png'],
+      base1: ['/product_images/tshirt/base_1.png','/product_images/tshirt/base_1.jpg'],
+      base2: ['/product_images/tshirt/base_2.png','/product_images/tshirt/base_2.jpg']
     },
     activePrintAreas: ['leftChest', 'rightChest', 'frontA4', 'frontA3', 'backA4', 'backA3', 'leftSleeve', 'rightSleeve'],
     basePrice: 50
   },
   {
     sku: 'hoodie',
+    appearance: 30,
     name: 'Premium Hoodie',
-    nameHe: 'הודי פרימיום',
+    nameHe: 'קפוצ׳ון פרימיום',
     description: 'Our Premium Hoodie is crafted from a heavyweight cotton blend for warmth and durability. Ideal for prints and comfortable layering.',
     descriptionHe: 'הודי הפרימיום שלנו עשוי מתערובת כותנה עבה לנוחות וחמימות. מושלם להדפסות ולשכבות חמות.',
     tech: 'DTF',
     colors: ['white', 'black', 'navy', 'gray'],
     sizeRange: ['xs', 's', 'm', 'l', 'xl', 'xxl', 'xxxl', 'xxxxl', 'xxxxxl'],
     images: {
-      white: ['/product_images/hoodie/white_hoodie.webp','/product_images/hoodie/white_hoodie.jpg','/product_images/hoodie/white_hoodie.png'],
-      black: ['/product_images/hoodie/black_hoodie.webp','/product_images/hoodie/black_hoodie.jpg','/product_images/hoodie/black_hoodie.png'],
-      navy:  ['/product_images/hoodie/navy_hoodie.webp','/product_images/hoodie/navy_hoodie.jpg','/product_images/hoodie/navy_hoodie.png'],
-      gray:  ['/product_images/hoodie/gray_hoodie.webp','/product_images/hoodie/gray_hoodie.jpg','/product_images/hoodie/gray_hoodie.png'],
-      base1: ['/product_images/hoodie/base_1.webp','/product_images/hoodie/base_1.jpg','/product_images/hoodie/base_1.png'],
-      base2: ['/product_images/hoodie/base_2.webp','/product_images/hoodie/base_2.jpg','/product_images/hoodie/base_2.png']
+      white: ['/product_images/hoodie/base_1.png','/product_images/hoodie/base_2.png'],
+      black: ['/product_images/hoodie/base_1.png','/product_images/hoodie/base_2.png'],
+      navy:  ['/product_images/hoodie/base_1.png','/product_images/hoodie/base_2.png'],
+      gray:  ['/product_images/hoodie/base_1.png','/product_images/hoodie/base_2.png'],
+      base1: ['/product_images/hoodie/base_1.png'],
+      base2: ['/product_images/hoodie/base_2.png']
     },
     activePrintAreas: ['leftChest', 'rightChest', 'frontA4', 'frontA3', 'backA4', 'backA3'],
     basePrice: 100
   },
   {
+    sku: 'polo',
+    appearance: 61,
+    name: 'Classic Polo',
+    nameHe: 'פולו קלאסי',
+    description: 'A soft and breathable polo shirt suitable for corporate and casual wear, compatible with DTF printing.',
+    descriptionHe: 'חולצת פולו רכה ונושמת, מתאימה לעבודה ולפנאי. מתאימה להדפסות DTF.',
+    tech: 'DTF',
+    colors: ['white', 'black'],
+    sizeRange: ['s','m','l','xl','xxl'],
+    images: {
+      white: ['/product_images/polo/base1.png','/product_images/polo/base2.png'],
+      black: ['/product_images/polo/base1.png','/product_images/polo/base2.png'],
+      base1: ['/product_images/polo/base1.png'],
+      base2: ['/product_images/polo/base2.png']
+    },
+    activePrintAreas: ['leftChest','rightChest','frontA4','backA4'],
+    basePrice: 80
+  },
+  {
+    sku: 'dryfit',
+    appearance: 19,
+    name: 'DryFit Sport Tee',
+    nameHe: 'חולצת דרייפיט',
+    description: 'Lightweight performance tee with moisture-wicking fabric, ideal for sports and events.',
+    descriptionHe: 'חולצת ספורט קלה עם בד מנדף לחות, מושלמת לפעילות ספורטיבית ואירועים.',
+    tech: 'DTF',
+    colors: ['white','black'],
+    sizeRange: ['s','m','l','xl','xxl'],
+    images: {
+      white: ['/product_images/dryfit/base1','/product_images/dryfit/base2.png'],
+      black: ['/product_images/dryfit/base1','/product_images/dryfit/base2.png'],
+      base1: ['/product_images/dryfit/base1'],
+      base2: ['/product_images/dryfit/base2.png']
+    },
+    activePrintAreas: ['leftChest','rightChest','frontA4','backA4'],
+    basePrice: 60
+  },
+  {
+    sku: 'fleece',
+    appearance: 80,
+    name: 'Light Fleece',
+    nameHe: 'פלי́ס קל',
+    description: 'Soft fleece layer, suitable for cool weather and comfortable prints.',
+    descriptionHe: 'שכבת פליס רכה, מתאימה למזג אוויר קר והדפסים נוחים.',
+    tech: 'DTF',
+    colors: ['black','gray','navy'],
+    sizeRange: ['s','m','l','xl','xxl'],
+    images: {
+      base1: ['/product_images/fleece/base1.png'],
+      base2: ['/product_images/fleece/base2.png']
+    },
+    activePrintAreas: ['leftChest','rightChest','frontA4','backA4'],
+    basePrice: 120
+  },
+  {
+    sku: 'longsleeve',
+    appearance: 20,
+    name: 'Long Sleeve Tee',
+    nameHe: 'חולצת טריקן שרוול ארוך',
+    description: 'A long-sleeve variant of our classic tee, great for cooler days and layered looks.',
+    descriptionHe: 'גרסה בשרוול ארוך של חולצת הטי הקלאסית, נהדרת לימי קור ולמראה בשכבות.',
+    tech: 'DTF',
+    colors: ['white','black','navy'],
+    sizeRange: ['s','m','l','xl','xxl'],
+    images: {
+      base1: ['/product_images/longsleeve/base1.png'],
+      base2: ['/product_images/longsleeve/base2.png']
+    },
+    activePrintAreas: ['leftChest','rightChest','frontA4','backA4','leftSleeve','rightSleeve'],
+    basePrice: 60
+  },
+  {
+    sku: 'softshell',
+    appearance: 90,
+    name: 'Softshell Jacket',
+    nameHe: 'ג׳קט סופטשל',
+    description: 'A weather-resistant softshell layer ideal for outdoor branding and comfort.',
+    descriptionHe: 'ג׳קט סופטשל עמיד למזג אוויר, מתאים למיתוג חיצוני ונוחות.',
+    tech: 'DTF',
+    colors: ['black'],
+    sizeRange: ['s','m','l','xl','xxl'],
+    images: {
+      base1: ['/product_images/softshell/base1.png'],
+      base2: ['/product_images/softshell/base2.png']
+    },
+    activePrintAreas: ['leftChest','rightChest','backA4'],
+    basePrice: 150
+  },
+  {
+    sku: 'zipped_hood',
+    appearance: 50,
+    name: 'Zipped Hoodie',
+    nameHe: 'קפוצ׳ון עם רוכסן',
+    description: 'Zipped hoodie with roomy pockets and a comfortable fit, print friendly.',
+    descriptionHe: 'חולצת הודי עם רוכסן וכיסים, נוחה ומותאמת להדפסה.',
+    tech: 'DTF',
+    colors: ['black','gray'],
+    sizeRange: ['s','m','l','xl','xxl'],
+    images: {
+      base1: ['/product_images/zipped_hood/base1.png'],
+      base2: ['/product_images/zipped_hood/base2.png']
+    },
+    activePrintAreas: ['leftChest','rightChest','frontA4','backA4'],
+    basePrice: 110
+  },
+  {
     sku: 'sweatshirt',
+    appearance: 40,
     name: 'Comfort Sweatshirt',
     nameHe: 'סווטשירט נוח',
     description: 'A soft, comfortable sweatshirt designed for everyday wear — breathable, warm and print-friendly.',
@@ -52,24 +169,42 @@ export const products = [
     colors: ['white', 'black', 'navy', 'red', 'gray'],
     sizeRange: ['xs', 's', 'm', 'l', 'xl', 'xxl', 'xxxl', 'xxxxl', 'xxxxxl'],
     images: {
-      white: ['/product_images/sweatshirt/white_sweatshirt.webp','/product_images/sweatshirt/white_sweatshirt.jpg','/product_images/sweatshirt/white_sweatshirt.png'],
-      black: ['/product_images/sweatshirt/black_sweatshirt.webp','/product_images/sweatshirt/black_sweatshirt.jpg','/product_images/sweatshirt/black_sweatshirt.png'],
-      navy:  ['/product_images/sweatshirt/navy_sweatshirt.webp','/product_images/sweatshirt/navy_sweatshirt.jpg','/product_images/sweatshirt/navy_sweatshirt.png'],
-      red:   ['/product_images/sweatshirt/red_sweatshirt.webp','/product_images/sweatshirt/red_sweatshirt.jpg','/product_images/sweatshirt/red_sweatshirt.png'],
-      gray:  ['/product_images/sweatshirt/gray_sweatshirt.webp','/product_images/sweatshirt/gray_sweatshirt.jpg','/product_images/sweatshirt/gray_sweatshirt.png'],
-      base1: ['/product_images/sweatshirt/base_1.webp','/product_images/sweatshirt/base_1.jpg','/product_images/sweatshirt/base_1.png'],
-      base2: ['/product_images/sweatshirt/base_2.webp','/product_images/sweatshirt/base_2.jpg','/product_images/sweatshirt/base_2.png']
+      white: ['/product_images/sweatshirt/base1','/product_images/sweatshirt/base2'],
+      black: ['/product_images/sweatshirt/base1','/product_images/sweatshirt/base2'],
+      navy:  ['/product_images/sweatshirt/base1','/product_images/sweatshirt/base2'],
+      red:   ['/product_images/sweatshirt/base1','/product_images/sweatshirt/base2'],
+      gray:  ['/product_images/sweatshirt/base1','/product_images/sweatshirt/base2'],
+      base1: ['/product_images/sweatshirt/base1'],
+      base2: ['/product_images/sweatshirt/base2']
     },
     activePrintAreas: ['leftChest', 'rightChest', 'frontA4', 'frontA3', 'backA4', 'backA3', 'leftSleeve', 'rightSleeve'],
     basePrice: 80
   }
 ];
 
+// Hebrew labels for color keys used across the UI
+export const colorLabelsHe = {
+  white: 'לבן',
+  black: 'שחור',
+  navy: 'כחול נייבי',
+  red: 'אדום',
+  gray: 'אפור',
+  blue: 'כחול רויאל',
+  olive: 'ירוק זית',
+  purple: 'סגול',
+  lightblue: 'תכלת',
+  bottlegreen: 'ירוק בקבוק',
+  tourquise: 'טורקיז',
+  babypink: 'ורוד בייבי',
+  yellow: 'צהוב'
+};
+
 export const printAreas = {
   leftChest: {
     key: 'leftChest',
     label: 'Left Chest',
     labelHe: 'חזה שמאל',
+    emboAllowed: true,
     maxWCm: 10,
     maxHCm: 10,
     overlayX: 150,
@@ -84,6 +219,7 @@ export const printAreas = {
     key: 'rightChest',
     label: 'Right Chest',
     labelHe: 'חזה ימין',
+    emboAllowed: true,
     maxWCm: 10,
     maxHCm: 10,
     overlayX: 530,
@@ -98,6 +234,7 @@ export const printAreas = {
     key: 'frontA4',
     label: 'Front A4',
     labelHe: 'חזית A4',
+    emboAllowed: false,
     maxWCm: 20,
     maxHCm: 30,
     overlayX: 250,
@@ -112,6 +249,7 @@ export const printAreas = {
     key: 'frontA3',
     label: 'Front A3',
     labelHe: 'חזית A3',
+    emboAllowed: false,
     maxWCm: 30,
     maxHCm: 40,
     overlayX: 200,
@@ -126,6 +264,7 @@ export const printAreas = {
     key: 'backA4',
     label: 'Back A4',
     labelHe: 'גב A4',
+    emboAllowed: false,
     maxWCm: 20,
     maxHCm: 30,
     overlayX: 250,
@@ -140,6 +279,7 @@ export const printAreas = {
     key: 'backA3',
     label: 'Back A3',
     labelHe: 'גב A3',
+    emboAllowed: false,
     maxWCm: 30,
     maxHCm: 40,
     overlayX: 200,
@@ -154,6 +294,7 @@ export const printAreas = {
     key: 'leftSleeve',
     label: 'Left Sleeve',
     labelHe: 'שרוול שמאל',
+    emboAllowed: true,
     maxWCm: 8,
     maxHCm: 8,
     overlayX: 50,
@@ -168,6 +309,7 @@ export const printAreas = {
     key: 'rightSleeve',
     label: 'Right Sleeve',
     labelHe: 'שרוול ימין',
+    emboAllowed: true,
     maxWCm: 8,
     maxHCm: 8,
     overlayX: 670,
@@ -182,6 +324,7 @@ export const printAreas = {
     key: 'neckLabel',
     label: 'Neck Label',
     labelHe: 'תווית צוואר',
+    emboAllowed: true,
     maxWCm: 5,
     maxHCm: 2,
     overlayX: 350,

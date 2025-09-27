@@ -118,9 +118,7 @@ const Home = () => {
               <h2 className="text-3xl lg:text-4xl font-bold mb-6">
                 מוכנים ליצור בגדים מודפסים מותאמים אישית?
               </h2>
-              <p className="text-xl mb-8 text-blue-100">
-                Start designing your custom garments today with our easy-to-use configurator.
-              </p>
+              
               <Link to="/catalog">
                 <Button size="lg" className="bg-white text-blue-600 hover:bg-blue-50 text-lg px-8 py-4">
                   {t('startOrder')}

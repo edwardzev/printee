@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { products, pricingRules } from '@/data/products';
+import { products, pricingRules, colorLabelsHe } from '@/data/products';
 import { Button } from '@/components/ui/button';
 
 const Catalog = () => {
@@ -15,6 +15,12 @@ const Catalog = () => {
       currency: 'ILS',
       maximumFractionDigits: 0
     }).format(v);
+  
+  // pick the first suitable raster image from an array or fallback
+  const pick = (arr, fallback) => {
+    if (!Array.isArray(arr) || !arr.length) return fallback;
+    return arr.find(x => /\.(jpe?g|png)$/.test(x)) || arr[0];
+  };
 
   return (
     <>
@@ -42,7 +48,7 @@ const Catalog = () => {
 
           {/* Products Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {products.map((product, index) => (
+            {([...products].sort((a, b) => (a.appearance || 0) - (b.appearance || 0))).map((product, index) => (
               <motion.div
                 key={product.sku}
                 initial={{ opacity: 0, y: 30 }}
@@ -52,29 +58,36 @@ const Catalog = () => {
               >
                 <div className="aspect-square overflow-hidden bg-gray-50">
                   <img
-                    src={Array.isArray(product.images?.base1) ? product.images.base1[0] : `/product_images/${product.sku}/base_1.webp`}
+                    src={pick(product.images?.base1, `/product_images/${product.sku}/base_1.webp`)}
                     alt={language === 'he' ? product.nameHe : product.name}
                     className="w-full h-full object-contain transition-transform duration-300 hover:scale-[1.02]"
                     loading="lazy"
                     decoding="async"
                     onMouseEnter={e => {
-                      const next = `/product_images/${product.sku}/base_2.webp`;
-                      e.currentTarget.dataset.prev = e.currentTarget.src;
-                      e.currentTarget.src = next;
+                      const el = e.currentTarget;
+                      el.dataset.prev = el.src;
+                      const next = pick(product.images?.base2, `/product_images/${product.sku}/base_2.webp`);
+                      el.src = next;
                     }}
                     onMouseLeave={e => {
-                      const back = `/product_images/${product.sku}/base_1.webp`;
-                      e.currentTarget.src = back;
+                      const el = e.currentTarget;
+                      if (el.dataset.prev) el.src = el.dataset.prev;
+                      else el.src = pick(product.images?.base1, `/product_images/${product.sku}/base_1.webp`);
                     }}
                     onError={e => {
                       const el = e.currentTarget;
-                      const list = Array.isArray(product.images?.base1) ? product.images.base1 : null;
-                      if (list) {
-                        const idx = list.indexOf(el.src);
-                        if (idx >= 0 && idx < list.length - 1) {
-                          el.src = list[idx + 1];
-                          return;
+                      try {
+                        const pathname = new URL(el.src, window.location.origin).pathname;
+                        const list = Array.isArray(product.images?.base1) ? product.images.base1 : null;
+                        if (list) {
+                          const idx = list.findIndex(item => pathname.endsWith(item));
+                          if (idx >= 0 && idx < list.length - 1) {
+                            el.src = list[idx + 1];
+                            return;
+                          }
                         }
+                      } catch (err) {
+                        // fall back to simple string comparisons if URL parsing fails
                       }
                       if (el.src.endsWith('.webp')) el.src = el.src.replace('.webp', '.jpg');
                       else if (el.src.endsWith('.jpg')) el.src = el.src.replace('.jpg', '.jpeg');
@@ -107,8 +120,8 @@ const Catalog = () => {
                         key={color}
                         className="w-6 h-6 rounded-full border-2 border-gray-200"
                         style={{ background: color === 'white' ? '#ffffff' : color }}
-                        title={color}
-                        aria-label={color}
+                        title={language === 'he' ? (colorLabelsHe[color] || color) : color}
+                        aria-label={language === 'he' ? (colorLabelsHe[color] || color) : color}
                         role="listitem"
                       />
                     ))}

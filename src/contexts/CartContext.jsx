@@ -12,12 +12,17 @@ export const useCart = () => {
 
 export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState([]);
+  const [payload, setPayload] = useState({});
 
   useEffect(() => {
     try {
       const savedCart = localStorage.getItem('cart');
       if (savedCart) {
         setCartItems(JSON.parse(savedCart));
+      }
+      const savedPayload = localStorage.getItem('order_payload');
+      if (savedPayload) {
+        setPayload(JSON.parse(savedPayload));
       }
     } catch (error) {
       console.error("Failed to load cart from localStorage", error);
@@ -32,17 +37,36 @@ export const CartProvider = ({ children }) => {
         const sanitizedDesigns = {};
         if (uploadedDesigns) {
           for (const key in uploadedDesigns) {
-            const { file, url, ...restOfDesign } = uploadedDesigns[key];
-            sanitizedDesigns[key] = restOfDesign;
+            // Preserve the data URL and name so previews persist, but remove File objects
+            const { file, ...restOfDesign } = uploadedDesigns[key] || {};
+            const preserved = {};
+            if (restOfDesign.url) preserved.url = restOfDesign.url;
+            if (restOfDesign.name) preserved.name = restOfDesign.name;
+            sanitizedDesigns[key] = preserved;
           }
         }
         return { ...restOfItem, uploadedDesigns: sanitizedDesigns };
       });
       localStorage.setItem('cart', JSON.stringify(cartToSave));
+    try {
+      // persist payload as well
+      localStorage.setItem('order_payload', JSON.stringify(payload || {}));
+    } catch (err) {
+      // ignore
+    }
     } catch (error) {
       console.error("Failed to save cart to localStorage", error);
     }
   }, [cartItems]);
+
+  // Persist payload whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('order_payload', JSON.stringify(payload || {}));
+    } catch (err) {
+      console.error('Failed to persist payload', err);
+    }
+  }, [payload]);
 
   const addToCart = (item) => {
     const newItem = {
@@ -50,7 +74,34 @@ export const CartProvider = ({ children }) => {
       ...item,
       timestamp: new Date().toISOString()
     };
-    setCartItems(prev => [...prev, newItem]);
+    setCartItems(prev => {
+      const next = [...prev, newItem];
+      if (import.meta && import.meta.env && import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.debug('DEV addToCart payload', newItem, { nextCount: next.length });
+      }
+      // persist immediately (sanitized) to avoid race conditions when navigating
+      try {
+        const cartToSave = next.map(i => {
+          const { uploadedDesigns, ...restOfItem } = i;
+          const sanitizedDesigns = {};
+          if (uploadedDesigns) {
+            for (const key in uploadedDesigns) {
+              const { file, ...restOfDesign } = uploadedDesigns[key] || {};
+              const preserved = {};
+              if (restOfDesign.url) preserved.url = restOfDesign.url;
+              if (restOfDesign.name) preserved.name = restOfDesign.name;
+              sanitizedDesigns[key] = preserved;
+            }
+          }
+          return { ...restOfItem, uploadedDesigns: sanitizedDesigns };
+        });
+        localStorage.setItem('cart', JSON.stringify(cartToSave));
+      } catch (error) {
+        console.error('Failed to persist cart immediately', error);
+      }
+      return next;
+    });
   };
 
   const removeFromCart = (itemId) => {
@@ -65,6 +116,22 @@ export const CartProvider = ({ children }) => {
 
   const clearCart = () => {
     setCartItems([]);
+  };
+
+  // Payload helpers
+  const mergePayload = (partial) => {
+    setPayload(prev => {
+      const next = { ...(prev || {}), ...(partial || {}) };
+      try {
+        localStorage.setItem('order_payload', JSON.stringify(next));
+      } catch (err) {}
+      return next;
+    });
+  };
+
+  const clearPayload = () => {
+    setPayload({});
+    try { localStorage.removeItem('order_payload'); } catch (e) {}
   };
 
   const getTotalItems = () => {
@@ -87,6 +154,11 @@ export const CartProvider = ({ children }) => {
       clearCart,
       getTotalItems,
       getTotalPrice
+      ,
+      payload,
+      setPayload,
+      mergePayload,
+      clearPayload
     }}>
       {children}
     </CartContext.Provider>

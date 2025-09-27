@@ -25,21 +25,30 @@ const Privacy = () => {
             </h1>
             <div className="prose max-w-none text-gray-600">
               <p>
-                At Print Market, accessible from printmarket.co.il, one of our main priorities is the privacy of our visitors. This Privacy Policy document contains types of information that is collected and recorded by Print Market and how we use it.
+                פרטיות המשתמש חשובה לנו ב-Print Market. מדיניות פרטיות זו מתארת אילו נתונים אנו אוספים, כיצד אנו משתמשים בהם וכיצד אנו מגינים עליהם.
               </p>
               <p>
-                If you have additional questions or require more information about our Privacy Policy, do not hesitate to contact us.
+                אם יש לכם שאלות נוספות לגבי מדיניות הפרטיות, אנא צרו קשר במייל: info@printmarket.co.il
               </p>
-              <h2 className="text-2xl font-semibold mt-6 mb-4">Log Files</h2>
+
+              <h2 className="text-2xl font-semibold mt-6 mb-4">נתונים שאנו אוספים</h2>
               <p>
-                Print Market follows a standard procedure of using log files. These files log visitors when they visit websites. All hosting companies do this and a part of hosting services' analytics. The information collected by log files include internet protocol (IP) addresses, browser type, Internet Service Provider (ISP), date and time stamp, referring/exit pages, and possibly the number of clicks. These are not linked to any information that is personally identifiable. The purpose of the information is for analyzing trends, administering the site, tracking users' movement on the website, and gathering demographic information.
+                אנו אוספים מידע שמספקים אתם ישירות (למשל: שם, כתובת אימייל, כתובת למשלוח), וכן נתוני שימוש אנונימיים (למשל: כתובת IP, סוג דפדפן, דפי כניסה/יציאה) לצורך שיפור השירות וניתוח סטטיסטי.
               </p>
-              <h2 className="text-2xl font-semibold mt-6 mb-4">Information We Collect</h2>
+
+              <h2 className="text-2xl font-semibold mt-6 mb-4">שימוש במידע</h2>
               <p>
-                The personal information that you are asked to provide, and the reasons why you are asked to provide it, will be made clear to you at the point we ask you to provide your personal information.
+                המידע משמש לצורך עיבוד והשלמת הזמנות, תקשורת עם הלקוחות, שיפור המוצר והשירות, ומטרות אבטחה ומניעת הונאות.
               </p>
+
+              <h2 className="text-2xl font-semibold mt-6 mb-4">שיתוף מידע עם צדדים שלישיים</h2>
               <p>
-                If you contact us directly, we may receive additional information about you such as your name, email address, phone number, the contents of the message and/or attachments you may send us, and any other information you may choose to provide.
+                אנו לא נשתף מידע אישי עם גורמים חיצוניים למעט ספקי שירות הנדרשים לעיבוד ההזמנה (כגון חברות שילוח, ספקי תשלום) וכשחוק מחייב זאת.
+              </p>
+
+              <h2 className="text-2xl font-semibold mt-6 mb-4">אבטחת מידע</h2>
+              <p>
+                אנו משתמשים בפרקטיקות אבטחה מקובלות לשמירה על המידע. יחד עם זאת, אין ערבויות אבטחה מוחלטות באופן מקוון, ולכן חשוב לנקוט באמצעי זהירות בעצמכם (למשל: לא לשתף סיסמאות).
               </p>
             </div>
           </motion.div>

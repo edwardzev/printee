@@ -6,6 +6,15 @@ import { printAreas } from '@/data/products';
 const PrintAreaSelector = ({ availableAreas, selectedAreas, onChange }) => {
   const { t, language } = useLanguage();
 
+  // Normalize selectedAreas into array of objects { areaKey, method }
+  const normalize = (s) => {
+    if (!Array.isArray(s)) return [];
+    if (s.length === 0) return [];
+    if (typeof s[0] === 'string') return s.map(k => ({ areaKey: k, method: 'print' }));
+    return s;
+  };
+  const selected = normalize(selectedAreas);
+
   // Exclusivity: pick ONE of frontA4/frontA3 and ONE of backA4/backA3.
   const exclusiveGroups = [
     ['frontA4', 'frontA3'],
@@ -23,28 +32,28 @@ const PrintAreaSelector = ({ availableAreas, selectedAreas, onChange }) => {
 
   const toggleArea = (areaKey, disabled) => {
     if (disabled) return;
-    const isSelected = selectedAreas.includes(areaKey);
+    const isSelected = selected.some(s => s.areaKey === areaKey);
     const group = groupByArea[areaKey];
 
     if (isSelected) {
-      onChange(selectedAreas.filter(a => a !== areaKey));
+      onChange(selected.filter(a => a.areaKey !== areaKey));
       return;
     }
 
     // Start from current selections
-    let next = [...selectedAreas];
+    let next = [...selected];
 
     // If areaKey belongs to an exclusive group (front pair or back pair), remove others in that group
     if (group) {
-      next = next.filter(a => !group.includes(a));
+      next = next.filter(a => !group.includes(a.areaKey));
     }
 
     // Remove incompatible picks between front and chest (both directions),
     // but do NOT remove the other chest (left/right) — they can coexist.
-    next = next.filter(a => !conflictsWith(areaKey, a));
+    next = next.filter(a => !conflictsWith(areaKey, a.areaKey));
 
-    // Add the newly selected area
-    next.push(areaKey);
+    // Add the newly selected area with default method 'print'
+    next.push({ areaKey, method: 'print' });
 
     onChange(next);
   };
@@ -54,8 +63,8 @@ const PrintAreaSelector = ({ availableAreas, selectedAreas, onChange }) => {
     // clicking should SWITCH to this one (replace the group's selection).
     if (disabledByGroup) {
       const group = groupByArea[areaKey] || [];
-      const next = selectedAreas.filter(a => !group.includes(a));
-      onChange([...next, areaKey]);
+      const next = selected.filter(a => !group.includes(a.areaKey));
+      onChange([...next, { areaKey, method: 'print' }]);
       return;
     }
     // If disabled due to a *front↔chest* conflict, keep disabled (no switch).
@@ -70,7 +79,8 @@ const PrintAreaSelector = ({ availableAreas, selectedAreas, onChange }) => {
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
       {availableAreas.map((areaKey) => {
         const area = printAreas[areaKey];
-        const isSelected = selectedAreas.includes(areaKey);
+        const selObj = selected.find(s => s.areaKey === areaKey);
+        const isSelected = !!selObj;
 
         const group = groupByArea[areaKey];
         const disabledByGroup = !!group && selectedAreas.some(a => group.includes(a) && a !== areaKey);
@@ -78,7 +88,7 @@ const PrintAreaSelector = ({ availableAreas, selectedAreas, onChange }) => {
           (isChest(areaKey) && selectedAreas.some(a => isFront(a))) ||
           (isFront(areaKey) && selectedAreas.some(a => isChest(a)));
 
-        const disabled = disabledByGroup || disabledByConflict;
+  const disabled = disabledByGroup || disabledByConflict;
         
         return (
           <motion.div
@@ -137,9 +147,55 @@ const PrintAreaSelector = ({ availableAreas, selectedAreas, onChange }) => {
               <p className="text-xs text-gray-500 mb-2">
                 {language === 'he' ? 'מקסימום' : 'Max'}: {area.maxWCm}cm×{area.maxHCm}cm
               </p>
-              <p className="text-sm font-semibold text-blue-600">
-                ₪{area.fee}{language === 'he' ? ' ליחידה' : '/unit'}
-              </p>
+              <div className="flex flex-col items-center gap-2">
+                <div className="flex items-center gap-3">
+                  <label className="inline-flex items-center text-sm">
+                    <input
+                      type="radio"
+                      name={`method-${areaKey}`}
+                      checked={!!selObj && selObj.method === 'print'}
+                      onChange={() => {
+                        // selecting print should also ensure the area is selected
+                        if (!isSelected) {
+                          // select respecting exclusivity
+                          toggleArea(areaKey, disabled);
+                          return;
+                        }
+                        const next = selected.map(s => s.areaKey === areaKey ? { ...s, method: 'print' } : s);
+                        onChange(next);
+                      }}
+                      disabled={disabled}
+                      className="mr-2"
+                    />
+                    <span className="text-sm">{language === 'he' ? `הדפסה — ₪${area.fee} ליחידה` : `Print — ₪${area.fee}/unit`}</span>
+                  </label>
+
+                  <label className={`inline-flex items-center text-sm ${!area.emboAllowed ? 'opacity-50' : ''}`}>
+                    <input
+                      type="radio"
+                      name={`method-${areaKey}`}
+                      checked={!!selObj && selObj.method === 'embo'}
+                      onChange={() => {
+                        if (!area.emboAllowed) return;
+                        if (!isSelected) {
+                          // select with embo method while respecting exclusivity: create next manually
+                          const group = groupByArea[areaKey] || [];
+                          let next = selected.filter(a => !group.includes(a.areaKey));
+                          next = next.filter(a => !conflictsWith(areaKey, a.areaKey));
+                          next.push({ areaKey, method: 'embo' });
+                          onChange(next);
+                          return;
+                        }
+                        const next = selected.map(s => s.areaKey === areaKey ? { ...s, method: 'embo' } : s);
+                        onChange(next);
+                      }}
+                      disabled={disabled || !area.emboAllowed}
+                      className="mr-2"
+                    />
+                    <span className="text-sm">{language === 'he' ? `רקמה — ₪10 ליחידה` : `Embo — ₪10/unit`}</span>
+                  </label>
+                </div>
+              </div>
             </div>
           </motion.div>
         );

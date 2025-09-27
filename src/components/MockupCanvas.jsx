@@ -49,8 +49,8 @@ const MockupCanvas = ({ areaKey, baseImage, onFileUpload, uploadedDesign, templa
     const allowedTypes = ['image/png', 'image/jpeg', 'image/svg+xml', 'application/pdf'];
     if (!allowedTypes.includes(file.type)) {
       toast({
-        title: 'Invalid file type',
-        description: 'Please upload PNG, JPG, SVG, or PDF files only',
+        title: 'סוג קובץ לא נתמך',
+        description: 'העלו קבצי PNG, JPG, SVG או PDF בלבד',
         variant: 'destructive'
       });
       return;
@@ -59,8 +59,8 @@ const MockupCanvas = ({ areaKey, baseImage, onFileUpload, uploadedDesign, templa
     // Validate file size (100MB max)
     if (file.size > 100 * 1024 * 1024) {
       toast({
-        title: 'File too large',
-        description: 'Please upload files smaller than 100MB',
+        title: 'גודל הקובץ גדול מדי',
+        description: 'העלו קבצים קטנים מ-100MB',
         variant: 'destructive'
       });
       return;

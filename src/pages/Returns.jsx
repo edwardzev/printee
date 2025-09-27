@@ -25,27 +25,32 @@ const Returns = () => {
             </h1>
             <div className="prose max-w-none text-gray-600">
               <p>
-                We want you to be completely satisfied with your custom apparel order. If you are not satisfied with your purchase, please review our policy on returns and exchanges below.
+                אנו רוצים שתהיו מרוצים מההזמנה המותאמת שלכם. מדיניות ההחזרות וההחלפות שלנו מוצגת להלן.
               </p>
-              <h2 className="text-2xl font-semibold mt-6 mb-4">Customized Products</h2>
+
+              <h2 className="text-2xl font-semibold mt-6 mb-4">מוצרים מותאמים אישית</h2>
               <p>
-                Due to the custom nature of our products, we cannot accept returns or offer refunds for items that are free of defects or errors. All sales of customized products are final.
+                עקב אופי המוצרים המותאמים, אין אנו מקבלים החזרות או מעניקים החזרים עבור פריטים ללא פגם או טעות בייצור. הזמנות של מוצרים מותאמים הן סופיות, אלא אם נגרם פגם במוצר.
               </p>
-              <h2 className="text-2xl font-semibold mt-6 mb-4">Defective or Incorrect Orders</h2>
+
+              <h2 className="text-2xl font-semibold mt-6 mb-4">מוצרים פגומים או שגויים</h2>
               <p>
-                If you receive an order that is defective, damaged, or incorrect, please contact us within 7 days of receiving your order. We will be happy to assist you with a replacement or a refund. To be eligible, please provide the following:
+                אם קיבלתם מוצר פגום, ניזוק או שגוי, יש ליצור איתנו קשר תוך 7 ימים מקבלת ההזמנה. נשקף פתרון מהיר - החלפת מוצר, תיקון או החזר כספי בהתאם למקרה.
               </p>
+              <p>להגשת בקשה יש לספק:</p>
               <ul>
-                <li>Your order number</li>
-                <li>A description of the issue</li>
-                <li>Photographic evidence of the defect or error</li>
+                <li>מספר הזמנה</li>
+                <li>תיאור הבעיה</li>
+                <li>תמונות ברורות המפרטות את הפגם או השגיאה</li>
               </ul>
+
               <p>
-                Upon verification, we will arrange for a replacement order to be produced and shipped to you at no additional cost. If a replacement is not possible, a full refund will be issued.
+                לאחר בדיקה ואימות, נדאג לייצור והטבת משלוח של החלפה ללא עלות נוספת. אם לא ניתן יהיה להחליף, יינתן החזר מלא בהתאם למדיניות.
               </p>
-              <h2 className="text-2xl font-semibold mt-6 mb-4">Contact Us</h2>
+
+              <h2 className="text-2xl font-semibold mt-6 mb-4">צור קשר</h2>
               <p>
-                If you have any questions about our Returns and Exchanges Policy, please contact us at info@printmarket.co.il.
+                לשאלות או בקשות לגבי החזרות והחלפות פנו אלינו בכתובת: info@printmarket.co.il
               </p>
             </div>
           </motion.div>

@@ -65,7 +65,7 @@ const Admin = () => {
 
   const handleAction = (action) => {
     toast({
-      title: t('notImplemented')
+      title: 'התכונה עדיין לא זמינה'
     });
   };
 

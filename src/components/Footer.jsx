@@ -20,23 +20,26 @@ const Footer = () => {
             </p>
           </div>
 
-          {/* Links */}
+          {/* Legal & Links in Hebrew */}
           <div>
-            <h4 className="text-lg font-semibold mb-4">{t('informationAndLinks')}</h4>
-            <ul className="space-y-2">
+            <h4 className="text-lg font-semibold mb-4">מידע משפטי ושירות</h4>
+            <ul className="space-y-3 text-gray-300">
               <li>
-                <Link to="/terms" className="text-gray-300 hover:text-white transition-colors">
-                  {t('terms')}
+                <Link to="/terms" className="block hover:text-white transition-colors">
+                  <strong>תנאי שימוש</strong>
+                  <p className="text-sm text-gray-400">תיאור קצר: תנאי השימוש מסבירים את זכויות המשתמש, הגבלות השימוש באתר ותהליך ההזמנה.</p>
                 </Link>
               </li>
               <li>
-                <Link to="/privacy" className="text-gray-300 hover:text-white transition-colors">
-                  {t('privacy')}
+                <Link to="/privacy" className="block hover:text-white transition-colors">
+                  <strong>מדיניות פרטיות</strong>
+                  <p className="text-sm text-gray-400">תיאור קצר: כיצד אנו אוספים, משתמשים ומשמרים מידע אישי ושימוש בעוגיות.</p>
                 </Link>
               </li>
               <li>
-                <Link to="/returns" className="text-gray-300 hover:text-white transition-colors">
-                  {t('returns')}
+                <Link to="/returns" className="block hover:text-white transition-colors">
+                  <strong>החזרות והחלפות</strong>
+                  <p className="text-sm text-gray-400">תיאור קצר: תנאי החזרה, מתי ניתן להחזיר מוצרים ואופן יצירת קשר להחזרות והחלפות.</p>
                 </Link>
               </li>
             </ul>
@@ -44,7 +47,7 @@ const Footer = () => {
 
           {/* Contact */}
           <div>
-            <h4 className="text-lg font-semibold mb-4">Contact</h4>
+            <h4 className="text-lg font-semibold mb-4">צור קשר</h4>
             <div className="text-gray-300 space-y-2">
               <p>info@printmarket.co.il</p>
               <p>+972-50-123-4567</p>

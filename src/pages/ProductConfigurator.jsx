@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet';
 import { ShoppingCart, AlertCircle } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCart } from '@/contexts/CartContext';
-import { products, printAreas, pricingRules } from '@/data/products';
+import { products, printAreas, pricingRules, colorLabelsHe } from '@/data/products';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import SizeMatrix from '@/components/SizeMatrix';
@@ -17,13 +17,15 @@ const ProductConfigurator = () => {
   const { sku } = useParams();
   const navigate = useNavigate();
   const { t, language } = useLanguage();
-  const { addToCart } = useCart();
+  const { addToCart, updateCartItem } = useCart();
   const { toast } = useToast();
+  const location = useLocation();
 
   const product = products.find(p => p.sku === sku);
   
   const [selectedColor, setSelectedColor] = useState('');
   const [sizeMatrix, setSizeMatrix] = useState({});
+  // selectedPrintAreas is an array of { areaKey, method } where method is 'print' or 'embo'
   const [selectedPrintAreas, setSelectedPrintAreas] = useState([]);
   const [uploadedDesigns, setUploadedDesigns] = useState({});
   const [withDelivery, setWithDelivery] = useState(false);
@@ -42,6 +44,26 @@ const ProductConfigurator = () => {
       setSelectedColor(product.colors[0]);
     }
   }, [product]);
+
+  // Initialize from prefill (navigated from Cart -> Edit)
+  useEffect(() => {
+    const prefill = location?.state?.prefill;
+    if (prefill && prefill.productSku === sku) {
+      if (prefill.color) setSelectedColor(prefill.color);
+      if (prefill.sizeMatrix) setSizeMatrix(prefill.sizeMatrix);
+      // support legacy prefill format (array of keys) and new format (array of objects)
+      if (prefill.selectedPrintAreas) {
+        const s = prefill.selectedPrintAreas;
+        if (Array.isArray(s) && s.length && typeof s[0] === 'string') {
+          setSelectedPrintAreas(s.map(k => ({ areaKey: k, method: 'print' })));
+        } else {
+          setSelectedPrintAreas(s);
+        }
+      }
+      if (prefill.uploadedDesigns) setUploadedDesigns(prefill.uploadedDesigns);
+      if (typeof prefill.withDelivery === 'boolean') setWithDelivery(prefill.withDelivery);
+    }
+  }, [location, sku]);
 
   // Helper to pick first src from an array or return string as-is
   const pickSrc = (maybeArrayOrString, fallback) => {
@@ -63,9 +85,12 @@ const ProductConfigurator = () => {
     );
   }
 
+  const EMBO_DEV_FEE = 200; // גלופה one-time per cart item if any embo chosen
+  const EMBO_UNIT_FEE = 10; // per-unit fee for embo small areas
+
   const calculatePrice = () => {
     const totalQty = Object.values(sizeMatrix).reduce((sum, qty) => sum + (qty || 0), 0);
-    
+
     if (totalQty === 0) return { totalQty: 0, breakdown: {}, totalIls: 0 };
 
     const rules = pricingRules[product.sku];
@@ -73,26 +98,43 @@ const ProductConfigurator = () => {
     const unitPrice = tier ? tier.price : rules.tiers[rules.tiers.length - 1].price;
 
     const baseTotal = unitPrice * totalQty;
-    
-    const placementFees = selectedPrintAreas.reduce((sum, areaKey) => {
+
+    // placement and embo fees
+    let placementFeesTotal = 0;
+    let emboUnitsCount = 0;
+    selectedPrintAreas.forEach(sel => {
+      const areaKey = sel.areaKey || sel;
+      const method = sel.method || 'print';
       const area = printAreas[areaKey];
-      return sum + (area ? area.fee * totalQty : 0);
-    }, 0);
+      if (!area) return;
+      if (method === 'print') {
+        placementFeesTotal += (area.fee || 0) * totalQty;
+      } else if (method === 'embo') {
+        emboUnitsCount += 1; // count small areas; embo per-area per-unit fee applies
+      }
+    });
+
+    const emboFeeTotal = emboUnitsCount > 0 ? (EMBO_DEV_FEE + (EMBO_UNIT_FEE * totalQty * emboUnitsCount)) : 0;
 
     const deliveryCost = withDelivery ? Math.ceil(totalQty / 50) * 50 : 0;
 
-    const grandTotal = baseTotal + placementFees + deliveryCost;
+    const grandTotal = baseTotal + placementFeesTotal + emboFeeTotal + deliveryCost;
 
     return {
       totalQty,
       breakdown: {
         unitBase: unitPrice,
         baseTotal,
-        placementFeesPerUnit: selectedPrintAreas.reduce((sum, areaKey) => {
+        placementFeesPerUnit: selectedPrintAreas.reduce((sum, sel) => {
+          const areaKey = sel.areaKey || sel;
+          const method = sel.method || 'print';
           const area = printAreas[areaKey];
-          return sum + (area ? area.fee : 0);
+          if (!area) return sum;
+          return sum + (method === 'print' ? (area.fee || 0) : 0);
         }, 0),
-        placementFeesTotal: placementFees,
+        placementFeesTotal,
+        emboUnitsCount,
+        emboFeeTotal,
         deliveryCost,
         grandTotal
       },
@@ -113,10 +155,7 @@ const ProductConfigurator = () => {
           name: file.name
         }
       }));
-      toast({
-        title: t('uploadSuccess'),
-        description: `${file.name} uploaded for ${printAreas[areaKey]?.label || areaKey}`
-      });
+      // upload success toast removed per UX request — preview is visible so no toast needed
     };
     reader.readAsDataURL(file);
   };
@@ -137,6 +176,7 @@ const ProductConfigurator = () => {
       productName: language === 'he' ? product.nameHe : product.name,
       color: selectedColor,
       sizeMatrix,
+      // store the selected areas with methods
       selectedPrintAreas,
       uploadedDesigns,
       withDelivery,
@@ -145,11 +185,22 @@ const ProductConfigurator = () => {
       mockupUrl: pickSrc(product.images[selectedColor], product.images.base1)
     };
 
-    addToCart(cartItem);
-    toast({
-      title: t('addedToCart'),
-      description: `${pricing.totalQty} items added to cart`
-    });
+    const prefillId = location?.state?.prefill?.id;
+    if (prefillId) {
+      updateCartItem(prefillId, { ...cartItem });
+      toast({
+        title: t('addedToCart'),
+        description: t('updateCartCount')(pricing.totalQty)
+      });
+      // remove prefill from history to avoid accidental re-edit on reload
+      navigate(window.location.pathname, { replace: true, state: {} });
+    } else {
+      addToCart(cartItem);
+      toast({
+        title: t('addedToCart'),
+        description: t('addToCartCount')(pricing.totalQty)
+      });
+    }
   };
   // Helper to resolve product description with fallbacks and trims
   const getProductDescription = (product, language) => {
@@ -238,8 +289,8 @@ const ProductConfigurator = () => {
                         }}
                       />
                       <div className="absolute bottom-2 left-2 right-2">
-                        <span className="text-xs font-medium text-white bg-black bg-opacity-50 px-2 py-1 rounded capitalize">
-                          {color}
+                          <span className="text-xs font-medium text-white bg-black bg-opacity-50 px-2 py-1 rounded capitalize">
+                          {language === 'he' ? (colorLabelsHe[color] || color) : color}
                         </span>
                       </div>
                     </button>
@@ -277,6 +328,7 @@ const ProductConfigurator = () => {
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">
                   3. {t('printAreas')}
                 </h2>
+                <p className="text-sm text-gray-600 mb-4">{language === 'he' ? 'שיטת מיתוג' : 'Branding method'}</p>
                 <PrintAreaSelector
                   availableAreas={product.activePrintAreas}
                   selectedAreas={selectedPrintAreas}
@@ -295,19 +347,30 @@ const ProductConfigurator = () => {
                     4. {t('uploadDesign')}
                   </h2>
                   <div className="space-y-6">
-                    {selectedPrintAreas.map((areaKey) => (
-                      <div key={areaKey} className="border rounded-lg p-4">
-                        <h3 className="font-medium text-gray-900 mb-3">
-                          {language === 'he' ? printAreas[areaKey]?.labelHe : printAreas[areaKey]?.label}
-                        </h3>
-                        <MockupCanvas
-                          areaKey={areaKey}
-                          baseImage={`/schematics/${areaKey.startsWith('back') ? 'back' : 'front'}.png`}
-                          onFileUpload={(file) => handleFileUpload(areaKey, file)}
-                          uploadedDesign={uploadedDesigns[areaKey]}
-                        />
+                    {selectedPrintAreas.map((sel) => {
+                      const areaKey = typeof sel === 'string' ? sel : sel.areaKey;
+                      const area = printAreas[areaKey];
+                      const method = typeof sel === 'string' ? 'print' : sel.method || 'print';
+                      return (
+                        <div key={areaKey} className="border rounded-lg p-4">
+                          <h3 className="font-medium text-gray-900 mb-3">
+                            {language === 'he' ? area?.labelHe : area?.label} {method === 'embo' ? `• ${language === 'he' ? 'רקמה' : 'Embo'}` : ''}
+                          </h3>
+                          <MockupCanvas
+                            areaKey={areaKey}
+                            baseImage={`/schematics/${areaKey.startsWith('back') ? 'back' : 'front'}.png`}
+                            onFileUpload={(file) => handleFileUpload(areaKey, file)}
+                            uploadedDesign={uploadedDesigns[areaKey]}
+                          />
+                        </div>
+                      );
+                    })}
+                    {/* If editing and uploadedDesigns are empty for an area, show notice */}
+                    {location?.state?.prefill && Object.keys(uploadedDesigns || {}).length === 0 && (
+                      <div className="mt-4 text-sm text-yellow-700 bg-yellow-50 p-3 rounded">
+                        {language === 'he' ? 'שים לב: קבצי העיצוב לא נשמרו בעגלת הקניות; יש להעלות אותם שוב לפני הוספה לעגלה.' : 'Note: design files were not preserved in the cart; please re-upload them.'}
                       </div>
-                    ))}
+                    )}
                   </div>
                 </motion.div>
               )}
@@ -404,6 +467,9 @@ const ProductConfigurator = () => {
                         className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder={language === 'he' ? 'עיר' : 'City'}
                       />
+                    </div>
+                    <div className="sm:col-span-2 mt-2 text-sm text-gray-600">
+                      {t('deliveryPriceInfo')}
                     </div>
                   </div>
                 )}
