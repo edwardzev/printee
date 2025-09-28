@@ -18,12 +18,16 @@ export default function HeroImage({
   const timerRef = useRef(null);
   const playingRef = useRef(true);
 
-  // Build candidate list hero-1..hero-30 with multiple extensions
+  // Build candidate list: support hero-1..hero-50 and hero_1..hero_50 with common extensions
   const candidates = useMemo(() => {
     const exts = ["webp", "jpg", "png", "jpeg"];
     const out = [];
-    for (let i = 1; i <= 30; i++) {
-      for (const ext of exts) out.push(`/hero_images/hero-${i}.${ext}`);
+    // try up to 50 files to cover your set
+    for (let i = 1; i <= 50; i++) {
+      for (const ext of exts) {
+        out.push(`/hero_images/hero-${i}.${ext}`);
+        out.push(`/hero_images/hero_${i}.${ext}`);
+      }
     }
     return out;
   }, []);
@@ -51,11 +55,30 @@ export default function HeroImage({
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const results = await Promise.all(candidates.map((u) => tryLoad(u)));
+      const found = [];
+      // For each numeric index, try to find small/large variants or single file
+      for (let i = 1; i <= 50; i++) {
+        const baseCandidates = [];
+        const exts = ['webp','jpg','png','jpeg'];
+        for (const ext of exts) {
+          baseCandidates.push(`/hero_images/hero_${i}_sm.${ext}`);
+          baseCandidates.push(`/hero_images/hero_${i}_lg.${ext}`);
+          baseCandidates.push(`/hero_images/hero_${i}.${ext}`);
+          baseCandidates.push(`/hero_images/hero-${i}.${ext}`);
+        }
+        // Try to load the first available candidate per index
+        const res = await (async () => {
+          for (const c of baseCandidates) {
+            // eslint-disable-next-line no-await-in-loop
+            const ok = await tryLoad(c);
+            if (ok) return ok;
+          }
+          return null;
+        })();
+        if (res) found.push(res);
+      }
       if (cancelled) return;
-      const ok = results.filter(Boolean);
-      const randomized = shuffle(ok);
-      setImages(randomized);
+      setImages(shuffle(found));
     })();
     return () => {
       cancelled = true;
@@ -91,7 +114,7 @@ export default function HeroImage({
         .hero-wrap {
           position: relative;
           width: 100%;
-          min-height: clamp(360px, 62vh, 720px);
+          min-height: clamp(240px, 48vh, 720px);
           overflow: hidden;
           background: ${bg};
           border-bottom: 1px solid #eceff3;
@@ -105,11 +128,16 @@ export default function HeroImage({
           inset: 0;
           width: 100%;
           height: 100%;
-          object-fit: contain;   /* show full image without cropping */
+          object-fit: contain;   /* default: show full image without cropping */
           object-position: center center;
           background: ${bg};     /* letterboxing color */
           opacity: 0;
           transition: opacity ${transitionMs}ms ease;
+        }
+
+        /* On small screens prefer cover to fill viewport */
+        @media (max-width: 640px) {
+          .hero-img { object-fit: cover; }
         }
         .hero-img.active { opacity: 1; }
         .nav {

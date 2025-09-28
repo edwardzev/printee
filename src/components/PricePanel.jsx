@@ -22,7 +22,7 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="price-panel p-6 bg-white rounded-xl shadow-lg lg:sticky lg:top-24"
+      className="price-panel hidden lg:block p-6 bg-white rounded-xl shadow-lg lg:sticky lg:top-24"
     >
       <div className="flex justify-between items-center cursor-pointer lg:cursor-default" onClick={toggleExpand}>
         <h2 className="text-xl font-semibold text-gray-900">

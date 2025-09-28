@@ -1,21 +1,40 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { ShoppingCart } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Home, List, Info, HelpCircle, ShoppingCart as CartIcon, DollarSign } from 'lucide-react';
 
 export default function Header({ dir = "rtl" }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState("");
   const { getTotalItems } = useCart();
+  const menuContainerRef = useRef(null);
+  const menuListRef = useRef(null);
+
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const goTo = (id) => (e) => {
-    e.preventDefault();
-    const el = document.getElementById(id);
-    if (!el) return;
-    const y = el.getBoundingClientRect().top + window.scrollY - 80;
-    window.scrollTo({ top: y, behavior: "smooth" });
-    setOpen(false);
-    setActive(id);
+    e?.preventDefault();
+
+    const doScroll = () => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const y = el.getBoundingClientRect().top + window.scrollY - 80;
+      window.scrollTo({ top: y, behavior: "smooth" });
+      setOpen(false);
+      setActive(id);
+    };
+
+    // If we're not on the home page, navigate there first then scroll
+    if (location.pathname !== '/') {
+      navigate('/');
+      // Small delay to allow Home to mount and render its sections, then scroll
+      setTimeout(doScroll, 160);
+      return;
+    }
+
+    doScroll();
   };
 
   useEffect(() => {
@@ -34,6 +53,29 @@ export default function Header({ dir = "rtl" }) {
     onScroll();
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  // Focus trap for mobile menu
+  useEffect(() => {
+    if (!open || !menuListRef.current) return;
+    const menu = menuListRef.current;
+    const focusable = menu.querySelectorAll('a,button,[tabindex]:not([tabindex="-1"])');
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const onKey = (e) => {
+      if (e.key !== 'Tab') return;
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    first.focus();
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
 
   return (
     <header
@@ -57,8 +99,8 @@ export default function Header({ dir = "rtl" }) {
           gap: 16,
         }}
       >
-        <a
-          href="/"
+        <Link
+          to="/"
           aria-label="Printee – Print your apparel"
           style={{
             display: "inline-flex",
@@ -75,7 +117,7 @@ export default function Header({ dir = "rtl" }) {
           <span style={{ fontSize: 20, fontWeight: 700, color: "#111" }}>
             printee
           </span>
-        </a>
+        </Link>
 
         {/* Burger button for mobile */}
         <button
@@ -84,17 +126,17 @@ export default function Header({ dir = "rtl" }) {
           onClick={() => setOpen((v) => !v)}
           style={{
             marginInlineStart: "auto",
-            display: "none",
+            display: "inline-flex",
             background: "transparent",
             border: 0,
             padding: 8,
             cursor: "pointer",
           }}
-          className="burger"
+          className="md:hidden"
         >
-          <span style={{ display: "block", width: 24, height: 2, background: "#222", margin: "5px 0" }} />
-          <span style={{ display: "block", width: 24, height: 2, background: "#222", margin: "5px 0" }} />
-          <span style={{ display: "block", width: 24, height: 2, background: "#222", margin: "5px 0" }} />
+          <span style={{ display: "block", width: 24, height: 2, background: "#222", margin: "4px 0" }} />
+          <span style={{ display: "block", width: 24, height: 2, background: "#222", margin: "4px 0" }} />
+          <span style={{ display: "block", width: 24, height: 2, background: "#222", margin: "4px 0" }} />
         </button>
 
         {/* Nav */}
@@ -136,6 +178,15 @@ export default function Header({ dir = "rtl" }) {
               );
             }
 
+            // Catalog, Pricing and CTA -> go to /catalog route
+            if (id === 'catalog' || id === 'contact' || id === 'pricing') {
+              return (
+                <Link key={id} to="/catalog" style={baseStyle} onClick={() => setOpen(false)}>
+                  {label}
+                </Link>
+              );
+            }
+
             return (
               <a key={id} href={`#${id}`} onClick={goTo(id)} style={baseStyle}>
                 {label}
@@ -166,6 +217,41 @@ export default function Header({ dir = "rtl" }) {
             }}>{getTotalItems()}</span>
           </Link>
         </nav>
+        {/* Mobile menu overlay */}
+        {open && (
+          <div
+            className="md:hidden fixed inset-0 z-50 bg-white/98 flex flex-col p-6"
+            role="dialog"
+            aria-modal="true"
+            ref={menuRef => { if (menuRef) menuContainerRef.current = menuRef }}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setOpen(false);
+            }}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <Link to="/" onClick={() => setOpen(false)}>
+                <img src="/logo_printee.png" alt="printee" style={{ height: 34 }} />
+              </Link>
+              <button onClick={() => setOpen(false)} aria-label="Close menu" style={{ border: 0, background: 'transparent', fontSize: 22 }}>✕</button>
+            </div>
+            <div className="flex flex-col gap-4" ref={menuListRef}>
+              {/* language-aware ordering: put primary CTA first for LTR, last for RTL */}
+              {dir === 'rtl' ? (
+                <>
+                  <Link to="/catalog" onClick={() => setOpen(false)} className="text-lg font-medium inline-flex items-center gap-3"><List className="h-5 w-5" /> קטלוג</Link>
+                  <Link to="/catalog" onClick={() => setOpen(false)} className="text-lg font-medium inline-flex items-center gap-3"><DollarIcon className="h-5 w-5" /> מחירים</Link>
+                </>
+              ) : (
+                <>
+                  <Link to="/catalog" onClick={() => setOpen(false)} className="text-lg font-medium inline-flex items-center gap-3">Catalog <List className="h-5 w-5" /></Link>
+                </>
+              )}
+              <a href="#how" onClick={goTo('how')} className="text-lg inline-flex items-center gap-3"><Info className="h-5 w-5" /> איך זה עובד</a>
+              <Link to="/faq" onClick={() => setOpen(false)} className="text-lg inline-flex items-center gap-3"><HelpCircle className="h-5 w-5" /> שאלות נפוצות</Link>
+              <Link to="/cart" onClick={() => setOpen(false)} className="text-lg inline-flex items-center gap-3"><CartIcon className="h-5 w-5" /> עגלה</Link>
+            </div>
+          </div>
+        )}
       </div>
     </header>
   );
