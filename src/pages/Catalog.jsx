@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { products, pricingRules, colorLabelsHe } from '@/data/products';
+import { products, pricingRules } from '@/data/products';
 import { Button } from '@/components/ui/button';
 
 const Catalog = () => {
@@ -103,7 +103,10 @@ const Catalog = () => {
                   
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-sm text-gray-500">
-                      {(language === 'he' ? 'צבעים' : 'colors')}: {product.colors.length}
+                      {(language === 'he' ? 'צבעים' : 'colors')}:
+                      <span className="inline-flex items-center ml-2 bg-blue-50 text-blue-700 text-sm font-medium px-2 py-0.5 rounded-full">
+                        {product.colors.length}
+                      </span>
                     </span>
                     <span className="text-lg font-bold text-blue-600">
                       {(() => {
@@ -114,18 +117,7 @@ const Catalog = () => {
                     </span>
                   </div>
 
-                  <div className="flex gap-2 mb-4" role="list" aria-label={language === 'he' ? 'צבעים זמינים' : 'Available colors'}>
-                    {product.colors.map((color) => (
-                      <span
-                        key={color}
-                        className="w-6 h-6 rounded-full border-2 border-gray-200"
-                        style={{ background: color === 'white' ? '#ffffff' : color }}
-                        title={language === 'he' ? (colorLabelsHe[color] || color) : color}
-                        aria-label={language === 'he' ? (colorLabelsHe[color] || color) : color}
-                        role="listitem"
-                      />
-                    ))}
-                  </div>
+                  {/* color swatches removed per request; keep the color counter above */}
 
                   <Link to={`/product/${product.sku}`}>
                     <Button className="w-full">

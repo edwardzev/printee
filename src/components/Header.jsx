@@ -10,6 +10,7 @@ export default function Header({ dir = "rtl" }) {
   const { getTotalItems } = useCart();
   const menuContainerRef = useRef(null);
   const menuListRef = useRef(null);
+  const burgerRef = useRef(null);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -77,6 +78,19 @@ export default function Header({ dir = "rtl" }) {
     return () => document.removeEventListener('keydown', onKey);
   }, [open]);
 
+  // Lock body scroll when menu is open and restore focus when closed
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    if (open) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = prev || '';
+      // return focus to burger
+      if (burgerRef.current) burgerRef.current.focus();
+    }
+    return () => { document.body.style.overflow = prev || ''; };
+  }, [open]);
+
   return (
     <header
       dir={dir}
@@ -139,7 +153,7 @@ export default function Header({ dir = "rtl" }) {
           <span style={{ display: "block", width: 24, height: 2, background: "#222", margin: "4px 0" }} />
         </button>
 
-        {/* Nav */}
+        {/* Nav (hidden on small screens, burger used instead) */}
         <nav
           style={{
             marginInlineStart: "auto",
@@ -147,6 +161,7 @@ export default function Header({ dir = "rtl" }) {
             alignItems: "center",
             gap: 14,
           }}
+          className="hidden md:flex"
         >
           {[
             { id: "how", label: "איך זה עובד" },

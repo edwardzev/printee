@@ -224,14 +224,14 @@ const ProductConfigurator = () => {
         <meta name="description" content={`Customize your ${product.name} with our design tool`} />
       </Helmet>
 
-      <div className="min-h-screen py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-8 pb-48 lg:pb-8">
+      <div className="min-h-screen py-4">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6 pb-8 lg:pb-48">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-xl p-6 shadow-lg"
+                className="bg-white rounded-xl p-4 sm:p-6 shadow-lg"
               >
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">
                   {language === 'he' ? product.nameHe : product.name}
@@ -249,7 +249,7 @@ const ProductConfigurator = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="bg-white rounded-xl p-6 shadow-lg"
+                className="bg-white rounded-xl p-4 sm:p-6 shadow-lg"
               >
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">
                   1. {t('chooseColor')}
@@ -302,7 +302,7 @@ const ProductConfigurator = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="bg-white rounded-xl p-6 shadow-lg"
+                className="bg-white rounded-xl p-4 sm:p-6 shadow-lg"
               >
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">
                   2. {t('sizeMatrix')}
@@ -323,7 +323,7 @@ const ProductConfigurator = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="bg-white rounded-xl p-6 shadow-lg"
+                className="bg-white rounded-xl p-4 sm:p-6 shadow-lg"
               >
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">
                   3. {t('printAreas')}
@@ -341,7 +341,7 @@ const ProductConfigurator = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 }}
-                  className="bg-white rounded-xl p-6 shadow-lg"
+                  className="bg-white rounded-xl p-4 sm:p-6 shadow-lg"
                 >
                   <h2 className="text-xl font-semibold text-gray-900 mb-4">
                     4. {t('uploadDesign')}
@@ -379,7 +379,7 @@ const ProductConfigurator = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
-                className="bg-white rounded-xl p-6 shadow-lg"
+                className="bg-white rounded-xl p-4 sm:p-6 shadow-lg"
               >
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">
                   5. {language === 'he' ? 'משלוח / איסוף' : 'Delivery / Pickup'}

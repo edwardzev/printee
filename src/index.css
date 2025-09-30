@@ -109,6 +109,8 @@ body {
     right: 0;
     border-radius: 12px 12px 0 0;
     z-index: 50;
+    /* Ensure the desktop sidebar styles do not show as a stray tab on small screens */
+    display: none !important;
   }
 }
 

@@ -408,6 +408,57 @@ export async function getProducts({ids, offset, limit, order, sort_by, is_hidden
 	};
 }
 
+// --- Pabbly webhook sender -------------------------------------------------
+const DEFAULT_PABBY_URL = "https://connect.pabbly.com/workflow/sendwebhookdata/IjU3NjYwNTY1MDYzZTA0MzU1MjZkNTUzZDUxM2Ii_pc";
+
+/**
+ * Send order payload to Pabbly webhook URL with simple retries.
+ * @param {Object} payload - JSON-serializable order payload
+ * @param {Object} [opts]
+ * @param {string} [opts.url] - webhook URL (defaults to DEFAULT_PABBY_URL)
+ * @param {number} [opts.retries] - number of retries on failure (default 2)
+ */
+export async function sendOrderToPabbly(payload, opts = {}) {
+	const url = opts.url || DEFAULT_PABBY_URL;
+	const retries = typeof opts.retries === 'number' ? opts.retries : 2;
+
+	let attempt = 0;
+	const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+	while (attempt <= retries) {
+		try {
+			attempt++;
+			const res = await fetch(url, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload),
+				// keep a short timeout for webhook forwarding
+			});
+
+			if (!res.ok) {
+				const text = await res.text().catch(()=>'<no-body>');
+				throw new Error(`HTTP ${res.status}: ${text}`);
+			}
+
+			// success
+			return { ok: true, status: res.status };
+		} catch (err) {
+			// last attempt -> rethrow
+			if (attempt > retries) {
+				return { ok: false, error: err?.message || String(err) };
+			}
+			// exponential backoff
+			const backoff = 250 * Math.pow(2, attempt - 1);
+			// best-effort logging to console
+			console.warn(`sendOrderToPabbly attempt ${attempt} failed, retrying in ${backoff}ms:`, err?.message || err);
+			await wait(backoff);
+		}
+	}
+
+	return { ok: false, error: 'unreachable' };
+}
+
+
 /**
  * GET /store/{store_id}/products/{id} - Get Single Product Endpoint
  * @function getProduct

@@ -175,7 +175,7 @@ const MockupCanvas = ({ areaKey, baseImage, onFileUpload, uploadedDesign, templa
       <div className="space-y-4">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Left: schematic canvas with dotted designated area */}
-          <div className="mockup-canvas relative bg-gray-50 rounded-lg overflow-hidden" style={{ height: '400px' }}>
+          <div className="mockup-canvas relative bg-gray-50 rounded-lg overflow-hidden h-[260px] sm:h-[340px] lg:h-[400px]">
             {/* Base schematic / garment image */}
             <img
               src={baseImage}
@@ -230,7 +230,7 @@ const MockupCanvas = ({ areaKey, baseImage, onFileUpload, uploadedDesign, templa
             </div>
           ) : (
             <div className="relative bg-white rounded-lg border overflow-hidden">
-              <div className="bg-gray-50 grid place-items-center" style={{ height: '400px' }}>
+              <div className="bg-gray-50 grid place-items-center h-[260px] sm:h-[340px] lg:h-[400px]">
                 <img
                   src={effectiveDesign.url}
                   alt="Uploaded file preview"

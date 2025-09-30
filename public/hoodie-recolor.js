@@ -1,15 +1,37 @@
 import fs from "fs";
 import axios from "axios";
 
+/**
+ * Minimal recolor script – HARD-CODED to process only "dryfit"
+ */
+
 const CLOUD_NAME = "dkdpwgsyl";
-const BASE_PUBLIC_ID = "ziphoodie_cbdb5d"; // your base hoodie (no folder, no #)
 const EXT = "jpg";
 
-// Local output folder (your Dropbox path)
-const OUT_DIR = "/Users/edwardzev/Dropbox/Print Market Team Folder/PRODUCT_LIBRARY/Cloudinary_output/zippedhood";
-if (!fs.existsSync(OUT_DIR)) fs.mkdirSync(OUT_DIR, { recursive: true });
+// Output root and dryfit config
+const OUTPUT_ROOT = "/Users/edwardzev/Dropbox/Print Market Team Folder/PRODUCT_LIBRARY/Cloudinary_output";
+const DRYFIT = {
+  key: "dryfit",
+  basePublicId: "dryfit_gzkgn5",
+  promptTarget: "dryfit",
+  outDir: `${OUTPUT_ROOT}/dryfit`,
+};
 
-// Name -> HEX (no # when passed to Cloudinary URL)
+const TSHIRT = {
+  key: 'tshirt',
+  basePublicId: 'white_tshirt_copy_c4tsbp',
+  promptTarget: 'tshirt',
+  outDir: `${OUTPUT_ROOT}/tshirt`
+};
+
+// Allow overriding re-download behavior
+const FORCE = process.argv.includes("--force");
+// CLI flags: --garment=tshirt|dryfit, --id=<cloudinary_public_id>, --out=<absolute_output_dir>
+const GARMENT_FLAG = (process.argv.find(a=>a.startsWith('--garment='))||'').split('=')[1];
+const ID_FLAG = (process.argv.find(a=>a.startsWith('--id='))||'').split('=')[1];
+const OUT_FLAG = (process.argv.find(a=>a.startsWith('--out='))||'').split('=')[1];
+
+// Palette
 const PALETTE = {
   "White": "#FFFFFF",
   "Black": "#111111",
@@ -42,40 +64,70 @@ const PALETTE = {
 
 const COLORS = Object.keys(PALETTE);
 
-// Turn “Royal blue” → “royal_blue_hoodie.jpg”
+// Utils
 function slugify(name) {
   return name.toLowerCase().replace(/\s+/g, "_");
 }
 
-// Build Cloudinary delivery URL using Generative Recolor
-function buildUrl(hex) {
+function ensureDir(path) {
+  if (!fs.existsSync(path)) fs.mkdirSync(path, { recursive: true });
+}
+
+function buildUrl({ hex, basePublicId, promptTarget }) {
   const noHash = hex.replace("#", "");
   return `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/` +
-         `e_gen_recolor:prompt_hoodie;to-color_${noHash},f_${EXT},q_auto/` +
-         `${BASE_PUBLIC_ID}.${EXT}`;
+         `e_gen_recolor:prompt_${encodeURIComponent(promptTarget)};to-color_${noHash},f_${EXT},q_auto/` +
+         `${basePublicId}.${EXT}`;
 }
 
 async function download(url, outPath) {
   const res = await axios.get(url, { responseType: "arraybuffer", timeout: 60000 });
   fs.writeFileSync(outPath, res.data);
-  console.log("✅ Saved", outPath);
 }
 
 function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+// MAIN – choose garment
 (async () => {
+  // default to tshirt (dryfit was already processed)
+  let garment = TSHIRT;
+  if (GARMENT_FLAG === 'dryfit') garment = DRYFIT;
+  if (ID_FLAG) garment.basePublicId = ID_FLAG;
+  if (OUT_FLAG) garment.outDir = OUT_FLAG;
+
+  ensureDir(garment.outDir);
+  console.log(`\n==> Processing ${garment.key} (base id: ${garment.basePublicId}) → ${garment.outDir}`);
+  if (FORCE) console.log("--force enabled: will overwrite existing files");
+  let i = 0;
+
   for (const color of COLORS) {
+    i++;
     const hex = PALETTE[color];
-    const url = buildUrl(hex);
-    const outFile = `${OUT_DIR}/${slugify(color)}_zipped_hood.${EXT}`;
+    const url = buildUrl({
+      hex,
+      basePublicId: garment.basePublicId,
+      promptTarget: garment.promptTarget
+    });
+
+    const fileName = `${slugify(color)}_${garment.key}.${EXT}`;
+    const outFile = `${garment.outDir}/${fileName}`;
 
     try {
+      if (fs.existsSync(outFile) && !FORCE) {
+        console.log(`[${i}/${COLORS.length}] ↩︎ Skip existing ${fileName}`);
+        continue;
+      }
       await download(url, outFile);
-      // small pause helps avoid rate limits on rapid AI generations
-      await wait(350);
+      console.log(`[${i}/${COLORS.length}] ✅ Saved ${fileName}`);
+      await wait(300);
     } catch (err) {
-      console.error(`❌ Failed for ${color}:`, err?.response?.status || "", err?.message || err);
+      console.error(
+        `[${i}/${COLORS.length}] ❌ ${fileName} —`,
+        err?.response?.status || "",
+        err?.message || err
+      );
     }
   }
-  console.log("Done.");
+
+  console.log("\nAll done.");
 })();
