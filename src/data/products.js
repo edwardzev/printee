@@ -34,7 +34,7 @@ export const products = [
   "apple_green",
   "natural"
 ],
-    sizeRange: ['xs', 's', 'm', 'l', 'xl', 'xxl', 'xxxl', 'xxxxl', 'xxxxxl'],
+    sizeRange: ['s', 'm', 'l', 'xl', 'xxl', 'xxxl', 'xxxxl', 'xxxxxl'],
     images: {
       white: ['/product_images/tshirt/white_tshirt.jpg'],
       black: ['/product_images/tshirt/black_tshirt.jpg'],
@@ -114,7 +114,7 @@ export const products = [
       base1: ['/product_images/hoodie/base_1.png'],
       base2: ['/product_images/hoodie/base_2.png']
     },
-    activePrintAreas: ['leftChest', 'rightChest', 'frontA4', 'frontA3', 'backA4', 'backA3'],
+    activePrintAreas: ['leftChest', 'rightChest', 'frontA4', 'backA4', 'backA3', 'leftSleeve', 'rightSleeve'],
     basePrice: 100
   },
   {
@@ -166,7 +166,7 @@ export const products = [
       base1: ['/product_images/polo/base1.png'],
       base2: ['/product_images/polo/base2.png']
     },
-    activePrintAreas: ['leftChest','rightChest','frontA4','backA4'],
+    activePrintAreas: ['leftChest', 'rightChest', 'backA4', 'backA3', 'leftSleeve', 'rightSleeve'],
     basePrice: 80
   },
   {
@@ -212,7 +212,7 @@ export const products = [
   base1: ['/product_images/dryfit/base1.png'],
       base2: ['/product_images/dryfit/base2.png']
     },
-    activePrintAreas: ['leftChest','rightChest','frontA4','backA4'],
+    activePrintAreas: ['leftChest', 'rightChest', 'frontA4', 'frontA3', 'backA4', 'backA3', 'leftSleeve', 'rightSleeve'],
     basePrice: 60
   },
   {
@@ -231,7 +231,7 @@ export const products = [
       base1: ['/product_images/fleece/base1.png'],
       base2: ['/product_images/fleece/base2.png']
     },
-    activePrintAreas: ['leftChest','rightChest','frontA4','backA4'],
+    activePrintAreas: ['leftChest', 'rightChest', 'backA4', 'backA3', 'leftSleeve', 'rightSleeve'],
     basePrice: 120
   },
   {
@@ -281,7 +281,7 @@ export const products = [
       base1: ['/product_images/longsleeve/base1.png'],
       base2: ['/product_images/longsleeve/base2.png']
   },
-    activePrintAreas: ['leftChest','rightChest','frontA4','backA4','leftSleeve','rightSleeve'],
+    activePrintAreas: ['leftChest', 'rightChest', 'frontA4', 'frontA3', 'backA4', 'backA3', 'leftSleeve', 'rightSleeve'],
     basePrice: 60
   },
   {
@@ -300,7 +300,7 @@ export const products = [
       base1: ['/product_images/softshell/base1.png'],
       base2: ['/product_images/softshell/base2.png']
     },
-    activePrintAreas: ['leftChest','rightChest','backA4'],
+    activePrintAreas: ['leftChest', 'rightChest', 'backA4', 'backA3', 'leftSleeve', 'rightSleeve'],
     basePrice: 150
   },
   {
@@ -352,7 +352,7 @@ export const products = [
       base1: ['/product_images/zipped_hood/base1.png'],
       base2: ['/product_images/zipped_hood/base2.png']
     },
-    activePrintAreas: ['leftChest','rightChest','frontA4','backA4'],
+    activePrintAreas: ['leftChest', 'rightChest', 'backA4', 'backA3', 'leftSleeve', 'rightSleeve'],
     basePrice: 110
   },
   {
@@ -378,7 +378,7 @@ export const products = [
   'lightblue',
   'olive'
 ],
-    sizeRange: ['xs', 's', 'm', 'l', 'xl', 'xxl', 'xxxl', 'xxxxl', 'xxxxxl'],
+    sizeRange: ['s', 'm', 'l', 'xl', 'xxl', 'xxxl', 'xxxxl', 'xxxxxl'],
     images: {
       white: ['/product_images/sweatshirt/white_sweatshirt.jpg','/product_images/sweatshirt/base1'],
       black: ['/product_images/sweatshirt/black_sweatshirt.jpg','/product_images/sweatshirt/base1'],

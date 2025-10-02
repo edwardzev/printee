@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet';
-import { ShoppingCart, AlertCircle } from 'lucide-react';
+import { ShoppingCart, AlertCircle, Trash2 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCart } from '@/contexts/CartContext';
 import { products, printAreas, pricingRules, colorLabelsHe } from '@/data/products';
@@ -17,40 +17,48 @@ const ProductConfigurator = () => {
   const { sku } = useParams();
   const navigate = useNavigate();
   const { t, language } = useLanguage();
-  const { addToCart, updateCartItem } = useCart();
+  const { addToCart, updateCartItem, mergePayload, payload } = useCart();
   const { toast } = useToast();
   const location = useLocation();
 
   const product = products.find(p => p.sku === sku);
   
-  const [selectedColor, setSelectedColor] = useState('');
-  const [sizeMatrix, setSizeMatrix] = useState({});
+  // support multiple selected colors: array of color keys
+  const [selectedColors, setSelectedColors] = useState([]);
+  // sizeMatrices maps color -> { size: qty }
+  const [sizeMatrices, setSizeMatrices] = useState({});
   // selectedPrintAreas is an array of { areaKey, method } where method is 'print' or 'embo'
   const [selectedPrintAreas, setSelectedPrintAreas] = useState([]);
   const [uploadedDesigns, setUploadedDesigns] = useState({});
-  const [withDelivery, setWithDelivery] = useState(false);
-
-  // New segmented toggle (pickup/delivery) – keep in sync with legacy withDelivery boolean
-  const [deliveryMode, setDeliveryMode] = useState(withDelivery ? 'delivery' : 'pickup');
-  useEffect(() => {
-    setWithDelivery(deliveryMode === 'delivery');
-  }, [deliveryMode]);
-  useEffect(() => {
-    setDeliveryMode(withDelivery ? 'delivery' : 'pickup');
-  }, [withDelivery]);
 
   useEffect(() => {
     if (product && product.colors.length > 0) {
-      setSelectedColor(product.colors[0]);
+      // default to the first color selected for backwards compatibility
+      setSelectedColors([product.colors[0]]);
     }
   }, [product]);
+
+  // Persist selected colors to shared payload when they change
+  useEffect(() => {
+    if (selectedColors && selectedColors.length > 0) {
+      try {
+        mergePayload({ productSku: sku, selectedColors, sizeMatrices });
+      } catch (err) {
+        // ignore
+      }
+    }
+  }, [selectedColors, sizeMatrices, sku, mergePayload]);
 
   // Initialize from prefill (navigated from Cart -> Edit)
   useEffect(() => {
     const prefill = location?.state?.prefill;
     if (prefill && prefill.productSku === sku) {
-      if (prefill.color) setSelectedColor(prefill.color);
-      if (prefill.sizeMatrix) setSizeMatrix(prefill.sizeMatrix);
+      // Support legacy single-color prefill and new multi-color format
+      if (prefill.color) setSelectedColors([prefill.color]);
+      if (prefill.sizeMatrix) setSizeMatrices(prev => ({
+        ...(prev || {}),
+        [prefill.color || product?.colors?.[0]]: prefill.sizeMatrix
+      }));
       // support legacy prefill format (array of keys) and new format (array of objects)
       if (prefill.selectedPrintAreas) {
         const s = prefill.selectedPrintAreas;
@@ -60,10 +68,38 @@ const ProductConfigurator = () => {
           setSelectedPrintAreas(s);
         }
       }
-      if (prefill.uploadedDesigns) setUploadedDesigns(prefill.uploadedDesigns);
-      if (typeof prefill.withDelivery === 'boolean') setWithDelivery(prefill.withDelivery);
+  if (prefill.uploadedDesigns) setUploadedDesigns(prefill.uploadedDesigns);
     }
   }, [location, sku]);
+
+  // Persist sizeMatrices as user edits sizes per color
+  useEffect(() => {
+    try {
+      mergePayload({ sizeMatrices });
+    } catch (err) {}
+  }, [sizeMatrices, mergePayload]);
+
+  // Persist selected print areas
+  useEffect(() => {
+    try {
+      mergePayload({ selectedPrintAreas });
+    } catch (err) {}
+  }, [selectedPrintAreas, mergePayload]);
+
+  // Persist uploaded designs (sanitized: we only keep name/url)
+  useEffect(() => {
+    try {
+      const sanitized = {};
+      for (const k in uploadedDesigns) {
+        if (!uploadedDesigns[k]) continue;
+        const { file, ...rest } = uploadedDesigns[k] || {};
+        sanitized[k] = {};
+        if (rest.url) sanitized[k].url = rest.url;
+        if (rest.name) sanitized[k].name = rest.name;
+      }
+      mergePayload({ uploadedDesigns: sanitized });
+    } catch (err) {}
+  }, [uploadedDesigns, mergePayload]);
 
   // Helper to pick first src from an array or return string as-is
   const pickSrc = (maybeArrayOrString, fallback) => {
@@ -89,15 +125,26 @@ const ProductConfigurator = () => {
   const EMBO_UNIT_FEE = 10; // per-unit fee for embo small areas
 
   const calculatePrice = () => {
-    const totalQty = Object.values(sizeMatrix).reduce((sum, qty) => sum + (qty || 0), 0);
+    // total across all selected color matrices
+    const totalQty = Object.values(sizeMatrices).reduce((sum, matrix) => {
+      if (!matrix) return sum;
+      return sum + Object.values(matrix).reduce((s2, q) => s2 + (q || 0), 0);
+    }, 0);
 
     if (totalQty === 0) return { totalQty: 0, breakdown: {}, totalIls: 0 };
 
     const rules = pricingRules[product.sku];
-    const tier = rules.tiers.find(t => totalQty >= t.min && totalQty <= t.max);
-    const unitPrice = tier ? tier.price : rules.tiers[rules.tiers.length - 1].price;
+    // Defensive: some SKUs (e.g. dryfit) may not have explicit pricingRules defined.
+    // Fall back to product.basePrice when tiers are absent to avoid runtime errors.
+    let unitPrice;
+    if (rules && Array.isArray(rules.tiers) && rules.tiers.length > 0) {
+      const tier = rules.tiers.find(t => totalQty >= t.min && totalQty <= t.max);
+      unitPrice = tier ? tier.price : rules.tiers[rules.tiers.length - 1].price;
+    } else {
+      unitPrice = product.basePrice || 0;
+    }
 
-    const baseTotal = unitPrice * totalQty;
+  const baseTotal = unitPrice * totalQty;
 
     // placement and embo fees
     let placementFeesTotal = 0;
@@ -116,7 +163,7 @@ const ProductConfigurator = () => {
 
     const emboFeeTotal = emboUnitsCount > 0 ? (EMBO_DEV_FEE + (EMBO_UNIT_FEE * totalQty * emboUnitsCount)) : 0;
 
-    const deliveryCost = withDelivery ? Math.ceil(totalQty / 50) * 50 : 0;
+  const deliveryCost = (payload && payload.withDelivery) ? Math.ceil(totalQty / 50) * 50 : 0;
 
     const grandTotal = baseTotal + placementFeesTotal + emboFeeTotal + deliveryCost;
 
@@ -171,18 +218,26 @@ const ProductConfigurator = () => {
       return;
     }
 
+    // Build a cart item that supports multiple colors. For backward compatibility, still
+    // include `color` and `sizeMatrix` keys using the first selected color if only one.
     const cartItem = {
       productSku: product.sku,
       productName: language === 'he' ? product.nameHe : product.name,
-      color: selectedColor,
-      sizeMatrix,
+      // legacy single color (first selected) used by old flows
+      color: (selectedColors && selectedColors[0]) || null,
+      // legacy single sizeMatrix for old consumers (first selected color)
+      sizeMatrix: (selectedColors && selectedColors[0]) ? (sizeMatrices[selectedColors[0]] || {}) : {},
+      // new multi-color representation
+      selectedColors: selectedColors || [],
+      sizeMatrices: sizeMatrices,
       // store the selected areas with methods
       selectedPrintAreas,
-      uploadedDesigns,
-      withDelivery,
+  uploadedDesigns,
+  withDelivery: payload?.withDelivery,
       totalPrice: pricing.totalIls,
       priceBreakdown: pricing.breakdown,
-      mockupUrl: pickSrc(product.images[selectedColor], product.images.base1)
+      // mockup for primary color (first selected)
+      mockupUrl: pickSrc(product.images[(selectedColors && selectedColors[0]) || product.colors[0]], product.images.base1)
     };
 
     const prefillId = location?.state?.prefill?.id;
@@ -258,9 +313,16 @@ const ProductConfigurator = () => {
                   {product.colors.map((color) => (
                     <button
                       key={color}
-                      onClick={() => setSelectedColor(color)}
+                      onClick={() => {
+                        setSelectedColors(prev => {
+                          const set = new Set(prev || []);
+                          if (set.has(color)) set.delete(color);
+                          else set.add(color);
+                          return Array.from(set);
+                        });
+                      }}
                       className={`relative aspect-square rounded-lg border-4 transition-all ${
-                        selectedColor === color
+                        (selectedColors || []).includes(color)
                           ? 'border-blue-500 ring-2 ring-blue-200'
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
@@ -307,11 +369,74 @@ const ProductConfigurator = () => {
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">
                   2. {t('sizeMatrix')}
                 </h2>
-                <SizeMatrix
-                  sizeRange={product.sizeRange}
-                  sizeMatrix={sizeMatrix}
-                  onChange={setSizeMatrix}
-                />
+                {/* Helper line showing which color the sizes apply to */}
+                <div className="text-sm text-gray-600 mb-3">
+                  {language === 'he'
+                    ? `${t('chooseSizesForColor')} ${selectedColors.map(c => (colorLabelsHe[c] || c)).join(', ')}`
+                    : `${t('chooseSizesForColor')} ${selectedColors.join(', ')}`
+                  }
+                </div>
+                {/* Render one SizeMatrix per selected color */}
+                <div className="space-y-4">
+                  {selectedColors.map((color) => {
+                    const matrix = sizeMatrices[color] || {};
+                    const setMatrixForColor = (updater) => {
+                      setSizeMatrices(prev => {
+                        const prevMatrix = (prev && prev[color]) || {};
+                        const newMatrix = typeof updater === 'function' ? updater(prevMatrix) : updater;
+                        return { ...(prev || {}), [color]: newMatrix };
+                      });
+                    };
+
+                    const handleRemoveColor = () => {
+                      // remove from selectedColors
+                      setSelectedColors(prev => {
+                        const next = (prev || []).filter(c => c !== color);
+                        return next;
+                      });
+                      // remove associated size matrix
+                      setSizeMatrices(prev => {
+                        const copy = { ...(prev || {}) };
+                        delete copy[color];
+                        return copy;
+                      });
+                      // persist change into payload
+                      try {
+                        const nextSizeMatrices = { ...(sizeMatrices || {}) };
+                        delete nextSizeMatrices[color];
+                        const nextSelectedColors = (selectedColors || []).filter(c => c !== color);
+                        mergePayload({ selectedColors: nextSelectedColors, sizeMatrices: nextSizeMatrices });
+                      } catch (err) {
+                        // ignore
+                      }
+                    };
+
+                    return (
+                      <div key={color} className="bg-gray-50 rounded-md p-3 flex items-start gap-4">
+                        <div className="shrink-0">
+                          <button
+                            type="button"
+                            onClick={handleRemoveColor}
+                            aria-label={language === 'he' ? 'הסר צבע' : 'Remove color'}
+                            className="p-1 rounded hover:bg-gray-100"
+                          >
+                            <Trash2 className="h-6 w-6 text-red-500" />
+                          </button>
+                        </div>
+                        <div className="flex-1">
+                          <div className="text-sm font-medium text-gray-700 mb-2">
+                            {language === 'he' ? (colorLabelsHe[color] || color) : color}
+                          </div>
+                          <SizeMatrix
+                            sizeRange={product.sizeRange}
+                            sizeMatrix={matrix}
+                            onChange={(u) => setMatrixForColor(u)}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
                 <div className="mt-4 flex items-center justify-between">
                   <span className="text-sm text-gray-600">
                     {t('totalQuantity')}: {pricing.totalQty}
@@ -375,105 +500,7 @@ const ProductConfigurator = () => {
                 </motion.div>
               )}
 
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                className="bg-white rounded-xl p-4 sm:p-6 shadow-lg"
-              >
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                  5. {language === 'he' ? 'משלוח / איסוף' : 'Delivery / Pickup'}
-                </h2>
-
-                {/* Segmented toggle */}
-                <div className="inline-flex items-center gap-1 p-1 mb-4 rounded-full bg-gray-100">
-                  <button
-                    type="button"
-                    onClick={() => setDeliveryMode('pickup')}
-                    aria-pressed={deliveryMode === 'pickup'}
-                    className={
-                      'px-4 py-2 rounded-full text-sm transition shadow-sm ' +
-                      (deliveryMode === 'pickup'
-                        ? 'bg-gradient-to-l from-blue-600 to-indigo-600 text-white shadow'
-                        : 'bg-white text-gray-700 hover:text-gray-900')
-                    }
-                  >
-                    {language === 'he' ? 'איסוף עצמי' : 'Pick up'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDeliveryMode('delivery')}
-                    aria-pressed={deliveryMode === 'delivery'}
-                    className={
-                      'px-4 py-2 rounded-full text-sm transition shadow-sm ' +
-                      (deliveryMode === 'delivery'
-                        ? 'bg-gradient-to-l from-blue-600 to-indigo-600 text-white shadow'
-                        : 'bg-white text-gray-700 hover:text-gray-900')
-                    }
-                  >
-                    {language === 'he' ? 'משלוח' : 'Delivery'}
-                  </button>
-                </div>
-
-                {deliveryMode === 'pickup' ? (
-                  <div className="text-right">
-                    <p className="text-sm text-gray-700">
-                      {language === 'he'
-                        ? 'איסוף מהמפעל: האורגים 32, חולון (א׳–ה׳ 10:00–18:00)'
-                        : 'Pickup at studio: 12 Allenby St, Tel Aviv (Sun–Thu 10:00–18:00)'}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-right">
-                    <div>
-                      <label className="block text-sm text-gray-700 mb-1">
-                        {language === 'he' ? 'שם מלא' : 'Full name'}
-                      </label>
-                      <input
-                        type="text"
-                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder={language === 'he' ? 'שם מלא' : 'Full name'}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-700 mb-1">
-                        {language === 'he' ? 'טלפון' : 'Phone'}
-                      </label>
-                      <input
-                        type="tel"
-                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="05x-xxxxxxx"
-                      />
-                    </div>
-                    <div className="sm:col-span-2 grid grid-cols-3 gap-3">
-                      <div className="col-span-2">
-                        <label className="block text-sm text-gray-700 mb-1">
-                          {language === 'he' ? 'רחוב ומס בית' : 'Street'}
-                        </label>
-                        <input
-                          type="text"
-                          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder={language === 'he' ? 'שם הרחוב ומס בית' : 'Street name'}
-                        />
-                      </div>
-                    
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-700 mb-1">
-                        {language === 'he' ? 'עיר' : 'City'}
-                      </label>
-                      <input
-                        type="text"
-                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder={language === 'he' ? 'עיר' : 'City'}
-                      />
-                    </div>
-                    <div className="sm:col-span-2 mt-2 text-sm text-gray-600">
-                      {t('deliveryPriceInfo')}
-                    </div>
-                  </div>
-                )}
-              </motion.div>
+              {/* Delivery moved to Cart page */}
             </div>
 
             <div className="lg:col-span-1">

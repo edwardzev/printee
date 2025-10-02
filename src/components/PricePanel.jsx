@@ -15,6 +15,8 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
   const [isDesktopExpanded, setIsDesktopExpanded] = useState(true);
   // Mobile bottom-sheet open state (default closed)
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  // Whether the user has clicked Add to Cart at least once in this configurator session
+  const [addedOnce, setAddedOnce] = useState(false);
   const sheetRef = useRef(null);
   const lastFocusedRef = useRef(null);
 
@@ -169,10 +171,20 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
                 </div>
               )}
 
-              <Button className="w-full" size="lg" disabled={!canAddToCart} onClick={onAddToCart}>
+              <Button className="w-full" size="lg" disabled={!canAddToCart} onClick={() => { onAddToCart(); setAddedOnce(true); }}>
                 <ShoppingCart className="h-5 w-5 mr-2" />
                 {t('addToCart')}
               </Button>
+
+              {addedOnce && (
+                <div className="mt-3">
+                  <Link to="/catalog" className="w-full inline-block">
+                    <button className="w-full bg-white border border-gray-200 rounded px-4 py-3 text-sm text-gray-700">
+                      {language === 'he' ? 'בחר מוצר נוסף' : 'Choose another product'}
+                    </button>
+                  </Link>
+                </div>
+              )}
 
               {!canAddToCart && (
                 <div className="mt-3 text-sm text-red-600 text-center">
@@ -235,7 +247,7 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
                   else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
                 }}
               >
-                <div className="mx-auto h-1.5 w-12 rounded-full bg-gray-300 mb-3" aria-hidden="true" />
+                {/* handle removed to avoid stray small centered line appearing in header */}
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-lg font-semibold">{t('priceBreakdown')}</h3>
                   <button onClick={() => setIsSheetOpen(false)} aria-label="Close pricing" className="text-gray-600">✕</button>
@@ -251,7 +263,14 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
                       <span className="text-lg font-bold text-blue-600">₪{pricing.totalIls?.toLocaleString()}</span>
                     </div>
                   </div>
-                  <Button className="w-full mt-2" size="lg" disabled={!canAddToCart} onClick={() => { onAddToCart(); setIsSheetOpen(false); }}>{t('addToCart')}</Button>
+                  <Button className="w-full mt-2" size="lg" disabled={!canAddToCart} onClick={() => { onAddToCart(); setIsSheetOpen(false); setAddedOnce(true); }}>{t('addToCart')}</Button>
+                  {addedOnce && (
+                    <Link to="/catalog" onClick={() => setIsSheetOpen(false)}>
+                      <button className="w-full mt-2 bg-white border border-gray-200 rounded px-4 py-3 text-sm text-gray-700">
+                        {language === 'he' ? 'בחר מוצר נוסף' : 'Choose another product'}
+                      </button>
+                    </Link>
+                  )}
                 </div>
               </motion.div>
             </>,

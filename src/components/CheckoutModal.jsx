@@ -4,12 +4,15 @@ import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/components/ui/use-toast';
 import { useCart } from '@/contexts/CartContext';
+import { sendOrderToPabbly } from '@/api/EcommerceApi';
 import { CreditCard, Smartphone, Banknote, FileText } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function CheckoutModal({ open, onClose, cartSummary, prefillContact }) {
   const { t, language } = useLanguage();
   const { toast } = useToast();
-  const { mergePayload } = useCart();
+  const { mergePayload, payload } = useCart();
+  const navigate = useNavigate();
   const [method, setMethod] = useState('card');
   const [name, setName] = useState(prefillContact?.name || '');
   const [phone, setPhone] = useState(prefillContact?.phone || '');
@@ -33,7 +36,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
     return ['card', 'bit', 'wire', 'cheque'].includes(m);
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (requireContact(method) && (!name.trim() || !phone.trim() || !email.trim())) {
       toast({ title: 'אנא מלא/י שם, טלפון ואימייל' , variant: 'destructive'});
       return;
@@ -46,11 +49,85 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       // ignore
     }
 
+    // Forward to Pabbly webhook (best-effort). Include cart payload and contact/payment info.
+    const toSend = {
+      ...payload,
+      contact: { name: name.trim(), phone: phone.trim(), email: email.trim() },
+      paymentMethod: method,
+      cartSummary: cartSummary || {}
+    };
+
+    // Try local proxy first; if it fails or is unavailable, fall back to direct sendOrderToPabbly
+    try {
+      const ctrl = new AbortController();
+      const timeout = setTimeout(() => ctrl.abort(), 3000);
+      let proxied = false;
+      try {
+        const r = await fetch('/api/forward-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(toSend),
+          signal: ctrl.signal
+        });
+        clearTimeout(timeout);
+        if (r && r.ok) {
+          proxied = true;
+        } else {
+          // if proxy returns non-ok, attempt fallback
+          const txt = await r.text().catch(()=>'<no-body>');
+          console.warn('Proxy forward failed', r.status, txt);
+        }
+      } catch (err) {
+        // fetch aborted or network error -> fallback
+        console.warn('Proxy forward error, falling back', err?.message || err);
+      }
+
+      if (!proxied) {
+        // call direct Pabbly sender (has its own retries)
+        const res = await sendOrderToPabbly(toSend).catch(e=>({ ok: false, error: e?.message || String(e) }));
+        if (!res || !res.ok) {
+          toast({ title: 'Webhook forwarding failed', description: res?.error || 'Unknown error', variant: 'destructive' });
+        }
+      }
+    } catch (err) {
+      console.error('Forwarding error', err);
+      toast({ title: 'Webhook error', description: err?.message || String(err), variant: 'destructive' });
+    }
+
     if (method === 'card') {
-      // For card we still redirect to iCount – but capture contact first (could be posted to backend)
-      // For now send contact via query (not secure) – replace with real session creation later.
-      const params = new URLSearchParams({ name, phone, email }).toString();
-      window.location.href = `/pay/icount?${params}`;
+      // For card: try to send a quick beacon to forward payload, then open iCount in a new tab
+      try {
+        const params = new URLSearchParams({ name, phone, email }).toString();
+        const toSend = {
+          ...payload,
+          contact: { name: name.trim(), phone: phone.trim(), email: email.trim() },
+          paymentMethod: method,
+          cartSummary: cartSummary || {}
+        };
+
+        // prefer sendBeacon (fire-and-forget even during unload)
+        try {
+          const blob = new Blob([JSON.stringify(toSend)], { type: 'application/json' });
+          const ok = navigator.sendBeacon && navigator.sendBeacon('/api/forward-order', blob);
+          if (!ok) {
+            // fallback: fire fetch but don't await (best-effort)
+            fetch('/api/forward-order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(toSend) }).catch(()=>{});
+          }
+        } catch (err) {
+          // ignore beacon errors
+        }
+
+  // open payment page in a new tab so the current page can finish forwarding
+  const url = `/pay/icount?${params}`;
+  window.open(url, '_blank');
+  // navigate current tab to thank-you page so users see confirmation while completing payment in the new tab
+  try { navigate('/thank-you'); } catch (e) { /* ignore */ }
+      } catch (err) {
+        // fallback to redirect if anything unexpected
+        const params = new URLSearchParams({ name, phone, email }).toString();
+        window.location.href = `/pay/icount?${params}`;
+      }
+
       return;
     }
 
@@ -58,13 +135,16 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       toast({ title: 'העבר כספים ל-Bit' });
       // show phone for payment in a toast plus more persistent suggestion
       toast({ title: 'Bit / Paybox', description: 'העבירו ל: 054-696-9974. שלחו צילום אישור תשלום ל-info@printmarket.co.il' });
+      // navigate to thank-you page so the user sees confirmation/next steps
+      try { navigate('/thank-you'); } catch (e) { /* ignore */ }
       onClose();
       return;
     }
 
-    // wire transfer or cheque
-    toast({ title: 'תודה', description: 'נציגנו יצור איתך קשר בהקדם כדי להשלים את פרטי התשלום.' });
-    onClose();
+  // wire transfer or cheque
+  toast({ title: 'תודה', description: 'נציגנו יצור איתך קשר בהקדם כדי להשלים את פרטי התשלום.' });
+  try { navigate('/thank-you'); } catch (e) { /* ignore */ }
+  onClose();
   };
 
   const methodCards = [
@@ -115,7 +195,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
               aria-required
               className="w-full border rounded-md px-3 py-2 text-sm mt-1"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => { setName(e.target.value); try { mergePayload({ contact: { ...(payload?.contact || {}), name: e.target.value } }); } catch (er) {} }}
               placeholder="שם מלא"
             />
           </label>
@@ -126,7 +206,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
               aria-required
               className="w-full border rounded-md px-3 py-2 text-sm mt-1"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => { setPhone(e.target.value); try { mergePayload({ contact: { ...(payload?.contact || {}), phone: e.target.value } }); } catch (er) {} }}
               placeholder="טלפון"
             />
           </label>
@@ -137,7 +217,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
               aria-required
               className="w-full border rounded-md px-3 py-2 text-sm mt-1"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => { setEmail(e.target.value); try { mergePayload({ contact: { ...(payload?.contact || {}), email: e.target.value } }); } catch (er) {} }}
               placeholder="אימייל"
             />
           </label>

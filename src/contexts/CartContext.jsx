@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 
 const CartContext = createContext();
 
@@ -13,6 +13,8 @@ export const useCart = () => {
 export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState([]);
   const [payload, setPayload] = useState({});
+  const pendingSendRef = useRef(null);
+  const lastPayloadRef = useRef(null);
 
   useEffect(() => {
     try {
@@ -74,6 +76,7 @@ export const CartProvider = ({ children }) => {
       ...item,
       timestamp: new Date().toISOString()
     };
+    // compute next cart synchronously so we can persist a partial immediately
     setCartItems(prev => {
       const next = [...prev, newItem];
       if (import.meta && import.meta.env && import.meta.env.DEV) {
@@ -97,6 +100,12 @@ export const CartProvider = ({ children }) => {
           return { ...restOfItem, uploadedDesigns: sanitizedDesigns };
         });
         localStorage.setItem('cart', JSON.stringify(cartToSave));
+        // also persist a partial payload containing the sanitized cart so support can recover
+        try {
+          if (typeof mergePayload === 'function') {
+            mergePayload({ cart: cartToSave, contact: (payload && payload.contact) || {} });
+          }
+        } catch (e) {}
       } catch (error) {
         console.error('Failed to persist cart immediately', error);
       }
@@ -125,9 +134,57 @@ export const CartProvider = ({ children }) => {
       try {
         localStorage.setItem('order_payload', JSON.stringify(next));
       } catch (err) {}
+
+      // send partial to server-side dev API so we persist user progress (abandonment recovery)
+      try {
+        // debounce server sends to avoid high-frequency duplicates
+        lastPayloadRef.current = next;
+        if (pendingSendRef.current) clearTimeout(pendingSendRef.current);
+        pendingSendRef.current = setTimeout(() => {
+          try {
+            const url = '/api/save-payload';
+            const body = JSON.stringify(lastPayloadRef.current || {});
+            if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+              try {
+                const blob = new Blob([body], { type: 'application/json' });
+                navigator.sendBeacon(url, blob);
+              } catch (e) {
+                fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }).catch(()=>{});
+              }
+            } else {
+              fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }).catch(()=>{});
+            }
+          } catch (e) {}
+          pendingSendRef.current = null;
+        }, 2000);
+      } catch (e) {
+        // ignore
+      }
       return next;
     });
   };
+
+  // Flush pending payload on unload (best-effort)
+  useEffect(() => {
+    const onUnload = () => {
+      try {
+        if (pendingSendRef.current) {
+          clearTimeout(pendingSendRef.current);
+          pendingSendRef.current = null;
+        }
+        const body = JSON.stringify(lastPayloadRef.current || {});
+        if (navigator && navigator.sendBeacon) {
+          try { navigator.sendBeacon('/api/save-payload', new Blob([body], { type: 'application/json' })); } catch (e) {}
+        } else {
+          // synchronous XHR fallback is deprecated; just attempt a fetch without awaiting
+          fetch('/api/save-payload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }).catch(()=>{});
+        }
+      } catch (e) {}
+    };
+
+    window.addEventListener('beforeunload', onUnload);
+    return () => window.removeEventListener('beforeunload', onUnload);
+  }, []);
 
   const clearPayload = () => {
     setPayload({});
@@ -136,7 +193,15 @@ export const CartProvider = ({ children }) => {
 
   const getTotalItems = () => {
     return cartItems.reduce((total, item) => {
-      const itemTotal = Object.values(item.sizeMatrix || {}).reduce((sum, qty) => sum + qty, 0);
+      // Support legacy single-sizeMatrix and new multi-color sizeMatrices
+      if (item.sizeMatrices && typeof item.sizeMatrices === 'object') {
+        const sum = Object.values(item.sizeMatrices).reduce((s, matrix) => {
+          if (!matrix) return s;
+          return s + Object.values(matrix).reduce((ss, q) => ss + (q || 0), 0);
+        }, 0);
+        return total + sum;
+      }
+      const itemTotal = Object.values(item.sizeMatrix || {}).reduce((sum, qty) => sum + (qty || 0), 0);
       return total + itemTotal;
     }, 0);
   };

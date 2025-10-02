@@ -9,10 +9,11 @@ import { useCart } from '@/contexts/CartContext';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import CheckoutModal from '@/components/CheckoutModal';
+import DeliveryOptions from '@/components/DeliveryOptions';
 
 const Cart = () => {
   const { t, language } = useLanguage();
-  const { cartItems, removeFromCart, getTotalPrice, payload } = useCart();
+  const { cartItems, removeFromCart, getTotalPrice, payload, mergePayload, getTotalItems } = useCart();
   const { toast } = useToast();
   const [modalOpen, setModalOpen] = useState(false);
   const navigate = useNavigate();
@@ -160,15 +161,31 @@ const Cart = () => {
                         {item.productName}
                       </h3>
                       <p className="text-sm text-gray-600 mb-2">
-                        צבע: {language === 'he' ? (colorLabelsHe[item.color] || item.color) : item.color} • {Object.values(item.sizeMatrix || {}).reduce((sum, qty) => sum + (qty || 0), 0)} פריטים
+                        {item.selectedColors && item.selectedColors.length > 0 ? (
+                          <>
+                            {language === 'he' ? 'צבעים' : 'Colors'}: {item.selectedColors.map(c => (language === 'he' ? (colorLabelsHe[c] || c) : c)).join(', ')} • {Object.values(item.sizeMatrices || {}).reduce((sum, mat) => sum + (mat ? Object.values(mat).reduce((s, q) => s + (q || 0), 0) : 0), 0)} פריטים
+                          </>
+                        ) : (
+                          <>
+                            צבע: {language === 'he' ? (colorLabelsHe[item.color] || item.color) : item.color} • {Object.values(item.sizeMatrix || {}).reduce((sum, qty) => sum + (qty || 0), 0)} פריטים
+                          </>
+                        )}
                       </p>
-                      
-                      {/* Size breakdown */}
+
+                      {/* Size breakdown per color or legacy */}
                       <div className="text-sm text-gray-500 mb-2">
-                        {Object.entries(item.sizeMatrix || {})
-                          .filter(([size, qty]) => qty > 0)
-                          .map(([size, qty]) => `${t(size) || size.toUpperCase()}: ${qty}`)
-                          .join(', ')}
+                        {item.selectedColors && item.selectedColors.length > 0 ? (
+                          item.selectedColors.map(colorKey => {
+                            const mat = (item.sizeMatrices && item.sizeMatrices[colorKey]) || {};
+                            const entries = Object.entries(mat || {}).filter(([size, qty]) => qty > 0).map(([size, qty]) => `${t(size) || size.toUpperCase()}: ${qty}`);
+                            return `${language === 'he' ? (colorLabelsHe[colorKey] || colorKey) : colorKey} — ${entries.join(', ')}`;
+                          }).join(' \n')
+                        ) : (
+                          Object.entries(item.sizeMatrix || {})
+                            .filter(([size, qty]) => qty > 0)
+                            .map(([size, qty]) => `${t(size) || size.toUpperCase()}: ${qty}`)
+                            .join(', ')
+                        )}
                       </div>
 
                       {/* Print areas */}
@@ -210,6 +227,17 @@ const Cart = () => {
                   </div>
                 </motion.div>
                 ))}
+
+              {/* Delivery options: moved into cart body above upsell */}
+              <div className="bg-white rounded-xl p-6 shadow-lg mb-6">
+                <DeliveryOptions
+                  totalQty={getTotalItems()}
+                  withDelivery={payload?.withDelivery || false}
+                  onDeliveryChange={(v)=>{ mergePayload({ withDelivery: !!v }); }}
+                  contact={payload?.contact || {}}
+                  onContactChange={(c) => { mergePayload({ contact: c }); }}
+                />
+              </div>
 
               {/* Upsell area: show other products */}
               <div className="bg-white rounded-xl p-6 shadow-lg">
@@ -273,15 +301,22 @@ const Cart = () => {
                     <span className="text-gray-600">סכום ביניים</span>
                     <span className="font-medium">₪{getTotalPrice().toLocaleString()}</span>
                   </div>
+                  {payload?.withDelivery && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">{language === 'he' ? 'עלות משלוח' : 'Delivery cost'}</span>
+                      <span className="font-medium">₪{(Math.ceil(getTotalItems() / 50) * 50).toLocaleString()}</span>
+                    </div>
+                  )}
+                  {/* delivery block removed from summary (rendered above upsell in main column) */}
                   <div className="flex justify-between">
                     <span className="text-gray-600">מע"מ (17%)</span>
-                    <span className="font-medium">₪{Math.round(getTotalPrice() * 0.17).toLocaleString()}</span>
+                    <span className="font-medium">₪{Math.round((getTotalPrice() + (payload?.withDelivery ? (Math.ceil(getTotalItems() / 50) * 50) : 0)) * 0.17).toLocaleString()}</span>
                   </div>
                   <div className="border-t pt-4">
                     <div className="flex justify-between">
                       <span className="text-lg font-semibold">סה"כ</span>
                       <span className="text-lg font-bold text-blue-600">
-                        ₪{Math.round(getTotalPrice() * 1.17).toLocaleString()}
+                        ₪{Math.round((getTotalPrice() + (payload?.withDelivery ? (Math.ceil(getTotalItems() / 50) * 50) : 0)) * 1.17).toLocaleString()}
                       </span>
                     </div>
                   </div>

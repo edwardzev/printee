@@ -3,6 +3,7 @@ import { ShoppingCart } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Home, List, Info, HelpCircle, ShoppingCart as CartIcon, DollarSign } from 'lucide-react';
+import { useMediaQuery } from '@/hooks/use-media-query';
 
 export default function Header({ dir = "rtl" }) {
   const [open, setOpen] = useState(false);
@@ -14,6 +15,7 @@ export default function Header({ dir = "rtl" }) {
 
   const location = useLocation();
   const navigate = useNavigate();
+  const isMobile = useMediaQuery("(max-width: 768px)");
 
   const goTo = (id) => (e) => {
     e?.preventDefault();
@@ -99,7 +101,7 @@ export default function Header({ dir = "rtl" }) {
         top: 0,
         zIndex: 50,
         background: "#fff",
-        borderBottom: "1px solid #eee",
+        // removed thin bottom border to avoid stray line in header
         backdropFilter: "saturate(180%) blur(8px)",
       }}
     >
@@ -126,32 +128,31 @@ export default function Header({ dir = "rtl" }) {
           <img
             src="/logo_printee.png"
             alt="PRINTEE"
-            style={{ height: 36, width: "auto", display: "block" }}
+            style={{ height: 84, width: "auto", display: "block" }}
           />
-          <span style={{ fontSize: 20, fontWeight: 700, color: "#111" }}>
-            printee
-          </span>
         </Link>
 
-        {/* Burger button for mobile */}
-        <button
-          aria-label="Toggle menu"
-          aria-expanded={open}
-          onClick={() => setOpen((v) => !v)}
-          style={{
-            marginInlineStart: "auto",
-            display: "inline-flex",
-            background: "transparent",
-            border: 0,
-            padding: 8,
-            cursor: "pointer",
-          }}
-          className="md:hidden"
-        >
-          <span style={{ display: "block", width: 24, height: 2, background: "#222", margin: "4px 0" }} />
-          <span style={{ display: "block", width: 24, height: 2, background: "#222", margin: "4px 0" }} />
-          <span style={{ display: "block", width: 24, height: 2, background: "#222", margin: "4px 0" }} />
-        </button>
+        {/* Burger button for mobile - render only when viewport is mobile to avoid showing on desktop */}
+        {isMobile && (
+          <button
+            aria-label="Toggle menu"
+            aria-expanded={open}
+            onClick={() => setOpen((v) => !v)}
+            style={{
+              marginInlineStart: "auto",
+              display: "inline-flex",
+              background: "transparent",
+              border: 0,
+              padding: 8,
+              cursor: "pointer",
+            }}
+            ref={burgerRef}
+          >
+            <span style={{ display: "block", width: 24, height: 2, background: "#222", margin: "4px 0" }} />
+            <span style={{ display: "block", width: 24, height: 2, background: "#222", margin: "4px 0" }} />
+            <span style={{ display: "block", width: 24, height: 2, background: "#222", margin: "4px 0" }} />
+          </button>
+        )}
 
         {/* Nav (hidden on small screens, burger used instead) */}
         <nav
@@ -232,10 +233,10 @@ export default function Header({ dir = "rtl" }) {
             }}>{getTotalItems()}</span>
           </Link>
         </nav>
-        {/* Mobile menu overlay */}
-        {open && (
+        {/* Mobile menu overlay - only render on mobile viewports */}
+        {isMobile && open && (
           <div
-            className="md:hidden fixed inset-0 z-50 bg-white/98 flex flex-col p-6"
+            className="fixed inset-0 z-50 bg-white/98 flex flex-col p-6"
             role="dialog"
             aria-modal="true"
             ref={menuRef => { if (menuRef) menuContainerRef.current = menuRef }}
@@ -245,16 +246,16 @@ export default function Header({ dir = "rtl" }) {
           >
             <div className="flex items-center justify-between mb-6">
               <Link to="/" onClick={() => setOpen(false)}>
-                <img src="/logo_printee.png" alt="printee" style={{ height: 34 }} />
+                <img src="/logo_printee.png" alt="printee" style={{ height: 40 }} />
               </Link>
               <button onClick={() => setOpen(false)} aria-label="Close menu" style={{ border: 0, background: 'transparent', fontSize: 22 }}>✕</button>
             </div>
             <div className="flex flex-col gap-4" ref={menuListRef}>
               {/* language-aware ordering: put primary CTA first for LTR, last for RTL */}
-              {dir === 'rtl' ? (
+                  {dir === 'rtl' ? (
                 <>
                   <Link to="/catalog" onClick={() => setOpen(false)} className="text-lg font-medium inline-flex items-center gap-3"><List className="h-5 w-5" /> קטלוג</Link>
-                  <Link to="/catalog" onClick={() => setOpen(false)} className="text-lg font-medium inline-flex items-center gap-3"><DollarIcon className="h-5 w-5" /> מחירים</Link>
+                  <Link to="/catalog" onClick={() => setOpen(false)} className="text-lg font-medium inline-flex items-center gap-3"><DollarSign className="h-5 w-5" /> מחירים</Link>
                 </>
               ) : (
                 <>

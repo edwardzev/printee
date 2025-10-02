@@ -121,7 +121,7 @@ const Catalog = () => {
 
                   <Link to={`/product/${product.sku}`}>
                     <Button className="w-full">
-                      {t('startDesigning')}
+                      {language === 'he' ? 'בחר מוצר' : t('startDesigning')}
                     </Button>
                   </Link>
                 </div>

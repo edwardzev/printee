@@ -50,7 +50,7 @@ const Home = () => {
               <div className="flex gap-3 justify-end flex-wrap">
                 <Link to="/catalog">
                   <Button size="lg" className="bg-gray-900 text-white hover:bg-black px-6 py-6">
-                    התחילו לעצב עכשיו
+                    התחילו בהזמנה
                     <ArrowRight className="h-5 w-5 mr-2 rotate-180" />
                   </Button>
                 </Link>

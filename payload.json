@@ -1,0 +1,225 @@
+{
+  
+  "event": "order_created",
+  "idempotency_key": "ord_9b3f2b0c-3e6a-4d3d-b2f0-3cb9b8c8f8af",
+  "created_at": "2025-10-02T17:05:12Z",
+  "environment": "prod",
+
+  "order": {
+    "order_id": "PM-2025-001284",
+    "order_number": "1284", 
+    "status": "pending_payment",
+    "currency": "ILS",
+    "totals": {
+      "items_subtotal": 3840,
+      "discount_total": 0,
+      "shipping_total": 45,
+      "tax_total": 659.45,
+      "fees_total": 0,
+      "grand_total": 4544.45
+    },
+    "discounts": [],
+    "notes_internal": "Class hoodies, rush, need by 2025-10-10.",
+    "customer_notes": "Please make left chest logo small.",
+    "due_date": "2025-10-10T00:00:00Z",
+    "tags": ["rush","school"]
+  },
+
+  "customer": {
+    "customer_id": "cust_7392",
+    "type": "business",
+    "company_name": "Herzl High School PTA",
+    "vat_id": "514123456",
+    "contact_name": "Yael Cohen",
+    "email": "yael@example.com",
+    "phone": "+972-50-123-4567",
+    "language": "he",
+    "shipping_needed": true,
+    "shipping_address": {
+      "city": "Tel Aviv",
+      "street": "Dizengoff",
+      "house_number": "99",
+      "postal_code": "6343210",
+      "notes": "Deliver to security desk"
+    }
+  },
+
+  "items": [
+    {
+      "line_id": "ln_01",
+      "product_sku": "hoodie_classic",
+      "product_name": "Classic Hoodie",
+      "category": "apparel",
+      "print_tech": "DTF",
+      "color": "navy_blue",
+      "size_breakdown": [
+        { "size": "s", "qty": 10 },
+        { "size": "m", "qty": 20 },
+        { "size": "l", "qty": 15 },
+        { "size": "xl", "qty": 5 }
+      ],
+      "unit_price": 80,
+      "line_subtotal": 4000,
+      "line_discount": 200,
+      "line_total": 3800,
+      "variant_id": "hoodie_classic_navy",
+      "print_placements": [
+        {
+          "placement": "left_chest",
+          "print_area_mm": { "width": 90, "height": 90 },
+          "notes": "3 cm from seam"
+        },
+        {
+          "placement": "back_a3",
+          "print_area_mm": { "width": 290, "height": 410 },
+          "file_name": ["art_02"],
+          "notes": ""
+        }
+      ]
+      
+    },
+    {
+      "line_id": "ln_02",
+      "product_sku": "tshirt_classic",
+      "product_name": "Classic T-Shirt",
+      "category": "apparel",
+      "print_tech": "DTF",
+      "color": "white",
+      "size_breakdown": [
+        { "size": "m", "qty": 10 },
+        { "size": "l", "qty": 10 }
+      ],
+      "unit_price": 20,
+      "line_subtotal": 400,
+      "line_discount": 0,
+      "line_total": 400,
+      "print_placements": [
+        {
+          "placement": "front_a4",
+          "print_area_mm": { "width": 210, "height": 297 }
+        }
+      ]
+    }
+  ],
+
+  "artworks": [
+    {
+      "artwork_id": "art_01",
+      "purpose": "print",
+      "file_urls": {
+        "original": "https://cdn.example.com/u/yael/logo_leftchest.png",
+        "print_ready": "https://cdn.example.com/processed/logo_leftchest_print.png",
+        "preview": "https://cdn.example.com/previews/logo_leftchest.jpg"
+      },
+      "filename": "logo_leftchest.png",
+      "file_ext": "png",
+      "mime_type": "image/png",
+      "filesize_bytes": 382112,
+      "dimensions_px": { "width": 1200, "height": 1200 },
+      "notes": ""
+    },
+    {
+      "artwork_id": "art_02",
+      "purpose": "print",
+      "file_urls": {
+        "original": "https://cdn.example.com/u/yael/back_a3.pdf",
+        "print_ready": "https://cdn.example.com/processed/back_a3_flat.pdf",
+        "preview": "https://cdn.example.com/previews/back_a3.jpg"
+      },
+      "filename": "back_a3.pdf",
+      "file_ext": "pdf",
+      "mime_type": "application/pdf",
+      "filesize_bytes": 1890112,
+      "dimensions_px": { "width": 3508, "height": 4961 }
+    }
+  ],
+
+  "production": {
+    "priority": "rush",
+    "workflow_stage": "prepress",
+    "assigned_team": "DTF_Line_A",
+    "assigned_user_ids": ["tech_004","tech_029"],
+    "checkpoints": [
+      { "name": "files_received", "status": "ok", "by_user_id": "system", "at": "2025-10-02T17:05:12Z" }
+    ],
+    "customer_approval": { "required": true, "approved": false }
+  },
+
+  "shipping": {
+    "method": "courier",
+    "carrier": "Self",
+    "service_level": "express",
+    "packages": [],
+    "labels": [],
+    "requested_delivery_window": { "start": "2025-10-09T06:00:00Z", "end": "2025-10-09T15:00:00Z" },
+    "shipping_notes": "Call before delivery"
+  },
+
+  "payment": {
+    "payment_status": "pending",
+    "payment_method": "icount_cc",
+    "transaction_id": null,
+    "authorization_id": null,
+    "installments": 1,
+    "paid_amount": 0,
+    "outstanding_amount": 4544.45,
+    "billing_descriptor": "Print Market Ltd.",
+    "payer_ip": "85.64.12.34",
+    "risk_flags": [],
+    "icount": {
+      "cc_page_id": "PM_CC_01",
+      "doc_type": "tax_invoice",
+      "doc_number": null,
+      "ipn_payload": null,
+      "return_url_success": "https://printee.co.il/thank-you",
+      "return_url_fail": "https://printee.co.il/payment-failed"
+    }
+  },
+
+
+
+  "attribution": {
+    "utm_source": "google",
+    "utm_medium": "cpc",
+    "utm_campaign": "printee_brand_he",
+    "utm_term": "חולצות מודפסות",
+    "utm_content": "ad1",
+    "gclid": "CjwK...",
+    "wbraid": null,
+    "gbraid": null,
+    "fbclid": null,
+    "referrer": "https://www.google.com/",
+    "landing_page": "https://printee.co.il/",
+    "session_id": "sess_8d1b4",
+    "campaign_id": "cmp_001",
+    "adgroup_id": "ag_01",
+    "keyword": "חולצה מודפסת"
+  },
+
+  "device": {
+    "ip_address": "85.64.12.34",
+    "user_agent": "Mozilla/5.0 ...",
+    "device_type": "desktop",
+    "locale": "he-IL",
+    "timezone": "Asia/Jerusalem"
+  },
+
+  "attachments": {
+    "mockup_urls": ["https://cdn.example.com/mockups/PM-2025-001284-front.jpg"]
+  },
+
+  "audit": {
+    "created_by": "customer",
+    "updated_by": "system",
+    "updated_at": "2025-10-02T17:05:12Z",
+    "source": "web",
+    "webhook_attempts": 0,
+    "signature": "hmac_sha256_hex_of_body",
+    "nonce": "n_6c3d9a8f"
+  },
+
+  "custom": {
+    "x_vendor_code": "REKLAMIS",
+    "x_press_profile": "DTF_HD_WHITE_1.2"
+  }
+}

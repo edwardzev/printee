@@ -117,7 +117,7 @@ export default function HeroImage({
           min-height: clamp(240px, 48vh, 720px);
           overflow: hidden;
           background: ${bg};
-          border-bottom: 1px solid #eceff3;
+          /* removed bottom border to avoid visible stray line under header */
         }
         .hero-stage {
           position: absolute;

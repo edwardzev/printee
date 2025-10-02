@@ -43,6 +43,7 @@ const translations = {
     // Product Configurator
     chooseColor: 'בחר צבע',
     sizeMatrix: 'מטריצת מידות',
+  chooseSizesForColor: 'בחרו מידות עבור צבע',
     printAreas: 'אזורי הדפסה',
     uploadDesign: 'העלה עיצוב',
     deliveryOptions: 'אפשרויות משלוח',
@@ -57,6 +58,9 @@ const translations = {
     addDelivery: 'הוסף משלוח',
     deliveryPriceInfo: 'עלות המשלוח היא 50₪ לכל 50 פריטים.',
     calculatedDeliveryCost: 'עלות משלוח מחושבת',
+  deliveryAddress: 'כתובת למשלוח',
+  deliveryAddressPlaceholder: 'הזן כתובת למשלוח (רחוב, מספר, עיר)',
+  pickupAddress: 'כתובת לאיסוף עצמי: האורגים 32, חולון',
     
     // Print areas
     leftChest: 'חזה שמאל',
@@ -147,6 +151,7 @@ const translations = {
     // Product Configurator
     chooseColor: 'Choose Color',
     sizeMatrix: 'Size Matrix',
+  chooseSizesForColor: 'Choose sizes for color',
     printAreas: 'Print Areas',
     uploadDesign: 'Upload Design',
     deliveryOptions: 'Delivery Options',
@@ -161,6 +166,9 @@ const translations = {
     addDelivery: 'Add Delivery',
     deliveryPriceInfo: 'Delivery cost is ₪50 for every 50 items.',
     calculatedDeliveryCost: 'Calculated Delivery Cost',
+    deliveryAddress: 'Delivery address',
+    deliveryAddressPlaceholder: 'Enter delivery address (street, number, city)',
+    pickupAddress: 'Haorgim 32, Holon',
     
     // Print areas
     leftChest: 'Left Chest',
