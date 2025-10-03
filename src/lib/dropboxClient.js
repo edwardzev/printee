@@ -11,53 +11,92 @@ async function getAccessToken() {
     return cached.token;
   }
 
-  const key = process.env.DROPBOX_APP_KEY;
-  const secret = process.env.DROPBOX_APP_SECRET;
-  const refresh = process.env.DROPBOX_REFRESH_TOKEN;
-  if (!key || !secret || !refresh) throw new Error('Dropbox OAuth not configured (DROPBOX_APP_KEY/SECRET/REFRESH_TOKEN)');
+  // Support several env var names to accommodate different setups
+  const key = process.env.DROPBOX_APP_KEY
+    || process.env.DROPBOX_KEY
+    || process.env.DBX_APP_KEY
+    || process.env.DBX_CLIENT_ID
+    || process.env.DROPBOX_CLIENT_ID;
 
-  // Build request body
-  const body = new URLSearchParams({
-    grant_type: 'refresh_token',
-    refresh_token: refresh
-  });
+  const secret = process.env.DROPBOX_APP_SECRET
+    || process.env.DROPBOX_SECRET
+    || process.env.DBX_APP_SECRET
+    || process.env.DBX_CLIENT_SECRET
+    || process.env.DROPBOX_CLIENT_SECRET;
 
-  // Use HTTP Basic auth header as recommended: Authorization: Basic base64(client_id:client_secret)
-  const basic = Buffer.from(`${key}:${secret}`).toString('base64');
+  const refresh = process.env.DROPBOX_REFRESH_TOKEN
+    || process.env.DBX_REFRESH_TOKEN
+    || process.env.DROPBOX_TOKEN_REFRESH;
+  if (!key || !secret || !refresh) {
+    // Include presence booleans in the error for easier debugging
+    const presence = {
+      DROPBOX_APP_KEY: Boolean(key),
+      DROPBOX_APP_SECRET: Boolean(secret),
+      DROPBOX_REFRESH_TOKEN: Boolean(refresh)
+    };
+    throw new Error('Dropbox OAuth not configured (DROPBOX_APP_KEY/SECRET/REFRESH_TOKEN) ' + JSON.stringify(presence));
+  }
 
   const url = 'https://api.dropbox.com/oauth2/token';
 
+  // Two strategies:
+  // 1) Basic auth header + grant_type=refresh_token&refresh_token=...
+  // 2) client_id/client_secret in the body (no Authorization header)
+  const attempts = [
+    {
+      mode: 'basic',
+      headers: () => ({
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${Buffer.from(`${key}:${secret}`).toString('base64')}`
+      }),
+      body: () => new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refresh }).toString()
+    },
+    {
+      mode: 'body-credentials',
+      headers: () => ({ 'Content-Type': 'application/x-www-form-urlencoded' }),
+      body: () => new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: refresh,
+        client_id: key,
+        client_secret: secret
+      }).toString()
+    }
+  ];
+
   let lastErr = null;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': `Basic ${basic}` },
-        body: body.toString()
-      });
+  for (let i = 0; i < attempts.length; i++) {
+    const attempt = attempts[i];
+    for (let j = 0; j < 2; j++) { // retry once per strategy
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: attempt.headers(),
+          body: attempt.body()
+        });
+        const text = await res.text().catch(() => '');
+        let json = {};
+        try { json = text ? JSON.parse(text) : {}; } catch {
+          json = { raw: text };
+        }
 
-      const text = await res.text().catch(() => '');
-      let json = {};
-      try { json = text ? JSON.parse(text) : {}; } catch (e) { json = { raw: text }; }
+        if (!res.ok || !json.access_token) {
+          const msg = `mode=${attempt.mode} status=${res.status} error=${json.error || ''} desc=${json.error_description || ''} raw=${json.raw ? String(json.raw).slice(0,200) : ''}`;
+          lastErr = new Error('Failed to refresh Dropbox access token: ' + msg);
+          if (j === 0) await new Promise(r => setTimeout(r, 250));
+          continue;
+        }
 
-      if (!res.ok || !json.access_token) {
-        lastErr = new Error('Failed to refresh Dropbox access token: ' + (json.error_description || json.error || text || res.status));
-        // If first attempt failed, retry once after short delay
-        if (attempt === 0) await new Promise(r => setTimeout(r, 250));
-        continue;
+        const expiresIn = Number(json.expires_in) || 14400;
+        cached.token = json.access_token;
+        cached.expiresAt = Date.now() + (expiresIn * 1000);
+        return cached.token;
+      } catch (e) {
+        lastErr = e;
+        if (j === 0) await new Promise(r => setTimeout(r, 250));
       }
-
-      const expiresIn = Number(json.expires_in) || 14400;
-      cached.token = json.access_token;
-      cached.expiresAt = Date.now() + (expiresIn * 1000);
-      return cached.token;
-    } catch (e) {
-      lastErr = e;
-      if (attempt === 0) await new Promise(r => setTimeout(r, 250));
     }
   }
 
-  // Provide detailed message to help debugging in environments like Vercel
   throw new Error('Dropbox token refresh failed: ' + (lastErr && (lastErr.message || String(lastErr)) || 'unknown'));
 }
 
