@@ -57,7 +57,8 @@ export default async function handler(req, res) {
 
     // scan uploadedDesigns at top-level and inside cart items for data URLs and upload them
     const bodyCandidate = JSON.parse(JSON.stringify(appBody || {}));
-    const uploads = [];
+  const uploads = [];
+  const forwarderWarnings = [];
     function collectAndUpload(obj, parentKey) {
       if (!obj || typeof obj !== 'object') return;
       for (const k of Object.keys(obj)) {
@@ -79,12 +80,18 @@ export default async function handler(req, res) {
           const result = await uploadDataUrlToDropbox(up.dataUrl, filenameHint);
           up.container[up.key] = { url: result.url, dropbox_path: result.path, name: result.name, size: result.size };
         } catch (e) {
-          console.error('forward-order: dropbox upload failed', e?.message || e);
+          const msg = e && (e.message || String(e)) || 'unknown';
+          console.error('forward-order: dropbox upload failed', msg);
+          // record a warning for the normalized payload so downstream systems can see it
+          forwarderWarnings.push({ when: new Date().toISOString(), where: up.key, message: msg });
           // attach a note but continue — do not block forwarding for other reasons
-          up.container[up.key] = { error: String(e?.message || e) };
+          up.container[up.key] = { error: String(msg) };
         }
       }
     }
+
+    // Attach warnings into the candidate so normalize can carry them into the final payload
+    if (forwarderWarnings.length) bodyCandidate._forwarder_warnings = forwarderWarnings;
 
     const body = typeof normalize === 'function' ? normalize(bodyCandidate) : bodyCandidate;
     // log normalized body snippet
