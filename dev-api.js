@@ -20,6 +20,9 @@ try {
 
 const ajv = new Ajv({ allErrors: true, strict: false });
 const validate = orderSchema ? ajv.compile(orderSchema) : null;
+import normalize from './src/lib/normalizeOrderPayload.js';
+import { v4 as uuidv4 } from 'uuid';
+import { uploadBuffer, createSharedLink } from './src/lib/dropboxClient.js';
 
 app.use(bodyParser.json({ limit: '1mb' }));
 
@@ -28,6 +31,9 @@ const logsDir = path.resolve(process.cwd(), 'logs');
 if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
 const forwardedLog = path.join(logsDir, 'forwarded.jsonl');
 const partialsLog = path.join(logsDir, 'partials.jsonl');
+
+// ensure forwarded log file exists so we can tail it immediately
+try { if (!fs.existsSync(forwardedLog)) fs.writeFileSync(forwardedLog, ''); } catch (err) { console.error('dev-api: could not ensure forwarded log exists', err); }
 
 function appendForwardLog(entry) {
   try {
@@ -40,22 +46,78 @@ function appendForwardLog(entry) {
 
 app.post('/api/forward-order', async (req, res) => {
   try {
-    if (validate) {
-      const ok = validate(req.body);
-      if (!ok) return res.status(400).json({ ok: false, error: 'validation_failed', details: validate.errors });
+    const rawBody = req.body;
+    // If the payload contains uploadedDesigns data URLs, attempt to upload them to Dropbox now
+    async function uploadDataUrlToDropbox(dataUrl, filenameHint) {
+      const m = /^data:([^;]+);base64,(.+)$/.exec(dataUrl);
+      if (!m) throw new Error('invalid_data_url');
+      const mime = m[1];
+      const ext = (mime.split('/')[1] || 'bin').replace(/[^a-z0-9]/gi, '').slice(0,8);
+      const base64 = m[2];
+      const buf = Buffer.from(base64, 'base64');
+      const baseFolder = process.env.DROPBOX_FOLDER || '/printee/uploads';
+      const orderNumber = (rawBody && rawBody.order && (rawBody.order.order_number || rawBody.orderNumber)) || null;
+      const orderFolder = orderNumber ? `${baseFolder}/${orderNumber}` : baseFolder;
+      const name = `${Date.now()}-${uuidv4()}-${(filenameHint||'file').replace(/[^a-z0-9.\-_]/gi,'')}`;
+      const filename = name + (ext ? `.${ext}` : '');
+      const dropboxPath = `${orderFolder}/${filename}`;
+
+      await uploadBuffer(buf, dropboxPath);
+      const link = await createSharedLink(dropboxPath).catch(()=>null);
+      return { url: link || null, path: dropboxPath, name: filename, size: buf.length };
     }
 
-    // append to local forward log (for dev diagnostics)
-    appendForwardLog({ ts: new Date().toISOString(), status: 'queued', payload: req.body });
+    // scan for data URLs and upload them, replacing with metadata or error
+    const bodyCandidate = JSON.parse(JSON.stringify(rawBody || {}));
+    const uploads = [];
+    function collectAndUpload(obj) {
+      if (!obj || typeof obj !== 'object') return;
+      for (const k of Object.keys(obj)) {
+        const v = obj[k];
+        if (v && typeof v === 'string' && v.startsWith('data:')) {
+          uploads.push({ container: obj, key: k, dataUrl: v });
+        } else if (Array.isArray(v)) {
+          v.forEach((it) => collectAndUpload(it));
+        } else if (v && typeof v === 'object') {
+          collectAndUpload(v);
+        }
+      }
+    }
+    collectAndUpload(bodyCandidate);
+    if (uploads.length) {
+      for (const up of uploads) {
+        try {
+          const filenameHint = (up.container && up.container.name) || (up.container && up.container.file && up.container.file.name) || 'design';
+          const result = await uploadDataUrlToDropbox(up.dataUrl, filenameHint);
+          up.container[up.key] = { url: result.url, dropbox_path: result.path, name: result.name, size: result.size };
+        } catch (e) {
+          console.error('dev-api: dropbox upload failed', e?.message || e);
+          up.container[up.key] = { error: String(e?.message || e) };
+        }
+      }
+    }
+
+  // Use the possibly-modified bodyCandidate (with uploaded file metadata) for normalization
+  const normalized = typeof normalize === 'function' ? normalize(bodyCandidate) : bodyCandidate;
+    // debug: print raw + normalized snippets to help trace validation mismatches
+    try { console.log('dev-api: forward-order raw snippet:', JSON.stringify(rawBody).slice(0,1000)); } catch (e) {}
+    try { console.log('dev-api: forward-order normalized snippet:', JSON.stringify(normalized).slice(0,1000)); } catch (e) {}
+    if (validate) {
+      const ok = validate(normalized);
+      if (!ok) return res.status(400).json({ ok: false, error: 'validation_failed', details: validate.errors, normalized });
+    }
+
+    // append raw + normalized to local forward log (for dev diagnostics)
+    appendForwardLog({ ts: new Date().toISOString(), status: 'queued', raw: rawBody, payload: normalized });
 
     const r = await fetch(PABBLY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(req.body)
+      body: JSON.stringify(normalized)
     });
     const text = await r.text().catch(()=>'');
 
-    const entry = { ts: new Date().toISOString(), status: r.ok ? 'forwarded' : 'failed', statusCode: r.status, body: text, payload: req.body };
+  const entry = { ts: new Date().toISOString(), status: r.ok ? 'forwarded' : 'failed', statusCode: r.status, body: text, payload: normalized };
     appendForwardLog(entry);
 
     if (!r.ok) return res.status(502).json({ ok: false, status: r.status, body: text });
@@ -69,7 +131,8 @@ app.post('/api/forward-order', async (req, res) => {
 // Save partial payloads as users progress (for abandoned carts / in-progress states)
 app.post('/api/save-payload', (req, res) => {
   try {
-    const entry = { ts: new Date().toISOString(), payload: req.body };
+    const normalized = typeof normalize === 'function' ? normalize(req.body) : req.body;
+    const entry = { ts: new Date().toISOString(), payload: normalized };
     fs.appendFileSync(partialsLog, JSON.stringify(entry) + '\n');
     return res.json({ ok: true });
   } catch (err) {

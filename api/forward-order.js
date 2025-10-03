@@ -1,6 +1,12 @@
 import Ajv from 'ajv';
 import fs from 'fs';
 import path from 'path';
+import { v4 as uuidv4 } from 'uuid';
+import normalize from '../src/lib/normalizeOrderPayload.js';
+import { uploadBuffer, createSharedLink } from '../src/lib/dropboxClient.js';
+
+// Hardcoded Dropbox uploads base folder (per request)
+const DROPBOX_BASE_FOLDER = '/Dropbox/Print Market Team Folder/printeam/printeam_orders';
 
 const DEFAULT_PABBY_URL = "https://connect.pabbly.com/workflow/sendwebhookdata/IjU3NjYwNTY1MDYzZTA0MzU1MjZkNTUzZDUxM2Ii_pc";
 
@@ -25,12 +31,70 @@ export default async function handler(req, res) {
   const pabblyUrl = process.env.PABBLY_URL || DEFAULT_PABBY_URL;
 
   try {
-    const body = req.body;
+    const appBody = req.body;
+    // log incoming raw body for tracing (serverless logs)
+    console.log('forward-order incoming raw body:', JSON.stringify(appBody).slice(0, 1000));
+    // If the payload contains uploadedDesigns with data URLs, upload them to Dropbox now
+    async function uploadDataUrlToDropbox(dataUrl, filenameHint) {
+      const m = /^data:([^;]+);base64,(.+)$/.exec(dataUrl);
+      if (!m) throw new Error('invalid_data_url');
+      const mime = m[1];
+      const ext = (mime.split('/')[1] || 'bin').replace(/[^a-z0-9]/gi, '').slice(0,8);
+      const base64 = m[2];
+      const buf = Buffer.from(base64, 'base64');
+
+  const baseFolder = DROPBOX_BASE_FOLDER || '/printee/uploads';
+      const orderNumber = (appBody && appBody.order && (appBody.order.order_number || appBody.orderNumber)) || null;
+      const orderFolder = orderNumber ? `${baseFolder}/${orderNumber}` : baseFolder;
+      const name = `${Date.now()}-${uuidv4()}-${(filenameHint||'file').replace(/[^a-z0-9.\-_]/gi,'')}`;
+      const filename = name + (ext ? `.${ext}` : '');
+      const dropboxPath = `${orderFolder}/${filename}`;
+
+      await uploadBuffer(buf, dropboxPath);
+      const link = await createSharedLink(dropboxPath).catch(()=>null);
+      return { url: link || null, path: dropboxPath, name: filename, size: buf.length };
+    }
+
+    // scan uploadedDesigns at top-level and inside cart items for data URLs and upload them
+    const bodyCandidate = JSON.parse(JSON.stringify(appBody || {}));
+    const uploads = [];
+    function collectAndUpload(obj, parentKey) {
+      if (!obj || typeof obj !== 'object') return;
+      for (const k of Object.keys(obj)) {
+        const v = obj[k];
+        if (v && typeof v === 'string' && v.startsWith('data:')) {
+          uploads.push({ container: obj, key: k, dataUrl: v });
+        } else if (Array.isArray(v)) {
+          v.forEach((it, idx) => collectAndUpload(it, `${parentKey || ''}${k}[${idx}]`));
+        } else if (v && typeof v === 'object') {
+          collectAndUpload(v, `${parentKey || ''}${k}.`);
+        }
+      }
+    }
+    collectAndUpload(bodyCandidate);
+    if (uploads.length) {
+      for (const up of uploads) {
+        try {
+          const filenameHint = (up.container && up.container.name) || (up.container && up.container.file && up.container.file.name) || 'design';
+          const result = await uploadDataUrlToDropbox(up.dataUrl, filenameHint);
+          up.container[up.key] = { url: result.url, dropbox_path: result.path, name: result.name, size: result.size };
+        } catch (e) {
+          console.error('forward-order: dropbox upload failed', e?.message || e);
+          // attach a note but continue — do not block forwarding for other reasons
+          up.container[up.key] = { error: String(e?.message || e) };
+        }
+      }
+    }
+
+    const body = typeof normalize === 'function' ? normalize(bodyCandidate) : bodyCandidate;
+    // log normalized body snippet
+    console.log('forward-order normalized body snippet:', JSON.stringify(body).slice(0, 1000));
 
     if (validate) {
       const valid = validate(body);
       if (!valid) {
-        return res.status(400).json({ ok: false, error: 'validation_failed', details: validate.errors });
+        console.warn('forward-order validation failed', validate.errors);
+        return res.status(400).json({ ok: false, error: 'validation_failed', details: validate.errors, normalized: body });
       }
     }
 

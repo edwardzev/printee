@@ -6,7 +6,7 @@ import { printAreas, templatePresets } from '@/data/products';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 
-const MockupCanvas = ({ areaKey, baseImage, onFileUpload, uploadedDesign, template = 'tshirt', onClearFile, onColorChoice }) => {
+const MockupCanvas = ({ areaKey, baseImage, onFileUpload, uploadedDesign, template = 'tshirt', onClearFile, onColorChoice, onDesignerNotesChange }) => {
   const { t } = useLanguage();
   const { toast } = useToast();
   const fileInputRef = useRef(null);
@@ -283,7 +283,13 @@ const MockupCanvas = ({ areaKey, baseImage, onFileUpload, uploadedDesign, templa
                 maxLength={200}
                 placeholder="עד 200 תווים…"
                 value={designerNotes}
-                onChange={(e) => setDesignerNotes(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setDesignerNotes(v);
+                  if (typeof onDesignerNotesChange === 'function') {
+                    try { onDesignerNotesChange(areaKey, v); } catch {}
+                  }
+                }}
               />
               <div className="text-[11px] text-gray-400 mt-1 text-right">{designerNotes.length}/200</div>
             </div>

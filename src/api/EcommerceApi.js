@@ -422,6 +422,33 @@ export async function sendOrderToPabbly(payload, opts = {}) {
 	const url = opts.url || DEFAULT_PABBY_URL;
 	const retries = typeof opts.retries === 'number' ? opts.retries : 2;
 
+	// Try the local forwarder first so client-side callers that fall back to
+	// this function still get normalized payload handling. Use a short timeout
+	// so UI flows don't block.
+	try {
+		const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+		const signal = controller ? controller.signal : undefined;
+		const timeoutMs = typeof opts.localTimeout === 'number' ? opts.localTimeout : 3000;
+		let timeoutId;
+		if (controller) timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+		const r = await fetch('/api/forward-order', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(payload),
+			signal,
+		}).catch((e) => { throw e; });
+
+		if (controller) clearTimeout(timeoutId);
+		if (r && r.ok) {
+			return { ok: true, proxied: true, status: r.status };
+		}
+		// if local forwarder returned non-ok, fall through to direct webhook below
+	} catch (err) {
+		// ignore local forwarder failures here — we'll attempt direct webhook below
+		console.warn('Local forwarder attempt failed in sendOrderToPabbly:', err?.message || err);
+	}
+
 	let attempt = 0;
 	const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 

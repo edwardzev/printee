@@ -86,6 +86,8 @@ const ProductConfigurator = () => {
     } catch (err) {}
   }, [selectedPrintAreas, mergePayload]);
 
+  // per-area comments/printColor are persisted when changed directly in the area inputs
+
   // Persist uploaded designs (sanitized: we only keep name/url)
   useEffect(() => {
     try {
@@ -205,6 +207,21 @@ const ProductConfigurator = () => {
       // upload success toast removed per UX request — preview is visible so no toast needed
     };
     reader.readAsDataURL(file);
+  };
+
+  // Update a specific selectedPrintAreas entry with a small patch (e.g., printColor or designerComments)
+  const updateAreaField = (areaKey, patch) => {
+    const next = (selectedPrintAreas || []).map(s => {
+      if (!s) return s;
+      if (typeof s === 'string') {
+        if (s === areaKey) return { areaKey, method: 'print', ...patch };
+        return s;
+      }
+      if (s.areaKey === areaKey) return { ...s, ...patch };
+      return s;
+    });
+    setSelectedPrintAreas(next);
+    try { mergePayload({ selectedPrintAreas: next }); } catch (er) {}
   };
 
   const handleAddToCart = () => {
@@ -459,6 +476,7 @@ const ProductConfigurator = () => {
                   selectedAreas={selectedPrintAreas}
                   onChange={setSelectedPrintAreas}
                 />
+                {/* per-area comments/print color are rendered below with the upload area so they are tied to each selected area */}
               </motion.div>
 
               {selectedPrintAreas.length > 0 && (
@@ -476,6 +494,7 @@ const ProductConfigurator = () => {
                       const areaKey = typeof sel === 'string' ? sel : sel.areaKey;
                       const area = printAreas[areaKey];
                       const method = typeof sel === 'string' ? 'print' : sel.method || 'print';
+                      const selObj = typeof sel === 'string' ? { areaKey: sel, method: 'print' } : sel;
                       return (
                         <div key={areaKey} className="border rounded-lg p-4">
                           <h3 className="font-medium text-gray-900 mb-3">
@@ -486,6 +505,8 @@ const ProductConfigurator = () => {
                             baseImage={`/schematics/${areaKey.startsWith('back') ? 'back' : 'front'}.png`}
                             onFileUpload={(file) => handleFileUpload(areaKey, file)}
                             uploadedDesign={uploadedDesigns[areaKey]}
+                            onColorChoice={(aKey, v) => updateAreaField(aKey, { printColor: v })}
+                            onDesignerNotesChange={(aKey, notes) => updateAreaField(aKey, { designerComments: notes })}
                           />
                         </div>
                       );
