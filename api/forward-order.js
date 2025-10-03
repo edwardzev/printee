@@ -4,6 +4,7 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import normalize from '../src/lib/normalizeOrderPayload.js';
 import { uploadBuffer, createSharedLink } from '../src/lib/dropboxClient.js';
+import { ensureOrderRecord, airtableEnabled } from '../src/lib/airtableClient.js';
 
 // Hardcoded Dropbox uploads base folder (per request)
 const DROPBOX_BASE_FOLDER = '/Dropbox/Print Market Team Folder/printeam/printeam_orders';
@@ -34,7 +35,24 @@ export default async function handler(req, res) {
     const appBody = req.body;
     // log incoming raw body for tracing (serverless logs)
     console.log('forward-order incoming raw body:', JSON.stringify(appBody).slice(0, 1000));
-    // If the payload contains uploadedDesigns with data URLs, upload them to Dropbox now
+    // Step 1: Ensure we have a canonical normalized snapshot early to extract common fields
+    const preNormalized = typeof normalize === 'function' ? normalize(appBody || {}) : (appBody || {});
+
+    // Step 2: Ensure an Airtable order exists (before Dropbox) to get a stable order_id we can reuse everywhere
+  let ensured = { order_id: preNormalized?.order?.order_id || null, order_number: preNormalized?.order?.order_number || null };
+    try {
+      if (airtableEnabled()) {
+        ensured = await ensureOrderRecord({
+          idempotency_key: preNormalized.idempotency_key,
+          order_number: preNormalized?.order?.order_number,
+          created_at: preNormalized.created_at
+        });
+      }
+    } catch (e) {
+      console.warn('forward-order: airtable ensure failed', e?.message || e);
+    }
+
+    // If the payload contains uploadedDesigns with data URLs, upload them to Dropbox now, using order_id for folder naming
     async function uploadDataUrlToDropbox(dataUrl, filenameHint) {
       const m = /^data:([^;]+);base64,(.+)$/.exec(dataUrl);
       if (!m) throw new Error('invalid_data_url');
@@ -43,9 +61,10 @@ export default async function handler(req, res) {
       const base64 = m[2];
       const buf = Buffer.from(base64, 'base64');
 
-  const baseFolder = DROPBOX_BASE_FOLDER || '/printee/uploads';
-      const orderNumber = (appBody && appBody.order && (appBody.order.order_number || appBody.orderNumber)) || null;
-      const orderFolder = orderNumber ? `${baseFolder}/${orderNumber}` : baseFolder;
+      const baseFolder = DROPBOX_BASE_FOLDER || '/printee/uploads';
+  // Per requirement: use the Airtable Order# as the subfolder name
+  const folderKey = ensured?.order_number || preNormalized?.order?.order_number || ensured?.order_id || preNormalized?.order?.order_id || null;
+  const orderFolder = folderKey ? `${baseFolder}/${folderKey}` : baseFolder;
       const name = `${Date.now()}-${uuidv4()}-${(filenameHint||'file').replace(/[^a-z0-9.\-_]/gi,'')}`;
       const filename = name + (ext ? `.${ext}` : '');
       const dropboxPath = `${orderFolder}/${filename}`;
@@ -93,7 +112,18 @@ export default async function handler(req, res) {
     // Attach warnings into the candidate so normalize can carry them into the final payload
     if (forwarderWarnings.length) bodyCandidate._forwarder_warnings = forwarderWarnings;
 
-    const body = typeof normalize === 'function' ? normalize(bodyCandidate) : bodyCandidate;
+  // Re-normalize after uploads and include the ensured order_id if present
+    const bodyTmp = typeof normalize === 'function' ? normalize(bodyCandidate) : bodyCandidate;
+    let body = bodyTmp;
+    if (body?.order) {
+      body = { ...body, order: { ...body.order } };
+      if (ensured?.order_id) body.order.order_id = ensured.order_id;
+      if (ensured?.order_number) body.order.order_number = String(ensured.order_number);
+    }
+    // also surface Airtable-specific ids at top-level for convenience (optional)
+    if (ensured?.airtable_record_id || ensured?.order_number) {
+      body._airtable = { record_id: ensured.airtable_record_id || ensured.order_id, order_number: ensured.order_number || null };
+    }
     // log normalized body snippet
     console.log('forward-order normalized body snippet:', JSON.stringify(body).slice(0, 1000));
 

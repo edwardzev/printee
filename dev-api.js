@@ -23,6 +23,7 @@ const validate = orderSchema ? ajv.compile(orderSchema) : null;
 import normalize from './src/lib/normalizeOrderPayload.js';
 import { v4 as uuidv4 } from 'uuid';
 import { uploadBuffer, createSharedLink } from './src/lib/dropboxClient.js';
+import { ensureOrderRecord, airtableEnabled } from './src/lib/airtableClient.js';
 
 app.use(bodyParser.json({ limit: '1mb' }));
 
@@ -47,6 +48,22 @@ function appendForwardLog(entry) {
 app.post('/api/forward-order', async (req, res) => {
   try {
     const rawBody = req.body;
+    // Early normalize to extract order context for Airtable
+    const preNormalized = typeof normalize === 'function' ? normalize(rawBody || {}) : (rawBody || {});
+
+    // Ensure Airtable order exists to get a stable order_id for folder naming
+  let ensured = { order_id: preNormalized?.order?.order_id || null, order_number: preNormalized?.order?.order_number || null };
+    try {
+      if (airtableEnabled()) {
+        ensured = await ensureOrderRecord({
+          idempotency_key: preNormalized.idempotency_key,
+          order_number: preNormalized?.order?.order_number,
+          created_at: preNormalized.created_at
+        });
+      }
+    } catch (e) {
+      console.warn('dev-api: airtable ensure failed', e?.message || e);
+    }
     // If the payload contains uploadedDesigns data URLs, attempt to upload them to Dropbox now
     async function uploadDataUrlToDropbox(dataUrl, filenameHint) {
       const m = /^data:([^;]+);base64,(.+)$/.exec(dataUrl);
@@ -56,8 +73,8 @@ app.post('/api/forward-order', async (req, res) => {
       const base64 = m[2];
       const buf = Buffer.from(base64, 'base64');
       const baseFolder = process.env.DROPBOX_FOLDER || '/printee/uploads';
-      const orderNumber = (rawBody && rawBody.order && (rawBody.order.order_number || rawBody.orderNumber)) || null;
-      const orderFolder = orderNumber ? `${baseFolder}/${orderNumber}` : baseFolder;
+  const folderKey = ensured?.order_number || preNormalized?.order?.order_number || ensured?.order_id || preNormalized?.order?.order_id || null;
+  const orderFolder = folderKey ? `${baseFolder}/${folderKey}` : baseFolder;
       const name = `${Date.now()}-${uuidv4()}-${(filenameHint||'file').replace(/[^a-z0-9.\-_]/gi,'')}`;
       const filename = name + (ext ? `.${ext}` : '');
       const dropboxPath = `${orderFolder}/${filename}`;
@@ -67,8 +84,8 @@ app.post('/api/forward-order', async (req, res) => {
       return { url: link || null, path: dropboxPath, name: filename, size: buf.length };
     }
 
-    // scan for data URLs and upload them, replacing with metadata or error
-    const bodyCandidate = JSON.parse(JSON.stringify(rawBody || {}));
+  // scan for data URLs and upload them, replacing with metadata or error
+  const bodyCandidate = JSON.parse(JSON.stringify(rawBody || {}));
     const uploads = [];
     function collectAndUpload(obj) {
       if (!obj || typeof obj !== 'object') return;
@@ -97,8 +114,18 @@ app.post('/api/forward-order', async (req, res) => {
       }
     }
 
-  // Use the possibly-modified bodyCandidate (with uploaded file metadata) for normalization
-  const normalized = typeof normalize === 'function' ? normalize(bodyCandidate) : bodyCandidate;
+  // Use the possibly-modified bodyCandidate (with uploaded file metadata) for normalization,
+  // then inject ensured.order_id if present so it is consistent everywhere downstream
+  const tmp = typeof normalize === 'function' ? normalize(bodyCandidate) : bodyCandidate;
+  let normalized = tmp;
+  if (normalized?.order) {
+    normalized = { ...normalized, order: { ...normalized.order } };
+    if (ensured?.order_id) normalized.order.order_id = ensured.order_id;
+    if (ensured?.order_number) normalized.order.order_number = String(ensured.order_number);
+  }
+  if (ensured?.airtable_record_id || ensured?.order_number) {
+    normalized._airtable = { record_id: ensured.airtable_record_id || ensured.order_id, order_number: ensured.order_number || null };
+  }
     // debug: print raw + normalized snippets to help trace validation mismatches
     try { console.log('dev-api: forward-order raw snippet:', JSON.stringify(rawBody).slice(0,1000)); } catch (e) {}
     try { console.log('dev-api: forward-order normalized snippet:', JSON.stringify(normalized).slice(0,1000)); } catch (e) {}
