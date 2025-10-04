@@ -128,7 +128,7 @@ export default function Header({ dir = "rtl" }) {
           <img
             src="/logo_printee.png"
             alt="PRINTEE"
-            style={{ height: 84, width: "auto", display: "block" }}
+            style={{ height: 184, width: "auto", display: "block" }}
           />
         </Link>
 
