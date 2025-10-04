@@ -410,6 +410,7 @@ export async function getProducts({ids, offset, limit, order, sort_by, is_hidden
 
 // --- Pabbly webhook sender -------------------------------------------------
 const DEFAULT_PABBY_URL = "https://connect.pabbly.com/workflow/sendwebhookdata/IjU3NjYwNTY1MDYzZTA0MzU1MjZkNTUzZDUxM2Ii_pc";
+import normalize from '../lib/normalizeOrderPayload.js';
 
 /**
  * Send order payload to Pabbly webhook URL with simple retries.
@@ -455,10 +456,12 @@ export async function sendOrderToPabbly(payload, opts = {}) {
 	while (attempt <= retries) {
 		try {
 			attempt++;
+			// Normalize before sending directly to Pabbly so it receives the canonical shape
+			const normalized = typeof normalize === 'function' ? normalize(payload || {}) : (payload || {});
 			const res = await fetch(url, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(payload),
+				body: JSON.stringify(normalized),
 				// keep a short timeout for webhook forwarding
 			});
 

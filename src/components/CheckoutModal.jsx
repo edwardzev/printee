@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom';
 export default function CheckoutModal({ open, onClose, cartSummary, prefillContact }) {
   const { t, language } = useLanguage();
   const { toast } = useToast();
-  const { mergePayload, payload } = useCart();
+  const { mergePayload, payload, cartItems } = useCart();
   const navigate = useNavigate();
   const [method, setMethod] = useState('card');
   const [name, setName] = useState(prefillContact?.name || '');
@@ -50,8 +50,25 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
     }
 
     // Forward to Pabbly webhook (best-effort). Include cart payload and contact/payment info.
+    // Build a sanitized cart (strip File objects) to avoid serialization issues.
+    const sanitizedCart = (Array.isArray(cartItems) ? cartItems : []).map((i) => {
+      const { uploadedDesigns, ...rest } = i || {};
+      const sanitizedDesigns = {};
+      if (uploadedDesigns && typeof uploadedDesigns === 'object') {
+        for (const key in uploadedDesigns) {
+          const { file, ...restOfDesign } = uploadedDesigns[key] || {};
+          const preserved = {};
+          if (restOfDesign && restOfDesign.url) preserved.url = restOfDesign.url;
+          if (restOfDesign && restOfDesign.name) preserved.name = restOfDesign.name;
+          sanitizedDesigns[key] = preserved;
+        }
+      }
+      return { ...rest, uploadedDesigns: sanitizedDesigns };
+    });
+
     const toSend = {
       ...payload,
+      cart: sanitizedCart,
       contact: { name: name.trim(), phone: phone.trim(), email: email.trim() },
       paymentMethod: method,
       cartSummary: cartSummary || {}
@@ -59,8 +76,9 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
 
     // Try local proxy first; if it fails or is unavailable, fall back to direct sendOrderToPabbly
     try {
-      const ctrl = new AbortController();
-      const timeout = setTimeout(() => ctrl.abort(), 3000);
+  const ctrl = new AbortController();
+  // Allow more time for serverless cold starts and Dropbox uploads
+  const timeout = setTimeout(() => ctrl.abort(), 12000);
       let proxied = false;
       try {
         const r = await fetch('/api/forward-order', {
@@ -83,8 +101,8 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       }
 
       if (!proxied) {
-        // call direct Pabbly sender (has its own retries)
-        const res = await sendOrderToPabbly(toSend).catch(e=>({ ok: false, error: e?.message || String(e) }));
+        // call direct Pabbly sender (has its own retries and client-side normalization)
+        const res = await sendOrderToPabbly(toSend, { localTimeout: 12000 }).catch(e=>({ ok: false, error: e?.message || String(e) }));
         if (!res || !res.ok) {
           toast({ title: 'Webhook forwarding failed', description: res?.error || 'Unknown error', variant: 'destructive' });
         }
@@ -135,6 +153,17 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       toast({ title: 'העבר כספים ל-Bit' });
       // show phone for payment in a toast plus more persistent suggestion
       toast({ title: 'Bit / Paybox', description: 'העבירו ל: 054-696-9974. שלחו צילום אישור תשלום ל-info@printmarket.co.il' });
+      // Best-effort background forward to server now that UX is unblocked
+      try {
+        const blob = new Blob([JSON.stringify({
+          ...payload,
+          cart: (Array.isArray(cartItems) ? sanitizedCart : []),
+          contact: { name: name.trim(), phone: phone.trim(), email: email.trim() },
+          paymentMethod: method,
+          cartSummary: cartSummary || {}
+        })], { type: 'application/json' });
+        navigator.sendBeacon && navigator.sendBeacon('/api/forward-order', blob);
+      } catch (e) { /* ignore */ }
       // navigate to thank-you page so the user sees confirmation/next steps
       try { navigate('/thank-you'); } catch (e) { /* ignore */ }
       onClose();
@@ -143,6 +172,17 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
 
   // wire transfer or cheque
   toast({ title: 'תודה', description: 'נציגנו יצור איתך קשר בהקדם כדי להשלים את פרטי התשלום.' });
+  // Fire-and-forget background forward as well
+  try {
+    const blob = new Blob([JSON.stringify({
+      ...payload,
+      cart: sanitizedCart,
+      contact: { name: name.trim(), phone: phone.trim(), email: email.trim() },
+      paymentMethod: method,
+      cartSummary: cartSummary || {}
+    })], { type: 'application/json' });
+    navigator.sendBeacon && navigator.sendBeacon('/api/forward-order', blob);
+  } catch (e) { /* ignore */ }
   try { navigate('/thank-you'); } catch (e) { /* ignore */ }
   onClose();
   };
