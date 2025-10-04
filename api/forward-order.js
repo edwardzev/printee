@@ -39,7 +39,7 @@ export default async function handler(req, res) {
     const preNormalized = typeof normalize === 'function' ? normalize(appBody || {}) : (appBody || {});
 
     // Step 2: Ensure an Airtable order exists (before Dropbox) to get a stable order_id we can reuse everywhere
-  let ensured = { order_id: preNormalized?.order?.order_id || null, order_number: preNormalized?.order?.order_number || null };
+  let ensured = { order_id: null, order_number: null, enabled: false };
     try {
       if (airtableEnabled()) {
         ensured = await ensureOrderRecord({
@@ -117,11 +117,11 @@ export default async function handler(req, res) {
     let body = bodyTmp;
     if (body?.order) {
       body = { ...body, order: { ...body.order } };
-      if (ensured?.order_id) body.order.order_id = ensured.order_id;
-      if (ensured?.order_number) body.order.order_number = String(ensured.order_number);
+      if (ensured?.enabled && ensured?.order_id) body.order.order_id = ensured.order_id;
+      if (ensured?.enabled && ensured?.order_number) body.order.order_number = String(ensured.order_number);
     }
-    // also surface Airtable-specific ids at top-level for convenience (optional)
-    if (ensured?.airtable_record_id || ensured?.order_number) {
+    // also surface Airtable-specific ids only if Airtable is enabled and present
+    if (ensured?.enabled && (ensured?.airtable_record_id || ensured?.order_number)) {
       body._airtable = { record_id: ensured.airtable_record_id || ensured.order_id, order_number: ensured.order_number || null };
     }
     // log normalized body snippet

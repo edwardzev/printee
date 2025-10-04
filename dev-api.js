@@ -52,7 +52,7 @@ app.post('/api/forward-order', async (req, res) => {
     const preNormalized = typeof normalize === 'function' ? normalize(rawBody || {}) : (rawBody || {});
 
     // Ensure Airtable order exists to get a stable order_id for folder naming
-  let ensured = { order_id: preNormalized?.order?.order_id || null, order_number: preNormalized?.order?.order_number || null };
+  let ensured = { order_id: null, order_number: null, enabled: false };
     try {
       if (airtableEnabled()) {
         ensured = await ensureOrderRecord({
@@ -120,10 +120,10 @@ app.post('/api/forward-order', async (req, res) => {
   let normalized = tmp;
   if (normalized?.order) {
     normalized = { ...normalized, order: { ...normalized.order } };
-    if (ensured?.order_id) normalized.order.order_id = ensured.order_id;
-    if (ensured?.order_number) normalized.order.order_number = String(ensured.order_number);
+    if (ensured?.enabled && ensured?.order_id) normalized.order.order_id = ensured.order_id;
+    if (ensured?.enabled && ensured?.order_number) normalized.order.order_number = String(ensured.order_number);
   }
-  if (ensured?.airtable_record_id || ensured?.order_number) {
+  if (ensured?.enabled && (ensured?.airtable_record_id || ensured?.order_number)) {
     normalized._airtable = { record_id: ensured.airtable_record_id || ensured.order_id, order_number: ensured.order_number || null };
   }
     // debug: print raw + normalized snippets to help trace validation mismatches

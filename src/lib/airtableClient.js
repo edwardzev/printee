@@ -1,17 +1,30 @@
 import fetch from 'node-fetch';
 
+// Resolve environment variables with common aliases
+function getEnv(name, aliases = []) {
+  if (process.env[name]) return process.env[name];
+  for (const a of aliases) {
+    if (process.env[a]) return process.env[a];
+  }
+  return undefined;
+}
+
+const AIRTABLE_API_KEY = getEnv('AIRTABLE_API_KEY', ['AIRTABLE_TOKEN']);
+const AIRTABLE_BASE_ID = getEnv('AIRTABLE_BASE_ID', ['AIRTABLE_BASE']);
+const AIRTABLE_ORDERS_TABLE = getEnv('AIRTABLE_ORDERS_TABLE', ['AIRTABLE_TABLE', 'AIRTABLE_ORDERS_TABLE_NAME']);
+
 function hasAirtableEnv() {
-  return Boolean(process.env.AIRTABLE_API_KEY && process.env.AIRTABLE_BASE_ID && process.env.AIRTABLE_ORDERS_TABLE);
+  return Boolean(AIRTABLE_API_KEY && AIRTABLE_BASE_ID && AIRTABLE_ORDERS_TABLE);
 }
 
 function apiUrl(path) {
-  const baseId = process.env.AIRTABLE_BASE_ID;
+  const baseId = AIRTABLE_BASE_ID;
   return `https://api.airtable.com/v0/${encodeURIComponent(baseId)}/${path}`;
 }
 
 function headers() {
   return {
-    'Authorization': `Bearer ${process.env.AIRTABLE_API_KEY}`,
+    'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
     'Content-Type': 'application/json'
   };
 }
@@ -22,10 +35,17 @@ function escapeFormulaString(v = '') {
 
 export async function findOrderRecord({ idempotency_key, order_number }) {
   if (!hasAirtableEnv()) return null;
-  const table = process.env.AIRTABLE_ORDERS_TABLE;
+  const table = AIRTABLE_ORDERS_TABLE;
   const parts = [];
   if (idempotency_key) parts.push(`{IdempotencyKey}='${escapeFormulaString(idempotency_key)}'`);
-  if (order_number) parts.push(`{OrderNumber}='${escapeFormulaString(order_number)}'`);
+  if (order_number) {
+    const on = escapeFormulaString(order_number);
+    // Try common variants: Order#, Order #, OrderNumber, order_number
+    parts.push(`{Order#}='${on}'`);
+    parts.push(`{Order #}='${on}'`);
+    parts.push(`{OrderNumber}='${on}'`);
+    parts.push(`{order_number}='${on}'`);
+  }
   if (!parts.length) return null;
   const formula = parts.length === 1 ? parts[0] : `OR(${parts.join(',')})`;
   const url = apiUrl(`${encodeURIComponent(table)}?filterByFormula=${encodeURIComponent(formula)}&maxRecords=1`);
@@ -38,7 +58,7 @@ export async function findOrderRecord({ idempotency_key, order_number }) {
 
 export async function createOrderRecord({ idempotency_key }) {
   if (!hasAirtableEnv()) return null;
-  const table = process.env.AIRTABLE_ORDERS_TABLE;
+  const table = AIRTABLE_ORDERS_TABLE;
   // Minimal create: let Airtable generate the primary field (Order#)
   const fields = {};
   if (idempotency_key) fields.IdempotencyKey = idempotency_key;
@@ -54,31 +74,41 @@ export async function createOrderRecord({ idempotency_key }) {
   return rec;
 }
 
+function readOrderNumberFromFields(fields = {}) {
+  return (
+    fields['Order#'] ||
+    fields['Order #'] ||
+    fields.OrderNumber ||
+    fields.order_number ||
+    null
+  );
+}
+
 export async function ensureOrderRecord(ctx) {
-  if (!hasAirtableEnv()) return { order_id: null, airtable_record_id: null, record: null, created: false };
+  if (!hasAirtableEnv()) return { order_id: null, airtable_record_id: null, order_number: null, record: null, created: false, enabled: false };
   const found = await findOrderRecord(ctx).catch(()=>null);
   if (found) {
     const recId = found.id;
-    const orderNum = (found.fields && (found.fields['Order#'] || found.fields.OrderNumber || found.fields.order_number)) || null;
-    return { order_id: String(recId), order_number: orderNum ? String(orderNum) : null, airtable_record_id: found.id, record: found, created: false };
+    const orderNum = readOrderNumberFromFields(found.fields || {});
+    return { order_id: String(recId), order_number: orderNum ? String(orderNum) : null, airtable_record_id: found.id, record: found, created: false, enabled: true };
   }
   const created = await createOrderRecord(ctx);
-  let orderNum = (created.fields && (created.fields['Order#'] || created.fields.OrderNumber || created.fields.order_number)) || null;
+  let orderNum = readOrderNumberFromFields(created.fields || {});
   // If auto number hasn't materialized in the immediate response, fetch the record once
   if (!orderNum) {
     try {
       const rec = await readOrderRecord(created.id);
-      orderNum = rec && rec.fields && (rec.fields['Order#'] || rec.fields.OrderNumber || rec.fields.order_number) || null;
+      orderNum = rec && rec.fields && readOrderNumberFromFields(rec.fields) || null;
     } catch (e) { /* ignore */ }
   }
-  return { order_id: String(created.id), order_number: orderNum ? String(orderNum) : null, airtable_record_id: created.id, record: created, created: true };
+  return { order_id: String(created.id), order_number: orderNum ? String(orderNum) : null, airtable_record_id: created.id, record: created, created: true, enabled: true };
 }
 
 export function airtableEnabled() { return hasAirtableEnv(); }
 
 export async function readOrderRecord(recordId) {
   if (!hasAirtableEnv() || !recordId) return null;
-  const table = process.env.AIRTABLE_ORDERS_TABLE;
+  const table = AIRTABLE_ORDERS_TABLE;
   const url = apiUrl(`${encodeURIComponent(table)}/${encodeURIComponent(recordId)}`);
   const res = await fetch(url, { headers: headers() });
   if (!res.ok) return null;
