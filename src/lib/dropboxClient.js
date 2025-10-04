@@ -2,6 +2,22 @@ import fetch from 'node-fetch';
 
 let cached = { token: null, expiresAt: 0 };
 
+// Optional namespace id (from get_current_account root_info.root_namespace_id)
+const DROPBOX_NAMESPACE_ID = process.env.DROPBOX_NAMESPACE_ID || process.env.DROPBOX_ROOT_NAMESPACE_ID || '';
+
+function accountHeaders(base = {}) {
+  const h = { ...base };
+  if (DROPBOX_NAMESPACE_ID) {
+    try {
+      // Dropbox expects a JSON string for the path-root header
+      h['Dropbox-API-Path-Root'] = JSON.stringify({ '.tag': 'root', root_namespace_id: String(DROPBOX_NAMESPACE_ID) });
+    } catch (e) {
+      // ignore
+    }
+  }
+  return h;
+}
+
 async function getAccessToken() {
   // If a legacy DROPBOX_TOKEN is provided, use it (dev convenience)
   if (process.env.DROPBOX_TOKEN) return process.env.DROPBOX_TOKEN;
@@ -104,11 +120,11 @@ async function uploadBuffer(buffer, dropboxPath) {
   const token = await getAccessToken();
   const res = await fetch('https://content.dropboxapi.com/2/files/upload', {
     method: 'POST',
-    headers: {
+    headers: accountHeaders({
       'Authorization': `Bearer ${token}`,
       'Dropbox-API-Arg': JSON.stringify({ path: dropboxPath, mode: 'add', autorename: true, mute: false }),
       'Content-Type': 'application/octet-stream'
-    },
+    }),
     body: buffer
   });
   const json = await res.json().catch(() => null);
@@ -125,7 +141,7 @@ async function createSharedLink(dropboxPath) {
   try {
     const res = await fetch('https://api.dropboxapi.com/2/sharing/create_shared_link_with_settings', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      headers: accountHeaders({ 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }),
       body: JSON.stringify({ path: dropboxPath })
     });
     const json = await res.json().catch(() => null);
@@ -136,7 +152,7 @@ async function createSharedLink(dropboxPath) {
   try {
     const res2 = await fetch('https://api.dropboxapi.com/2/sharing/list_shared_links', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      headers: accountHeaders({ 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }),
       body: JSON.stringify({ path: dropboxPath, direct_only: true })
     });
     const json2 = await res2.json().catch(() => null);

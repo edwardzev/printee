@@ -16,8 +16,8 @@ export default async function handler(req, res) {
     if (process.env.DROPBOX_TEAM_MEMBER_ID && !headers['Dropbox-API-Select-User']) headers['Dropbox-API-Select-User'] = process.env.DROPBOX_TEAM_MEMBER_ID;
     if (process.env.DROPBOX_PATH_ROOT) headers['Dropbox-API-Path-Root'] = process.env.DROPBOX_PATH_ROOT;
 
-    // Dropbox users/get_current_account expects a POST with no args
-    const r = await fetch('https://api.dropboxapi.com/2/users/get_current_account', { method: 'POST', headers });
+  // Dropbox users/get_current_account expects a POST with an empty JSON object body
+  const r = await fetch('https://api.dropboxapi.com/2/users/get_current_account', { method: 'POST', headers, body: JSON.stringify({}) });
     const text = await r.text().catch(() => '');
     let json = null;
     try { json = text ? JSON.parse(text) : null; } catch (e) { json = { raw: text }; }
