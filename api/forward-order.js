@@ -6,8 +6,10 @@ import normalize from '../src/lib/normalizeOrderPayload.js';
 import { uploadBuffer, createSharedLink } from '../src/lib/dropboxClient.js';
 import { ensureOrderRecord, airtableEnabled } from '../src/lib/airtableClient.js';
 
-// Hardcoded Dropbox uploads base folder (per request)
-const DROPBOX_BASE_FOLDER = '/Dropbox/Print Market Team Folder/printeam/printeam_orders';
+// Dropbox uploads base folder (clean, relative to namespace root). Overridable via env.
+const DROPBOX_BASE_FOLDER = process.env.DROPBOX_BASE_FOLDER || '/printee/uploads';
+// Namespace targeting: when set, prefix paths with ns:<id> so writes occur under that namespace root
+const DROPBOX_NAMESPACE_ID = process.env.DROPBOX_NAMESPACE_ID || process.env.DROPBOX_ROOT_NAMESPACE_ID || null;
 
 const DEFAULT_PABBY_URL = "https://connect.pabbly.com/workflow/sendwebhookdata/IjU3NjYwNTY1MDYzZTA0MzU1MjZkNTUzZDUxM2Ii_pc";
 
@@ -66,13 +68,14 @@ export default async function handler(req, res) {
       const base64 = m[2];
       const buf = Buffer.from(base64, 'base64');
 
-      const baseFolder = DROPBOX_BASE_FOLDER || '/printee/uploads';
-  // Per requirement: use the Airtable Order# as the subfolder name
-  const folderKey = ensured?.order_number || preNormalized?.order?.order_number || ensured?.order_id || preNormalized?.order?.order_id || null;
-  const orderFolder = folderKey ? `${baseFolder}/${folderKey}` : baseFolder;
+    const baseFolder = DROPBOX_BASE_FOLDER || '/printee/uploads';
+    // Per requirement: use the Airtable Order# as the subfolder name
+    const folderKey = ensured?.order_number || preNormalized?.order?.order_number || ensured?.order_id || preNormalized?.order?.order_id || null;
+    const orderFolder = folderKey ? `${baseFolder}/${folderKey}` : baseFolder;
       const name = `${Date.now()}-${uuidv4()}-${(filenameHint||'file').replace(/[^a-z0-9.\-_]/gi,'')}`;
       const filename = name + (ext ? `.${ext}` : '');
-      const dropboxPath = `${orderFolder}/${filename}`;
+    const nsPrefix = DROPBOX_NAMESPACE_ID ? `ns:${DROPBOX_NAMESPACE_ID}` : '';
+    const dropboxPath = `${nsPrefix}${orderFolder}/${filename}`;
 
       await uploadBuffer(buf, dropboxPath);
       const link = await createSharedLink(dropboxPath).catch(()=>null);
