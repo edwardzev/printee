@@ -102,6 +102,8 @@ export default async function handler(req, res) {
           const filenameHint = (up.container && up.container.name) || (up.container && up.container.file && up.container.file.name) || 'design';
           const result = await uploadDataUrlToDropbox(up.dataUrl, filenameHint);
           up.container[up.key] = { url: result.url, dropbox_path: result.path, name: result.name, size: result.size };
+          // Debug log: show where we uploaded (safe, no tokens)
+          console.log('forward-order: uploaded to dropbox path:', result.path);
         } catch (e) {
           const msg = e && (e.message || String(e)) || 'unknown';
           console.error('forward-order: dropbox upload failed', msg);
@@ -127,6 +129,10 @@ export default async function handler(req, res) {
     // also surface Airtable-specific ids only if Airtable is enabled and present
     if (ensured?.enabled && (ensured?.airtable_record_id || ensured?.order_number)) {
       body._airtable = { record_id: ensured.airtable_record_id || ensured.order_id, order_number: ensured.order_number || null };
+    }
+    // attach forwarder warnings into final body so downstream systems (Pabbly) can see upload/airtable issues
+    if (forwarderWarnings.length) {
+      body._forwarder_warnings = (body._forwarder_warnings || []).concat(forwarderWarnings);
     }
     // log normalized body snippet
     console.log('forward-order normalized body snippet:', JSON.stringify(body).slice(0, 1000));
