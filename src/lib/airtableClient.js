@@ -12,6 +12,13 @@ function getEnv(name, aliases = []) {
 const AIRTABLE_API_KEY = getEnv('AIRTABLE_API_KEY', ['AIRTABLE_TOKEN']);
 const AIRTABLE_BASE_ID = getEnv('AIRTABLE_BASE_ID', ['AIRTABLE_BASE']);
 const AIRTABLE_ORDERS_TABLE = getEnv('AIRTABLE_ORDERS_TABLE', ['AIRTABLE_TABLE', 'AIRTABLE_ORDERS_TABLE_NAME']);
+const AIRTABLE_CREATE_ORDER = getEnv('AIRTABLE_CREATE_ORDER');
+
+function createEnabled() {
+  if (AIRTABLE_CREATE_ORDER == null) return true; // default on
+  const v = String(AIRTABLE_CREATE_ORDER).toLowerCase();
+  return !(v === 'false' || v === '0' || v === 'no');
+}
 
 function hasAirtableEnv() {
   return Boolean(AIRTABLE_API_KEY && AIRTABLE_BASE_ID && AIRTABLE_ORDERS_TABLE);
@@ -91,6 +98,9 @@ export async function ensureOrderRecord(ctx) {
     const recId = found.id;
     const orderNum = readOrderNumberFromFields(found.fields || {});
     return { order_id: String(recId), order_number: orderNum ? String(orderNum) : null, airtable_record_id: found.id, record: found, created: false, enabled: true };
+  }
+  if (!createEnabled()) {
+    return { order_id: null, order_number: null, airtable_record_id: null, record: null, created: false, enabled: true };
   }
   const created = await createOrderRecord(ctx);
   let orderNum = readOrderNumberFromFields(created.fields || {});

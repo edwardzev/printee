@@ -40,6 +40,7 @@ export default async function handler(req, res) {
 
     // Step 2: Ensure an Airtable order exists (before Dropbox) to get a stable order_id we can reuse everywhere
   let ensured = { order_id: null, order_number: null, enabled: false };
+  const forwarderWarnings = [];
     try {
       if (airtableEnabled()) {
         ensured = await ensureOrderRecord({
@@ -50,6 +51,10 @@ export default async function handler(req, res) {
       }
     } catch (e) {
       console.warn('forward-order: airtable ensure failed', e?.message || e);
+      forwarderWarnings.push({ when: new Date().toISOString(), where: 'airtable.ensure', message: e?.message || String(e) });
+    }
+    if (!airtableEnabled()) {
+      forwarderWarnings.push({ when: new Date().toISOString(), where: 'airtable', message: 'Airtable not enabled or missing env' });
     }
 
     // If the payload contains uploadedDesigns with data URLs, upload them to Dropbox now, using order_id for folder naming
@@ -77,7 +82,6 @@ export default async function handler(req, res) {
     // scan uploadedDesigns at top-level and inside cart items for data URLs and upload them
     const bodyCandidate = JSON.parse(JSON.stringify(appBody || {}));
   const uploads = [];
-  const forwarderWarnings = [];
     function collectAndUpload(obj, parentKey) {
       if (!obj || typeof obj !== 'object') return;
       for (const k of Object.keys(obj)) {
@@ -109,8 +113,8 @@ export default async function handler(req, res) {
       }
     }
 
-    // Attach warnings into the candidate so normalize can carry them into the final payload
-    if (forwarderWarnings.length) bodyCandidate._forwarder_warnings = forwarderWarnings;
+  // Attach warnings into the candidate so normalize can carry them into the final payload
+  if (forwarderWarnings.length) bodyCandidate._forwarder_warnings = forwarderWarnings;
 
   // Re-normalize after uploads and include the ensured order_id if present
     const bodyTmp = typeof normalize === 'function' ? normalize(bodyCandidate) : bodyCandidate;
