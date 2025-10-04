@@ -1,4 +1,5 @@
 import Ajv from 'ajv';
+import addFormats from 'ajv-formats';
 import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -23,6 +24,8 @@ try {
 }
 
 const ajv = new Ajv({ allErrors: true, strict: false });
+// Enable standard string formats like date-time, email, uri, etc.
+addFormats(ajv);
 const validate = orderSchema ? ajv.compile(orderSchema) : null;
 
 export default async function handler(req, res) {

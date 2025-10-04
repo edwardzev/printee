@@ -4,10 +4,13 @@ let cached = { token: null, expiresAt: 0 };
 
 // Optional namespace id (from get_current_account root_info.root_namespace_id)
 const DROPBOX_NAMESPACE_ID = process.env.DROPBOX_NAMESPACE_ID || process.env.DROPBOX_ROOT_NAMESPACE_ID || '';
+// If true, do NOT send Dropbox-API-Path-Root header; rely on ns:<id> prefix in paths instead.
+// Default to true to match forward-order's ns: prefix strategy and avoid conflicting targeting.
+const DROPBOX_PATH_ROOT_DISABLED = String(process.env.DROPBOX_PATH_ROOT_DISABLED || '1') === '1';
 
 function accountHeaders(base = {}) {
   const h = { ...base };
-  if (DROPBOX_NAMESPACE_ID) {
+  if (DROPBOX_NAMESPACE_ID && !DROPBOX_PATH_ROOT_DISABLED) {
     try {
       // Dropbox expects a JSON string for the path-root header
       h['Dropbox-API-Path-Root'] = JSON.stringify({ '.tag': 'root', root_namespace_id: String(DROPBOX_NAMESPACE_ID) });
