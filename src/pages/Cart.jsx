@@ -160,33 +160,80 @@ const Cart = () => {
                       <h3 className="text-lg font-semibold text-gray-900 mb-1">
                         {item.productName}
                       </h3>
-                      <p className="text-sm text-gray-600 mb-2">
-                        {item.selectedColors && item.selectedColors.length > 0 ? (
-                          <>
-                            {language === 'he' ? 'צבעים' : 'Colors'}: {item.selectedColors.map(c => (language === 'he' ? (colorLabelsHe[c] || c) : c)).join(', ')} • {Object.values(item.sizeMatrices || {}).reduce((sum, mat) => sum + (mat ? Object.values(mat).reduce((s, q) => s + (q || 0), 0) : 0), 0)} פריטים
-                          </>
-                        ) : (
-                          <>
-                            צבע: {language === 'he' ? (colorLabelsHe[item.color] || item.color) : item.color} • {Object.values(item.sizeMatrix || {}).reduce((sum, qty) => sum + (qty || 0), 0)} פריטים
-                          </>
-                        )}
-                      </p>
+                      {/* Compact color x size table: rows = colors, cols = sizes */}
+                      {(() => {
+                        const matrices = item.sizeMatrices || {};
+                        const activeColors = (item.selectedColors || []).filter(c => {
+                          const mat = matrices[c] || {};
+                          return Object.values(mat).reduce((s, q) => s + (q || 0), 0) > 0;
+                        });
 
-                      {/* Size breakdown per color or legacy */}
-                      <div className="text-sm text-gray-500 mb-2">
-                        {item.selectedColors && item.selectedColors.length > 0 ? (
-                          item.selectedColors.map(colorKey => {
-                            const mat = (item.sizeMatrices && item.sizeMatrices[colorKey]) || {};
-                            const entries = Object.entries(mat || {}).filter(([size, qty]) => qty > 0).map(([size, qty]) => `${t(size) || size.toUpperCase()}: ${qty}`);
-                            return `${language === 'he' ? (colorLabelsHe[colorKey] || colorKey) : colorKey} — ${entries.join(', ')}`;
-                          }).join(' \n')
-                        ) : (
-                          Object.entries(item.sizeMatrix || {})
-                            .filter(([size, qty]) => qty > 0)
-                            .map(([size, qty]) => `${t(size) || size.toUpperCase()}: ${qty}`)
-                            .join(', ')
-                        )}
-                      </div>
+                        if (activeColors.length > 0) {
+                          // Prefer the product's canonical sizeRange so columns are uniform
+                          const prod = products.find(p => p.sku === item.productSku) || {};
+                          let sizes = Array.isArray(prod.sizeRange) && prod.sizeRange.length
+                            ? prod.sizeRange.slice()
+                            : null;
+
+                          // If product doesn't declare sizes, fall back to collecting sizes from matrices
+                          if (!sizes) {
+                            const sizesSet = new Set();
+                            activeColors.forEach(c => {
+                              const mat = matrices[c] || {};
+                              Object.keys(mat || {}).forEach(sz => sizesSet.add(sz));
+                            });
+                            sizes = Array.from(sizesSet);
+                          }
+
+                          return (
+                            <div className="overflow-auto mb-2">
+                              <table className="w-full text-sm text-gray-700 border-collapse">
+                                <thead>
+                                  <tr>
+                                    <th className="text-left pr-4 pb-2 font-medium">{language === 'he' ? 'צבע' : 'Color'}</th>
+                                    {sizes.map((sz, i) => (
+                                      <th
+                                        key={sz}
+                                        className={`text-center px-3 pb-2 font-medium border-l border-gray-200`}
+                                      >
+                                        {t(sz) || sz.toUpperCase()}
+                                      </th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {activeColors.map(colorKey => {
+                                    const mat = matrices[colorKey] || {};
+                                    return (
+                                      <tr key={colorKey} className="border-t">
+                                        <td className="py-2 pr-4">{language === 'he' ? (colorLabelsHe[colorKey] || colorKey) : colorKey}</td>
+                                        {sizes.map((sz) => {
+                                          const qty = mat[sz] || 0;
+                                          return (
+                                            <td key={sz} className={`text-center px-3 py-2 border-l border-gray-200`}>
+                                              {qty > 0 ? qty : ''}
+                                            </td>
+                                          );
+                                        })}
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          );
+                        }
+
+                        // Legacy single-color fallback (list sizes)
+                        return (
+                          <div className="text-sm text-gray-500 mb-2">
+                            {Object.entries(item.sizeMatrix || {})
+                              .filter(([size, qty]) => qty > 0)
+                              .map(([size, qty]) => `${t(size) || size.toUpperCase()}: ${qty}`)
+                              .join(', ')}
+                          </div>
+                        );
+                      })()}
 
                       {/* Print areas */}
                       <div className="text-sm text-gray-500 mb-3">
@@ -331,7 +378,23 @@ const Cart = () => {
                   <ArrowRight className="h-5 w-5 ml-2" />
                 </Button>
 
-                <CheckoutModal open={modalOpen} onClose={()=>setModalOpen(false)} cartSummary={{ total: getTotalPrice() }} prefillContact={payload?.contact || {}} />
+                {(() => {
+                  const prefill = {
+                    ...(payload?.contact || {}),
+                    // If delivery contact exists, prefer its name/phone as prefill fallbacks
+                    name: (payload?.contact?.name || payload?.contact?.fullName || ''),
+                    phone: (payload?.contact?.phone || ''),
+                    email: (payload?.contact?.email || ''),
+                  };
+                  return (
+                    <CheckoutModal
+                      open={modalOpen}
+                      onClose={()=>setModalOpen(false)}
+                      cartSummary={{ total: getTotalPrice() }}
+                      prefillContact={prefill}
+                    />
+                  );
+                })()}
 
                 <Link to="/catalog">
                   <Button variant="outline" className="w-full">

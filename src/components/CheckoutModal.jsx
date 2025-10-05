@@ -20,12 +20,13 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
 
   useEffect(() => {
     if (open) {
-      setMethod('card');
+      // Initialize form fields from the provided prefill snapshot when the modal opens.
+      // Do NOT reset the chosen payment method on subsequent contact updates.
       setName(prefillContact?.name || '');
       setPhone(prefillContact?.phone || '');
       setEmail(prefillContact?.email || '');
     }
-  }, [open, prefillContact]);
+  }, [open]);
 
   if (!open) return null;
 

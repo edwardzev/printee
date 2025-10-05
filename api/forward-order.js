@@ -13,6 +13,8 @@ const DROPBOX_BASE_FOLDER = process.env.DROPBOX_BASE_FOLDER || '/printee/uploads
 const DROPBOX_NAMESPACE_ID = process.env.DROPBOX_NAMESPACE_ID || process.env.DROPBOX_ROOT_NAMESPACE_ID || null;
 
 const DEFAULT_PABBY_URL = "https://connect.pabbly.com/workflow/sendwebhookdata/IjU3NjYwNTY1MDYzZTA0MzU1MjZkNTUzZDUxM2Ii_pc";
+// Verbose logging toggle
+const DEBUG_FORWARDER = String(process.env.DEBUG_FORWARDER || '0') === '1';
 
 const schemaPath = path.resolve(process.cwd(), 'schemas', 'order.schema.json');
 let orderSchema = null;
@@ -39,7 +41,7 @@ export default async function handler(req, res) {
   try {
     const appBody = req.body;
     // log incoming raw body for tracing (serverless logs)
-    console.log('forward-order incoming raw body:', JSON.stringify(appBody).slice(0, 1000));
+  if (DEBUG_FORWARDER) console.log('forward-order incoming raw body:', JSON.stringify(appBody).slice(0, 1000));
     // Step 1: Ensure we have a canonical normalized snapshot early to extract common fields
     const preNormalized = typeof normalize === 'function' ? normalize(appBody || {}) : (appBody || {});
 
@@ -109,7 +111,7 @@ export default async function handler(req, res) {
           const result = await uploadDataUrlToDropbox(up.dataUrl, filenameHint);
           up.container[up.key] = { url: result.url, dropbox_path: result.path, name: result.name, size: result.size };
           // Debug log: show where we uploaded (safe, no tokens)
-          console.log('forward-order: uploaded to dropbox path:', result.path);
+          if (DEBUG_FORWARDER) console.log('forward-order: uploaded to dropbox path:', result.path);
         } catch (e) {
           const msg = e && (e.message || String(e)) || 'unknown';
           console.error('forward-order: dropbox upload failed', msg);
@@ -141,7 +143,7 @@ export default async function handler(req, res) {
       body._forwarder_warnings = (body._forwarder_warnings || []).concat(forwarderWarnings);
     }
     // log normalized body snippet
-    console.log('forward-order normalized body snippet:', JSON.stringify(body).slice(0, 1000));
+  if (DEBUG_FORWARDER) console.log('forward-order normalized body snippet:', JSON.stringify(body).slice(0, 1000));
 
     if (validate) {
       const valid = validate(body);

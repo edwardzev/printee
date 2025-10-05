@@ -34,7 +34,10 @@ const DeliveryOptions = ({ totalQty, withDelivery, onDeliveryChange, contact = {
   };
 
   const handleFieldBlur = () => {
-    if (typeof onContactChange === 'function') onContactChange({ ...local });
+    if (typeof onContactChange === 'function') {
+      // Normalize contact shape so downstream consumers can read name/phone consistently
+      onContactChange({ ...local, name: local.fullName });
+    }
   };
 
   return (

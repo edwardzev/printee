@@ -171,7 +171,13 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
                 </div>
               )}
 
-              <Button className="w-full" size="lg" disabled={!canAddToCart} onClick={() => { onAddToCart(); setAddedOnce(true); }}>
+              <Button
+                className="w-full"
+                size="lg"
+                variant={addedOnce ? 'outline' : 'default'}
+                disabled={!canAddToCart}
+                onClick={() => { onAddToCart(); setAddedOnce(true); }}
+              >
                 <ShoppingCart className="h-5 w-5 mr-2" />
                 {t('addToCart')}
               </Button>
@@ -194,9 +200,9 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
 
               <div className="mt-3">
                 <Link to="/cart" className="w-full inline-block">
-                  <button className="w-full bg-white border border-gray-200 rounded px-4 py-3 text-sm text-gray-700">
+                  <Button className="w-full" size="lg" variant={addedOnce ? 'default' : 'outline'}>
                     {language === 'he' ? 'עבור לעגלה' : 'Go to cart'}
-                  </button>
+                  </Button>
                 </Link>
               </div>
             </motion.div>
@@ -263,13 +269,28 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
                       <span className="text-lg font-bold text-blue-600">₪{pricing.totalIls?.toLocaleString()}</span>
                     </div>
                   </div>
-                  <Button className="w-full mt-2" size="lg" disabled={!canAddToCart} onClick={() => { onAddToCart(); setIsSheetOpen(false); setAddedOnce(true); }}>{t('addToCart')}</Button>
+                  <Button
+                    className="w-full mt-2"
+                    size="lg"
+                    variant={addedOnce ? 'outline' : 'default'}
+                    disabled={!canAddToCart}
+                    onClick={() => { onAddToCart(); setIsSheetOpen(false); setAddedOnce(true); }}
+                  >
+                    {t('addToCart')}
+                  </Button>
                   {addedOnce && (
-                    <Link to="/catalog" onClick={() => setIsSheetOpen(false)}>
-                      <button className="w-full mt-2 bg-white border border-gray-200 rounded px-4 py-3 text-sm text-gray-700">
-                        {language === 'he' ? 'בחר מוצר נוסף' : 'Choose another product'}
-                      </button>
-                    </Link>
+                    <>
+                      <Link to="/cart" onClick={() => setIsSheetOpen(false)}>
+                        <Button className="w-full mt-2" size="lg" variant="default">
+                          {language === 'he' ? 'עבור לעגלה' : 'Go to cart'}
+                        </Button>
+                      </Link>
+                      <Link to="/catalog" onClick={() => setIsSheetOpen(false)}>
+                        <Button className="w-full mt-2" size="lg" variant="outline">
+                          {language === 'he' ? 'בחר מוצר נוסף' : 'Choose another product'}
+                        </Button>
+                      </Link>
+                    </>
                   )}
                 </div>
               </motion.div>

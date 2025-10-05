@@ -2,6 +2,9 @@ import fetch from 'node-fetch';
 import { getAccessToken } from '../src/lib/dropboxClient.js';
 
 export default async function handler(req, res) {
+  if (String(process.env.ADMIN_PROBES_ENABLED || '0') !== '1') {
+    return res.status(404).json({ ok: false, error: 'Not Found' });
+  }
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
     return res.status(405).json({ ok: false, error: 'Method Not Allowed' });
