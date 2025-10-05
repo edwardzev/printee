@@ -17,6 +17,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
   const [name, setName] = useState(prefillContact?.name || '');
   const [phone, setPhone] = useState(prefillContact?.phone || '');
   const [email, setEmail] = useState(prefillContact?.email || '');
+  const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -75,42 +76,32 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       cartSummary: cartSummary || {}
     };
 
-    // Try local proxy first; if it fails or is unavailable, fall back to direct sendOrderToPabbly
-    try {
-      const ctrl = new AbortController();
-      // Allow more time for serverless cold starts and Dropbox uploads
-      const timeout = setTimeout(() => ctrl.abort(), 12000);
-      let proxied = false;
+  // Fire-and-forget forwarding: prefer sendBeacon, fallback to a short fetch so UI doesn't hang
+  setProcessing(true);
+  try {
       try {
-        const r = await fetch('/api/forward-order', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(toSend),
-          signal: ctrl.signal
-        });
-        clearTimeout(timeout);
-        if (r && r.ok) {
-          proxied = true;
+        if (navigator && navigator.sendBeacon) {
+          const blob = new Blob([JSON.stringify(toSend)], { type: 'application/json' });
+          const ok = navigator.sendBeacon('/api/forward-order', blob);
+          if (ok) {
+            // sent via beacon, nothing more to do
+          } else {
+            // fallback to short fetch
+            await fetch('/api/forward-order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(toSend), signal: (new AbortController()).signal }).catch(()=>{});
+          }
         } else {
-          // if proxy returns non-ok, attempt fallback
-          const txt = await r.text().catch(()=>'<no-body>');
-          console.warn('Proxy forward failed', r.status, txt);
+          // no beacon available, short fetch with timeout
+          const controller = new AbortController();
+          const id = setTimeout(() => controller.abort(), 4000);
+          await fetch('/api/forward-order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(toSend), signal: controller.signal }).catch(()=>{});
+          clearTimeout(id);
         }
-      } catch (err) {
-        // fetch aborted or network error -> fallback
-        console.warn('Proxy forward error, falling back', err?.message || err);
-      }
-
-      if (!proxied) {
-        // call direct Pabbly sender (has its own retries and client-side normalization)
-        const res = await sendOrderToPabbly(toSend, { localTimeout: 12000 }).catch(e=>({ ok: false, error: e?.message || String(e) }));
-        if (!res || !res.ok) {
-          toast({ title: 'Webhook forwarding failed', description: res?.error || 'Unknown error', variant: 'destructive' });
-        }
+      } catch (e) {
+        // swallow any errors so the payment UX isn't blocked
+        console.warn('forward-order background forwarding failed', e?.message || e);
       }
     } catch (err) {
       console.error('Forwarding error', err);
-      toast({ title: 'Webhook error', description: err?.message || String(err), variant: 'destructive' });
     }
 
     if (method === 'card') {
@@ -132,7 +123,41 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
         } catch (e) { /* ignore */ }
 
         // ask server to create a short session for iCount
-        const r = await fetch('/api/pay/icount-create-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(toSend) });
+        // Build a minimal session payload to avoid large body uploads (data URLs, files, etc.)
+        const grandTotal = (payload && payload.order && payload.order.totals && payload.order.totals.grand_total) || (cartSummary && cartSummary.total) || 0;
+        const sessionToSend = {
+          idempotency_key: payload?.idempotency_key || payload?.order?.order_id || `local-${Date.now()}`,
+          order: { totals: { grand_total: Math.round(grandTotal) } },
+          contact: { name: name.trim(), phone: phone.trim(), email: email.trim() },
+          paymentMethod: method,
+          // include a small cart summary only (no uploadedDesigns or heavy fields)
+          cartSummary: cartSummary || {}
+        };
+
+        // small fetch-with-timeout helper
+        const fetchWithTimeout = (url, opts = {}, ms = 8000) => {
+          const controller = new AbortController();
+          const id = setTimeout(() => controller.abort(), ms);
+          const finalOpts = { ...opts, signal: controller.signal };
+          return fetch(url, finalOpts).finally(() => clearTimeout(id));
+        };
+
+        // Use GET with small query params to avoid server/body size limits that caused 413
+        const qs = new URLSearchParams({
+          idempotency_key: sessionToSend.idempotency_key,
+          grand_total: String(sessionToSend.order.totals.grand_total || 0),
+          name: sessionToSend.contact.name || '',
+          phone: sessionToSend.contact.phone || '',
+          email: sessionToSend.contact.email || ''
+        }).toString();
+        const r = await fetchWithTimeout(`/api/pay/icount-create-session?${qs}`, { method: 'GET' }, 10000);
+          if (r.status === 413) {
+          // Payload too large — likely due to data URLs or large design objects still being sent.
+          toast({ title: '\u05ea\u05e9\u05dc\u05d4', description: 'יצירת סשן נכשלה: הגוף נרחב מדי. נסו שוב ללא קבצים/עיצובים מוטבעים או רעננו את הדף.', variant: 'destructive' });
+          console.error('icount-create-session returned 413 Payload Too Large');
+            setProcessing(false);
+            return;
+        }
         const json = await r.json().catch(()=>null);
         if (!r.ok || !json || !json.ok) {
           throw new Error((json && json.error) || `Create session failed ${r.status}`);
@@ -158,12 +183,14 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
         } catch (err) {
           console.error('iCount submit error', err);
           toast({ title: 'שגיאת תשלום', description: err?.message || String(err), variant: 'destructive' });
+          setProcessing(false);
           return;
         }
         return;
       } catch (err) {
         console.error('iCount session/create error', err);
         toast({ title: 'שגיאת תשלום', description: err?.message || String(err), variant: 'destructive' });
+        setProcessing(false);
         return;
       }
     }
@@ -185,6 +212,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       } catch (e) { /* ignore */ }
       // navigate to thank-you page so the user sees confirmation/next steps
       try { navigate('/thank-you'); } catch (e) { /* ignore */ }
+      setProcessing(false);
       onClose();
       return;
     }
@@ -203,6 +231,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
     navigator.sendBeacon && navigator.sendBeacon('/api/forward-order', blob);
   } catch (e) { /* ignore */ }
   try { navigate('/thank-you'); } catch (e) { /* ignore */ }
+  setProcessing(false);
   onClose();
   };
 
@@ -283,10 +312,19 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
         </div>
 
         <div className="flex items-center justify-between gap-3 mt-4">
-          <Button onClick={handleConfirm} className="flex-1" disabled={!(name.trim() && phone.trim() && email.trim())}>{method === 'card' ? 'המשך ל-iCount' : method === 'bit' ? 'השלם תשלום ב-Bit' : 'שלח פרטי יצירת קשר'}</Button>
+          <Button onClick={handleConfirm} className="flex-1" disabled={processing || !(name.trim() && phone.trim() && email.trim())}>{method === 'card' ? 'המשך ל-iCount' : method === 'bit' ? 'השלם תשלום ב-Bit' : 'שלח פרטי יצירת קשר'}</Button>
           <Button variant="outline" onClick={onClose}>ביטול</Button>
         </div>
       </motion.div>
+      {processing && (
+        <div className="absolute inset-0 z-70 flex items-center justify-center">
+          <div className="bg-black/40 absolute inset-0" />
+          <div className="relative z-80 flex items-center gap-4 bg-white/95 rounded-lg p-4 shadow">
+            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            <div className="text-sm font-medium">שולח ומעבד את התשלום…</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

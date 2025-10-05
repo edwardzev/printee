@@ -17,15 +17,24 @@ const RETURN_FAIL = process.env.ICOUNT_RETURN_FAIL || (APP_BASE_URL ? `${APP_BAS
 const IPN_URL = process.env.ICOUNT_IPN_URL || (APP_BASE_URL ? `${APP_BASE_URL}/api/pay/icount/ipn` : 'https://printee.co.il/api/pay/icount/ipn');
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
+  // Allow GET (small query param session creation) and POST (legacy full body)
+  let body = {};
+  if (req.method === 'GET') {
+    // small fields passed via query string to avoid large request bodies
+    const q = req.query || {};
+    body = {
+      idempotency_key: q.idempotency_key,
+      order: { totals: { grand_total: Number(q.grand_total) || 0 } },
+      contact: { name: q.name || '', phone: q.phone || '', email: q.email || '' }
+    };
+  } else if (req.method === 'POST') {
+    try { body = await new Promise((resolve, reject) => { let d=''; req.on('data',c=>d+=c); req.on('end',()=>{ try{ resolve(JSON.parse(d||'{}')); }catch(e){ resolve({}); } }); req.on('error', reject); }); } catch (e) { body = req.body || {}; }
+  } else {
+    res.setHeader('Allow', 'GET, POST');
     res.statusCode = 405;
     res.end(JSON.stringify({ ok: false, error: 'Method Not Allowed' }));
     return;
   }
-
-  let body = {};
-  try { body = await new Promise((resolve, reject) => { let d=''; req.on('data',c=>d+=c); req.on('end',()=>{ try{ resolve(JSON.parse(d||'{}')); }catch(e){ resolve({}); } }); req.on('error', reject); }); } catch (e) { body = req.body || {}; }
 
   // Normalize payload so we have canonical fields
   const normalized = typeof normalize === 'function' ? normalize(body || {}) : (body || {});
