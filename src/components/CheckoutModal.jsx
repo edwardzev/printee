@@ -81,19 +81,24 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
   try {
       try {
         if (navigator && navigator.sendBeacon) {
-          const blob = new Blob([JSON.stringify(toSend)], { type: 'application/json' });
-          const ok = navigator.sendBeacon('/api/forward-order', blob);
+          // Use absolute origin to avoid relative path issues across environments
+          const forwardUrl = (typeof window !== 'undefined' && window.location && window.location.origin) ? `${window.location.origin}/api/forward-order` : '/api/forward-order';
+          // Keep beacon payload minimal to avoid size limits
+          const beaconPayload = JSON.stringify({ idempotency_key: toSend.idempotency_key || (toSend.order && toSend.order.order_id) || `local-${Date.now()}`, contact: toSend.contact, paymentMethod: toSend.paymentMethod, cartSummary: toSend.cartSummary || {} });
+          const blob = new Blob([beaconPayload], { type: 'application/json' });
+          const ok = navigator.sendBeacon(forwardUrl, blob);
           if (ok) {
             // sent via beacon, nothing more to do
           } else {
             // fallback to short fetch
-            await fetch('/api/forward-order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(toSend), signal: (new AbortController()).signal }).catch(()=>{});
+            await fetch(forwardUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(toSend) }).catch(()=>{});
           }
         } else {
           // no beacon available, short fetch with timeout
           const controller = new AbortController();
           const id = setTimeout(() => controller.abort(), 4000);
-          await fetch('/api/forward-order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(toSend), signal: controller.signal }).catch(()=>{});
+          const forwardUrl = (typeof window !== 'undefined' && window.location && window.location.origin) ? `${window.location.origin}/api/forward-order` : '/api/forward-order';
+          await fetch(forwardUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(toSend), signal: controller.signal }).catch(()=>{});
           clearTimeout(id);
         }
       } catch (e) {
@@ -117,9 +122,11 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
 
         // best-effort forward as beacon
         try {
-          const blob = new Blob([JSON.stringify(toSend)], { type: 'application/json' });
-          const ok = navigator.sendBeacon && navigator.sendBeacon('/api/forward-order', blob);
-          if (!ok) fetch('/api/forward-order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(toSend) }).catch(()=>{});
+          const forwardUrl = (typeof window !== 'undefined' && window.location && window.location.origin) ? `${window.location.origin}/api/forward-order` : '/api/forward-order';
+          const beaconPayload = JSON.stringify({ idempotency_key: toSend.idempotency_key || (toSend.order && toSend.order.order_id) || `local-${Date.now()}`, contact: toSend.contact, paymentMethod: toSend.paymentMethod, cartSummary: toSend.cartSummary || {} });
+          const blob = new Blob([beaconPayload], { type: 'application/json' });
+            const ok = navigator.sendBeacon && navigator.sendBeacon(forwardUrl, blob);
+            if (!ok) fetch(forwardUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(toSend) }).catch(()=>{});
         } catch (e) { /* ignore */ }
 
         // ask server to create a short session for iCount
@@ -178,7 +185,10 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
             document.open(); document.write(html); document.close();
             // on successful iCount flow the user will be redirected back to /thank-you/icount -> /thank-you
           } else {
-            throw new Error('Failed to post to payment forwarder');
+            const bodyText = html || '<no-body>';
+            console.error('Payment forwarder returned non-ok', r2.status, bodyText);
+            toast({ title: 'שגיאת תשלום', description: `Forwarder error ${r2.status}: ${bodyText.slice(0,120)}`, variant: 'destructive' });
+            throw new Error(`Failed to post to payment forwarder: ${r2.status}`);
           }
         } catch (err) {
           console.error('iCount submit error', err);
@@ -201,14 +211,12 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       toast({ title: 'Bit / Paybox', description: 'העבירו ל: 054-696-9974. שלחו צילום אישור תשלום ל-info@printmarket.co.il' });
       // Best-effort background forward to server now that UX is unblocked
       try {
-        const blob = new Blob([JSON.stringify({
-          ...payload,
-          cart: (Array.isArray(cartItems) ? sanitizedCart : []),
-          contact: { name: name.trim(), phone: phone.trim(), email: email.trim() },
-          paymentMethod: method,
-          cartSummary: cartSummary || {}
-        })], { type: 'application/json' });
-        navigator.sendBeacon && navigator.sendBeacon('/api/forward-order', blob);
+        try {
+          const forwardUrl = (typeof window !== 'undefined' && window.location && window.location.origin) ? `${window.location.origin}/api/forward-order` : '/api/forward-order';
+          const beaconPayload = JSON.stringify({ idempotency_key: payload?.idempotency_key || (payload?.order && payload.order.order_id) || `local-${Date.now()}`, contact: { name: name.trim(), phone: phone.trim(), email: email.trim() }, paymentMethod: method, cartSummary: cartSummary || {} });
+          const blob = new Blob([beaconPayload], { type: 'application/json' });
+          navigator.sendBeacon && navigator.sendBeacon(forwardUrl, blob);
+        } catch (e) { /* ignore */ }
       } catch (e) { /* ignore */ }
       // navigate to thank-you page so the user sees confirmation/next steps
       try { navigate('/thank-you'); } catch (e) { /* ignore */ }
@@ -220,15 +228,10 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
   // wire transfer or cheque
   toast({ title: 'תודה', description: 'נציגנו יצור איתך קשר בהקדם כדי להשלים את פרטי התשלום.' });
   // Fire-and-forget background forward as well
-  try {
-    const blob = new Blob([JSON.stringify({
-      ...payload,
-      cart: sanitizedCart,
-      contact: { name: name.trim(), phone: phone.trim(), email: email.trim() },
-      paymentMethod: method,
-      cartSummary: cartSummary || {}
-    })], { type: 'application/json' });
-    navigator.sendBeacon && navigator.sendBeacon('/api/forward-order', blob);
+    try {
+      const forwardUrl = (typeof window !== 'undefined' && window.location && window.location.origin) ? `${window.location.origin}/api/forward-order` : '/api/forward-order';
+    const blob = new Blob([JSON.stringify({ idempotency_key: payload?.idempotency_key || (payload?.order && payload.order.order_id) || `local-${Date.now()}`, contact: { name: name.trim(), phone: phone.trim(), email: email.trim() }, paymentMethod: method, cartSummary: cartSummary || {} })], { type: 'application/json' });
+    navigator.sendBeacon && navigator.sendBeacon(forwardUrl, blob);
   } catch (e) { /* ignore */ }
   try { navigate('/thank-you'); } catch (e) { /* ignore */ }
   setProcessing(false);

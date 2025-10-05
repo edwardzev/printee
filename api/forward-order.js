@@ -36,6 +36,10 @@ export default async function handler(req, res) {
     return res.status(405).json({ ok: false, error: 'Method Not Allowed' });
   }
 
+  if (process.env.DEBUG_FORWARDER === '1') {
+    try { console.log('forward-order incoming request', { url: req.url, method: req.method, headersSnippet: JSON.stringify({ 'content-length': req.headers['content-length'] || null }).slice(0,200) }); } catch (e) {}
+  }
+
   const pabblyUrl = process.env.PABBLY_URL || DEFAULT_PABBY_URL;
 
   try {

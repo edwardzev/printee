@@ -18,6 +18,9 @@ export default async function handler(req, res) {
 
   let body = {};
   try { body = await parseJson(req); } catch (e) { body = req.body || {}; }
+  if (process.env.DEBUG_FORWARDER === '1') {
+    try { console.log('api/pay/icount incoming', { method: req.method, url: req.url, bodySnippet: JSON.stringify(body).slice(0,400) }); } catch (e) {}
+  }
 
   // Build inputs from body
   const inputs = Object.keys(body || {}).map(k => {
