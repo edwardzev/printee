@@ -13,6 +13,7 @@ import ProductConfigurator from '@/pages/ProductConfigurator';
 import Cart from '@/pages/Cart';
 import CheckoutResult from '@/pages/CheckoutResult';
 import ThankYou from '@/pages/ThankYou';
+import ThankYouIcount from '@/pages/ThankYouIcount';
 import Admin from '@/pages/Admin';
 import Terms from '@/pages/Terms';
 import Privacy from '@/pages/Privacy';
@@ -42,6 +43,7 @@ function App() {
                 <Route path="/checkout/success" element={<CheckoutResult success={true} />} />
                 <Route path="/checkout/cancel" element={<CheckoutResult success={false} />} />
                 <Route path="/thank-you" element={<ThankYou />} />
+                <Route path="/thank-you/icount" element={<ThankYouIcount />} />
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/forwards" element={<ForwardedLogs />} />
                 <Route path="/dev" element={<DevDashboard />} />

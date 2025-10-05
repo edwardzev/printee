@@ -77,9 +77,9 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
 
     // Try local proxy first; if it fails or is unavailable, fall back to direct sendOrderToPabbly
     try {
-  const ctrl = new AbortController();
-  // Allow more time for serverless cold starts and Dropbox uploads
-  const timeout = setTimeout(() => ctrl.abort(), 12000);
+      const ctrl = new AbortController();
+      // Allow more time for serverless cold starts and Dropbox uploads
+      const timeout = setTimeout(() => ctrl.abort(), 12000);
       let proxied = false;
       try {
         const r = await fetch('/api/forward-order', {
@@ -114,40 +114,58 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
     }
 
     if (method === 'card') {
-      // For card: try to send a quick beacon to forward payload, then open iCount in a new tab
+      // For card: create an iCount payment session on the server, then open iCount page with minimal fields.
       try {
-        const params = new URLSearchParams({ name, phone, email }).toString();
         const toSend = {
           ...payload,
+          cart: sanitizedCart,
           contact: { name: name.trim(), phone: phone.trim(), email: email.trim() },
           paymentMethod: method,
           cartSummary: cartSummary || {}
         };
 
-        // prefer sendBeacon (fire-and-forget even during unload)
+        // best-effort forward as beacon
         try {
           const blob = new Blob([JSON.stringify(toSend)], { type: 'application/json' });
           const ok = navigator.sendBeacon && navigator.sendBeacon('/api/forward-order', blob);
-          if (!ok) {
-            // fallback: fire fetch but don't await (best-effort)
-            fetch('/api/forward-order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(toSend) }).catch(()=>{});
-          }
-        } catch (err) {
-          // ignore beacon errors
+          if (!ok) fetch('/api/forward-order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(toSend) }).catch(()=>{});
+        } catch (e) { /* ignore */ }
+
+        // ask server to create a short session for iCount
+        const r = await fetch('/api/pay/icount-create-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(toSend) });
+        const json = await r.json().catch(()=>null);
+        if (!r.ok || !json || !json.ok) {
+          throw new Error((json && json.error) || `Create session failed ${r.status}`);
         }
 
-  // open payment page in a new tab so the current page can finish forwarding
-  const url = `/pay/icount?${params}`;
-  window.open(url, '_blank');
-  // navigate current tab to thank-you page so users see confirmation while completing payment in the new tab
-  try { navigate('/thank-you'); } catch (e) { /* ignore */ }
-      } catch (err) {
-        // fallback to redirect if anything unexpected
-        const params = new URLSearchParams({ name, phone, email }).toString();
-        window.location.href = `/pay/icount?${params}`;
-      }
+        const icountFields = (json.icount || {});
+        // Build post target; allow overriding via env var exposed to client if available, otherwise fallback to icount host
+        const ICOUNT_URL = (window?.ICOUNT_URL) || '/pay/icount';
 
-      return;
+        // Open new tab and post to iCount
+        // Submit to our forwarding endpoint which returns an auto-submit HTML that posts to iCount in the current tab
+        try {
+          // POST to our /api/pay/icount which turns into an auto-submitting form to iCount
+          const r2 = await fetch('/api/pay/icount', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(icountFields) });
+          const html = await r2.text().catch(()=>null);
+          if (r2.ok && html) {
+            // Replace current document so navigation stays in a single tab
+            document.open(); document.write(html); document.close();
+            // on successful iCount flow the user will be redirected back to /thank-you/icount -> /thank-you
+          } else {
+            throw new Error('Failed to post to payment forwarder');
+          }
+        } catch (err) {
+          console.error('iCount submit error', err);
+          toast({ title: 'שגיאת תשלום', description: err?.message || String(err), variant: 'destructive' });
+          return;
+        }
+        return;
+      } catch (err) {
+        console.error('iCount session/create error', err);
+        toast({ title: 'שגיאת תשלום', description: err?.message || String(err), variant: 'destructive' });
+        return;
+      }
     }
 
     if (method === 'bit') {

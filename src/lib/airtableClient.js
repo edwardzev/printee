@@ -134,3 +134,29 @@ export async function readOrderRecord(recordId) {
   if (!res.ok) return null;
   return res.json().catch(()=>null);
 }
+
+export async function findOrderBySession(sessionId) {
+  if (!hasAirtableEnv() || !sessionId) return null;
+  const table = AIRTABLE_ORDERS_TABLE;
+  const formula = `{PaymentSession}='${escapeFormulaString(sessionId)}'`;
+  const url = apiUrl(`${encodeURIComponent(table)}?filterByFormula=${encodeURIComponent(formula)}&maxRecords=1`);
+  const res = await fetch(url, { headers: headers() });
+  if (!res.ok) return null;
+  const json = await res.json().catch(()=>null);
+  if (!json || !Array.isArray(json.records) || !json.records.length) return null;
+  return json.records[0];
+}
+
+export async function updateOrderRecord(recordId, fields = {}) {
+  if (!hasAirtableEnv() || !recordId) return null;
+  const table = AIRTABLE_ORDERS_TABLE;
+  const body = { records: [ { id: recordId, fields } ] };
+  const url = apiUrl(encodeURIComponent(table));
+  const res = await fetch(url, { method: 'PATCH', headers: headers(), body: JSON.stringify(body) });
+  if (!res.ok) {
+    const txt = await res.text().catch(()=>null);
+    throw new Error('Airtable update failed: ' + (txt || `status:${res.status}`));
+  }
+  const json = await res.json().catch(()=>null);
+  return json && Array.isArray(json.records) && json.records[0] ? json.records[0] : json;
+}
