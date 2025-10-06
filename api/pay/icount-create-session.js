@@ -39,9 +39,13 @@ export default async function handler(req, res) {
     return;
   }
 
-  // Keep the original body so we can prefer explicit totals when the client sent a minimal payload
-  const originalBody = body || {};
   // Normalize payload so we have canonical fields
+  // Keep the raw small-body fields (from GET) available because normalize()
+  // recalculates totals from cart and may overwrite a client-provided
+  // grand_total when the client intentionally sends a small GET.
+  const rawOrder = (body && body.order) ? body.order : {};
+  const rawContact = (body && body.contact) ? body.contact : {};
+
   const normalized = typeof normalize === 'function' ? normalize(body || {}) : (body || {});
 
   // Find existing Airtable order record (do NOT create). We require an existing record so sessions map clearly.
@@ -79,11 +83,12 @@ export default async function handler(req, res) {
 
   // Build a minimal set of iCount params that client can post to iCount page
   const orderNum = found?.fields && (found.fields['Order#'] || found.fields['Order #'] || found.fields.OrderNumber);
-  const description = normalized.order?.description || normalized.order?.title || '';
-  const contactName = normalized.customer?.company_name || normalized.customer?.contact_name || normalized.contact?.name || '';
+  // Prefer the raw order description/grand_total if supplied (GET flow),
+  // otherwise fall back to the normalized values.
+  const description = (rawOrder && (rawOrder.description || rawOrder.title)) || normalized.order?.description || normalized.order?.title || '';
+  const contactName = rawContact?.name || normalized.customer?.company_name || normalized.customer?.contact_name || normalized.contact?.name || '';
 
-  // Prefer an explicitly-provided grand_total (from a minimal GET query) if present; otherwise fall back to normalized totals
-  const csAmount = Number(originalBody?.order?.totals?.grand_total ?? normalized?.order?.totals?.grand_total) || 0;
+  const csAmount = Number(rawOrder?.totals?.grand_total) || Number(normalized?.order?.totals?.grand_total) || 0;
   const icountPayload = {
     cs: csAmount,
     cd: description || (orderNum ? `Order ${orderNum}` : `Order ${normalized.order?.order_number || normalized.order?.order_id || ''}`),
