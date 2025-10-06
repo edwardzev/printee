@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -18,6 +18,30 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
   const [phone, setPhone] = useState(prefillContact?.phone || '');
   const [email, setEmail] = useState(prefillContact?.email || '');
   const [processing, setProcessing] = useState(false);
+  const forwardSentRef = useRef(false);
+  const idempotencyKeyRef = useRef((payload && payload.idempotency_key) || `local-${Date.now()}-${Math.random().toString(36).slice(2,9)}`);
+
+  // Helper: send forward-order once per modal session/click using same idempotency key
+  const sendForwardOrderOnce = async (fullPayload) => {
+    if (forwardSentRef.current) return;
+    forwardSentRef.current = true;
+    const forwardUrl = (typeof window !== 'undefined' && window.location && window.location.origin) ? `${window.location.origin}/api/forward-order` : '/api/forward-order';
+    const minimal = { idempotency_key: idempotencyKeyRef.current, contact: fullPayload.contact, paymentMethod: fullPayload.paymentMethod, cartSummary: fullPayload.cartSummary || {} };
+    try {
+      if (navigator && navigator.sendBeacon) {
+        const blob = new Blob([JSON.stringify(minimal)], { type: 'application/json' });
+        const ok = navigator.sendBeacon(forwardUrl, blob);
+        if (ok) return;
+      }
+      // fallback short fetch
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), 4000);
+      await fetch(forwardUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...fullPayload, idempotency_key: idempotencyKeyRef.current }), signal: controller.signal }).catch(()=>{});
+      clearTimeout(id);
+    } catch (e) {
+      console.warn('sendForwardOrderOnce failed', e?.message || e);
+    }
+  };
 
   useEffect(() => {
     if (open) {
@@ -79,35 +103,15 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
   // Fire-and-forget forwarding: prefer sendBeacon, fallback to a short fetch so UI doesn't hang
   setProcessing(true);
   try {
-      try {
-        if (navigator && navigator.sendBeacon) {
-          // Use absolute origin to avoid relative path issues across environments
-          const forwardUrl = (typeof window !== 'undefined' && window.location && window.location.origin) ? `${window.location.origin}/api/forward-order` : '/api/forward-order';
-          // Keep beacon payload minimal to avoid size limits
-          const beaconPayload = JSON.stringify({ idempotency_key: toSend.idempotency_key || (toSend.order && toSend.order.order_id) || `local-${Date.now()}`, contact: toSend.contact, paymentMethod: toSend.paymentMethod, cartSummary: toSend.cartSummary || {} });
-          const blob = new Blob([beaconPayload], { type: 'application/json' });
-          const ok = navigator.sendBeacon(forwardUrl, blob);
-          if (ok) {
-            // sent via beacon, nothing more to do
-          } else {
-            // fallback to short fetch
-            await fetch(forwardUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(toSend) }).catch(()=>{});
-          }
-        } else {
-          // no beacon available, short fetch with timeout
-          const controller = new AbortController();
-          const id = setTimeout(() => controller.abort(), 4000);
-          const forwardUrl = (typeof window !== 'undefined' && window.location && window.location.origin) ? `${window.location.origin}/api/forward-order` : '/api/forward-order';
-          await fetch(forwardUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(toSend), signal: controller.signal }).catch(()=>{});
-          clearTimeout(id);
-        }
-      } catch (e) {
-        // swallow any errors so the payment UX isn't blocked
-        console.warn('forward-order background forwarding failed', e?.message || e);
-      }
-    } catch (err) {
-      console.error('Forwarding error', err);
+    // Idempotent background forward (will only run once per modal session)
+    try {
+      sendForwardOrderOnce(toSend).catch(()=>{});
+    } catch (e) {
+      console.warn('forward-order background forwarding failed', e?.message || e);
     }
+  } catch (err) {
+    console.error('Forwarding error', err);
+  }
 
     if (method === 'card') {
       // For card: create an iCount payment session on the server, then open iCount page with minimal fields.
@@ -122,11 +126,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
 
         // best-effort forward as beacon
         try {
-          const forwardUrl = (typeof window !== 'undefined' && window.location && window.location.origin) ? `${window.location.origin}/api/forward-order` : '/api/forward-order';
-          const beaconPayload = JSON.stringify({ idempotency_key: toSend.idempotency_key || (toSend.order && toSend.order.order_id) || `local-${Date.now()}`, contact: toSend.contact, paymentMethod: toSend.paymentMethod, cartSummary: toSend.cartSummary || {} });
-          const blob = new Blob([beaconPayload], { type: 'application/json' });
-            const ok = navigator.sendBeacon && navigator.sendBeacon(forwardUrl, blob);
-            if (!ok) fetch(forwardUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(toSend) }).catch(()=>{});
+          sendForwardOrderOnce(toSend).catch(()=>{});
         } catch (e) { /* ignore */ }
 
         // ask server to create a short session for iCount
@@ -211,12 +211,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       toast({ title: 'Bit / Paybox', description: 'העבירו ל: 054-696-9974. שלחו צילום אישור תשלום ל-info@printmarket.co.il' });
       // Best-effort background forward to server now that UX is unblocked
       try {
-        try {
-          const forwardUrl = (typeof window !== 'undefined' && window.location && window.location.origin) ? `${window.location.origin}/api/forward-order` : '/api/forward-order';
-          const beaconPayload = JSON.stringify({ idempotency_key: payload?.idempotency_key || (payload?.order && payload.order.order_id) || `local-${Date.now()}`, contact: { name: name.trim(), phone: phone.trim(), email: email.trim() }, paymentMethod: method, cartSummary: cartSummary || {} });
-          const blob = new Blob([beaconPayload], { type: 'application/json' });
-          navigator.sendBeacon && navigator.sendBeacon(forwardUrl, blob);
-        } catch (e) { /* ignore */ }
+        sendForwardOrderOnce({ ...payload, cart: (Array.isArray(cartItems) ? sanitizedCart : []), contact: { name: name.trim(), phone: phone.trim(), email: email.trim() }, paymentMethod: method, cartSummary: cartSummary || {} }).catch(()=>{});
       } catch (e) { /* ignore */ }
       // navigate to thank-you page so the user sees confirmation/next steps
       try { navigate('/thank-you'); } catch (e) { /* ignore */ }
@@ -229,10 +224,8 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
   toast({ title: 'תודה', description: 'נציגנו יצור איתך קשר בהקדם כדי להשלים את פרטי התשלום.' });
   // Fire-and-forget background forward as well
     try {
-      const forwardUrl = (typeof window !== 'undefined' && window.location && window.location.origin) ? `${window.location.origin}/api/forward-order` : '/api/forward-order';
-    const blob = new Blob([JSON.stringify({ idempotency_key: payload?.idempotency_key || (payload?.order && payload.order.order_id) || `local-${Date.now()}`, contact: { name: name.trim(), phone: phone.trim(), email: email.trim() }, paymentMethod: method, cartSummary: cartSummary || {} })], { type: 'application/json' });
-    navigator.sendBeacon && navigator.sendBeacon(forwardUrl, blob);
-  } catch (e) { /* ignore */ }
+      sendForwardOrderOnce({ ...payload, cart: sanitizedCart, contact: { name: name.trim(), phone: phone.trim(), email: email.trim() }, paymentMethod: method, cartSummary: cartSummary || {} }).catch(()=>{});
+    } catch (e) { /* ignore */ }
   try { navigate('/thank-you'); } catch (e) { /* ignore */ }
   setProcessing(false);
   onClose();
