@@ -31,26 +31,26 @@ const CheckoutResult = ({ success = true }) => {
               )}
               
               <h1 className="text-3xl font-bold text-gray-900 mb-4">
-                {success ? 'Order Successful!' : 'Order Failed'}
+                {success ? 'ההזמנה הושלמה בהצלחה!' : 'שגיאה בעיבוד ההזמנה'}
               </h1>
               
               <p className="text-lg text-gray-600 mb-8">
                 {success 
-                  ? 'Thank you for your order! We\'ll start processing it right away.'
-                  : 'There was an issue processing your order. Please try again.'
+                  ? 'תודה על הזמנתך! נתחיל בעיבוד ההזמנה מיד.'
+                  : 'אירעה שגיאה בעיבוד ההזמנה. אנא נסה שוב.'
                 }
               </p>
 
               {success && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-8">
                   <h2 className="text-lg font-semibold text-green-800 mb-2">
-                    Order Details
+                    פרטי הזמנה
                   </h2>
                   <p className="text-green-700">
-                    Order Number: #PM-{Date.now().toString().slice(-6)}
+                    מס׳ הזמנה: #PM-{Date.now().toString().slice(-6)}
                   </p>
                   <p className="text-green-700">
-                    Estimated delivery: 5-7 business days
+                    זמן אספקה משוער: 5-7 ימי עבודה
                   </p>
                 </div>
               )}
@@ -58,7 +58,7 @@ const CheckoutResult = ({ success = true }) => {
               <div className="space-y-4">
                 <Link to="/catalog">
                   <Button size="lg">
-                    {success ? 'Order More Items' : 'Try Again'}
+                    {success ? 'הזמן פריטים נוספים' : 'נסה שוב'}
                     <ArrowRight className="h-5 w-5 ml-2" />
                   </Button>
                 </Link>
