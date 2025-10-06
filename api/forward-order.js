@@ -165,6 +165,9 @@ export default async function handler(req, res) {
     });
 
     const text = await r.text().catch(() => '');
+    if (process.env.DEBUG_FORWARDER === '1') {
+      try { console.log('forward-order -> pabbly', { url: pabblyUrl, status: r.status, bodySnippet: text && text.slice ? text.slice(0,400) : String(text).slice(0,400) }); } catch (e) {}
+    }
 
     if (!r.ok) {
       return res.status(502).json({ ok: false, status: r.status, body: text });

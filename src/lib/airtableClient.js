@@ -101,6 +101,18 @@ function readOrderNumberFromFields(fields = {}) {
 
 export async function ensureOrderRecord(ctx) {
   if (!hasAirtableEnv()) return { order_id: null, airtable_record_id: null, order_number: null, record: null, created: false, enabled: false };
+  // If caller provided an idempotency_key, always try to find it first to avoid duplicate creates
+  if (ctx && ctx.idempotency_key) {
+    try {
+      const foundByIdemp = await findOrderRecord({ idempotency_key: ctx.idempotency_key }).catch(()=>null);
+      if (foundByIdemp) {
+        const recId = foundByIdemp.id;
+        const orderNum = readOrderNumberFromFields(foundByIdemp.fields || {});
+        return { order_id: String(recId), order_number: orderNum ? String(orderNum) : null, airtable_record_id: foundByIdemp.id, record: foundByIdemp, created: false, enabled: true };
+      }
+    } catch (e) { /* ignore and continue to create if allowed */ }
+  }
+
   if (findEnabled()) {
     const found = await findOrderRecord(ctx).catch(()=>null);
     if (found) {
@@ -109,6 +121,7 @@ export async function ensureOrderRecord(ctx) {
       return { order_id: String(recId), order_number: orderNum ? String(orderNum) : null, airtable_record_id: found.id, record: found, created: false, enabled: true };
     }
   }
+
   if (!createEnabled()) {
     return { order_id: null, order_number: null, airtable_record_id: null, record: null, created: false, enabled: true };
   }
