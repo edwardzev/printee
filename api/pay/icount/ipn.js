@@ -1,4 +1,3 @@
-import { json as parseJson, text as parseText } from 'micro';
 import { findOrderBySession, updateOrderRecord, airtableEnabled } from '../../../src/lib/airtableClient.js';
 
 // Minimal iCount IPN handler
@@ -24,14 +23,15 @@ export default async function handler(req, res) {
     return;
   }
 
-  // iCount may send application/x-www-form-urlencoded; try to parse both
+  // iCount may send application/x-www-form-urlencoded; try to parse both without external deps
   let body = {};
   try {
     const ct = (req.headers['content-type'] || '').toLowerCase();
     if (ct.includes('application/json')) {
-      body = await parseJson(req);
+      const raw = await new Promise((resolve, reject) => { let d=''; req.on('data',c=>d+=c); req.on('end',()=>resolve(d)); req.on('error',reject); });
+      try { body = JSON.parse(raw || '{}'); } catch { body = {}; }
     } else {
-      const raw = await parseText(req);
+      const raw = await new Promise((resolve, reject) => { let d=''; req.on('data',c=>d+=c); req.on('end',()=>resolve(d)); req.on('error',reject); });
       try { body = parseFormEncoded(raw); } catch { body = {}; }
     }
   } catch (e) {

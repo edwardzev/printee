@@ -50,7 +50,7 @@ const Cart = () => {
                   {t('cartEmpty')}
                 </h1>
                 <p className="text-gray-600 mb-8">
-                  התחל לעצב את הבגדים שלך עכשיו!
+                  התחל בתהליך הזמנה עכשיו!
                 </p>
                 <Link to="/catalog">
                   <Button size="lg">

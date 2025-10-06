@@ -1,5 +1,3 @@
-import { json as parseJson } from 'micro';
-
 const ICOUNT_PAGE_ID = process.env.ICOUNT_PAGE_ID || process.env.ICOUNT_CC_PAGE_ID || process.env.ICOUNT_MPAGE || '6fa96';
 const ICOUNT_URL = process.env.ICOUNT_URL || `https://app.icount.co.il/m/${ICOUNT_PAGE_ID}`;
 
@@ -16,8 +14,35 @@ export default async function handler(req, res) {
     return;
   }
 
+  // Parse both JSON and x-www-form-urlencoded bodies without external deps
+  async function readRaw(req) {
+    return await new Promise((resolve, reject) => {
+      let data = '';
+      req.on('data', (c) => { data += c; });
+      req.on('end', () => resolve(data));
+      req.on('error', reject);
+    });
+  }
+
   let body = {};
-  try { body = await parseJson(req); } catch (e) { body = req.body || {}; }
+  try {
+    const ct = String(req.headers['content-type'] || '').toLowerCase();
+    if (ct.includes('application/json')) {
+      const raw = await readRaw(req);
+      try { body = JSON.parse(raw || '{}'); } catch { body = {}; }
+    } else if (ct.includes('application/x-www-form-urlencoded')) {
+      const raw = await readRaw(req);
+      const params = new URLSearchParams(raw || '');
+      const out = {};
+      for (const [k, v] of params.entries()) out[k] = v;
+      body = out;
+    } else {
+      // Fallback to req.body if framework provided it
+      body = req.body || {};
+    }
+  } catch (e) {
+    body = req.body || {};
+  }
   if (process.env.DEBUG_FORWARDER === '1') {
     try { console.log('api/pay/icount incoming', { method: req.method, url: req.url, bodySnippet: JSON.stringify(body).slice(0,400) }); } catch (e) {}
   }
