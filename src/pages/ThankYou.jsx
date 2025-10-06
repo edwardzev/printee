@@ -26,8 +26,8 @@ export default function ThankYou() {
   return (
     <>
       <Helmet>
-        <title>Thank you - Print Market</title>
-        <meta name="description" content="Thanks for your order. We'll be in touch with next steps." />
+        <title>תודה - Print Market</title>
+        <meta name="description" content="תודה על הזמנתך. פרטי האישור והשלבים הבאים יישלחו אליך במייל." />
       </Helmet>
 
       <div className="min-h-screen py-12">
