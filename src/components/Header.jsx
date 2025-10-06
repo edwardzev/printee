@@ -169,7 +169,7 @@ export default function Header({ dir = "rtl" }) {
             { id: "catalog", label: "קטלוג" },
             { id: "pricing", label: "מחירים" },
             { id: "faq", label: "שאלות נפוצות" },
-            { id: "contact", label: "התחל לעצב", cta: true },
+            { id: "contact", label: "התחל בהזמנה", cta: true },
           ].map(({ id, label, cta }) => {
             const baseStyle = {
               textDecoration: "none",

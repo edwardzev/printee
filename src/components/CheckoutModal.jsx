@@ -18,23 +18,33 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
   const [phone, setPhone] = useState(prefillContact?.phone || '');
   const [email, setEmail] = useState(prefillContact?.email || '');
   const [processing, setProcessing] = useState(false);
-  const forwardSentRef = useRef(false);
+  // Keep a reference to the single background forward promise so we can await it before navigating to iCount
+  const forwardPromiseRef = useRef(null);
   const idempotencyKeyRef = useRef((payload && payload.idempotency_key) || `local-${Date.now()}-${Math.random().toString(36).slice(2,9)}`);
 
   // Helper: send forward-order once per modal session/click using same idempotency key
   const sendForwardOrderOnce = async (fullPayload) => {
-    if (forwardSentRef.current) return;
-    forwardSentRef.current = true;
+    // Reuse the same in-flight promise if already started
+    if (forwardPromiseRef.current) return forwardPromiseRef.current;
     const forwardUrl = (typeof window !== 'undefined' && window.location && window.location.origin) ? `${window.location.origin}/api/forward-order` : '/api/forward-order';
     const minimal = { idempotency_key: idempotencyKeyRef.current, contact: fullPayload.contact, paymentMethod: fullPayload.paymentMethod, cartSummary: fullPayload.cartSummary || {} };
     try {
-      // Fire a full payload fetch in the background (non-blocking, no short abort)
+      // Fire a full payload fetch in the background and store the promise so callers can await if needed.
       // This includes uploadedDesigns urls (which may be data URLs) so the server can upload to Dropbox.
-      fetch(forwardUrl, {
+      forwardPromiseRef.current = fetch(forwardUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...fullPayload, idempotency_key: idempotencyKeyRef.current })
-      }).catch(()=>{});
+      })
+        .then(async (r) => {
+          // Try to consume response (may include debug info); ignore content errors
+          try { await r.text(); } catch {}
+          return r;
+        })
+        .catch((e) => {
+          console.warn('forward-order fetch error', e?.message || e);
+          throw e;
+        });
 
       // Additionally, send a minimal beacon as a backup signal (idempotent on server side)
       try {
@@ -43,8 +53,10 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
           navigator.sendBeacon(forwardUrl, blob);
         }
       } catch {}
+      return forwardPromiseRef.current;
     } catch (e) {
       console.warn('sendForwardOrderOnce failed', e?.message || e);
+      return Promise.reject(e);
     }
   };
 
@@ -55,6 +67,21 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       setName(prefillContact?.name || '');
       setPhone(prefillContact?.phone || '');
       setEmail(prefillContact?.email || '');
+
+      // Start partial forward early to begin uploads (no Pabbly forwarding yet)
+      try {
+        const forwardUrl = (typeof window !== 'undefined' && window.location && window.location.origin) ? `${window.location.origin}/api/forward-order` : '/api/forward-order';
+        const basePayload = {
+          ...payload,
+          contact: { name: prefillContact?.name || payload?.contact?.name || '', phone: prefillContact?.phone || payload?.contact?.phone || '', email: prefillContact?.email || payload?.contact?.email || '' },
+          paymentMethod: method,
+          cartSummary: cartSummary || {},
+          idempotency_key: idempotencyKeyRef.current,
+          _partial: true
+        };
+        // Note: We intentionally do not await this. It primes Airtable and starts Dropbox uploads.
+        fetch(forwardUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-forward-partial': '1' }, body: JSON.stringify(basePayload) }).catch(()=>{});
+      } catch {}
     }
   }, [open]);
 
@@ -128,16 +155,14 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
           cartSummary: cartSummary || {}
         };
 
-        // best-effort forward as beacon
-        try {
-          sendForwardOrderOnce(toSend).catch(()=>{});
-        } catch (e) { /* ignore */ }
+        // best-effort forward as beacon; do not wait — uploads continue independently in this tab
+        try { sendForwardOrderOnce(toSend).catch(()=>{}); } catch (e) { /* ignore */ }
 
         // ask server to create a short session for iCount
         // Build a minimal session payload to avoid large body uploads (data URLs, files, etc.)
         const grandTotal = (payload && payload.order && payload.order.totals && payload.order.totals.grand_total) || (cartSummary && cartSummary.total) || 0;
         const sessionToSend = {
-          idempotency_key: payload?.idempotency_key || payload?.order?.order_id || `local-${Date.now()}`,
+          idempotency_key: idempotencyKeyRef.current,
           order: { totals: { grand_total: Math.round(grandTotal) } },
           contact: { name: name.trim(), phone: phone.trim(), email: email.trim() },
           paymentMethod: method,
@@ -175,31 +200,30 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
         }
 
         const icountFields = (json.icount || {});
-        // Build post target; allow overriding via env var exposed to client if available, otherwise fallback to icount host
-        const ICOUNT_URL = (window?.ICOUNT_URL) || '/pay/icount';
-
-        // Open new tab and post to iCount
-        // Submit to our forwarding endpoint which returns an auto-submit HTML that posts to iCount in the current tab
+        // Build a form targeting current tab; partial-forward already started on modal open
+        const form = document.createElement('form');
+        form.action = '/api/pay/icount';
+        form.method = 'POST';
+        form.target = '_self';
+        form.style.display = 'none';
+        // Append fields
+        Object.entries(icountFields).forEach(([k, v]) => {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = k;
+          input.value = typeof v === 'string' ? v : JSON.stringify(v);
+          form.appendChild(input);
+        });
+        document.body.appendChild(form);
         try {
-          // POST to our /api/pay/icount which turns into an auto-submitting form to iCount
-          const r2 = await fetch('/api/pay/icount', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(icountFields) });
-          const html = await r2.text().catch(()=>null);
-          if (r2.ok && html) {
-            // Replace current document so navigation stays in a single tab
-            document.open(); document.write(html); document.close();
-            // on successful iCount flow the user will be redirected back to /thank-you/icount -> /thank-you
-          } else {
-            const bodyText = html || '<no-body>';
-            console.error('Payment forwarder returned non-ok', r2.status, bodyText);
-            toast({ title: 'שגיאת תשלום', description: `Forwarder error ${r2.status}: ${bodyText.slice(0,120)}`, variant: 'destructive' });
-            throw new Error(`Failed to post to payment forwarder: ${r2.status}`);
-          }
-        } catch (err) {
-          console.error('iCount submit error', err);
-          toast({ title: 'שגיאת תשלום', description: err?.message || String(err), variant: 'destructive' });
-          setProcessing(false);
-          return;
+          form.submit();
+          // Inform user uploads continue while paying
+          toast({ title: 'מעבר לתשלום', description: 'אנחנו מעלים את הקבצים ברקע בזמן התשלום.' });
+        } finally {
+          try { document.body.removeChild(form); } catch {}
         }
+        setProcessing(false);
+        onClose();
         return;
       } catch (err) {
         console.error('iCount session/create error', err);

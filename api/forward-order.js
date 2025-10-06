@@ -5,7 +5,7 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import normalize from '../src/lib/normalizeOrderPayload.js';
 import { uploadBuffer, createSharedLink, createFolder } from '../src/lib/dropboxClient.js';
-import { ensureOrderRecord, airtableEnabled } from '../src/lib/airtableClient.js';
+import { ensureOrderRecord, airtableEnabled, updateOrderRecord } from '../src/lib/airtableClient.js';
 
 // Dropbox uploads base folder (clean, relative to namespace root). Overridable via env.
 const DROPBOX_BASE_FOLDER = process.env.DROPBOX_BASE_FOLDER || '/printee/uploads';
@@ -44,6 +44,7 @@ export default async function handler(req, res) {
 
   try {
     const appBody = req.body;
+    const isPartial = Boolean((appBody && (appBody.partial || appBody._partial)) || req.headers['x-forward-partial'] || req.headers['x-partial-forward']);
     // log incoming raw body for tracing (serverless logs)
   if (DEBUG_FORWARDER) console.log('forward-order incoming raw body:', JSON.stringify(appBody).slice(0, 1000));
     // Step 1: Ensure we have a canonical normalized snapshot early to extract common fields
@@ -59,6 +60,21 @@ export default async function handler(req, res) {
           order_number: preNormalized?.order?.order_number,
           created_at: preNormalized.created_at
         });
+
+        // As soon as we have (or created) the Airtable record, persist contact fields if present
+        try {
+          const recId = ensured?.airtable_record_id || ensured?.order_id;
+          const fields = {};
+          const cn = preNormalized?.customer?.contact_name || preNormalized?.contact?.name;
+          const ce = preNormalized?.customer?.email || preNormalized?.contact?.email;
+          const cp = preNormalized?.customer?.phone || preNormalized?.contact?.phone;
+          if (cn) fields.ContactName = cn;
+          if (ce) fields.ContactEmail = ce;
+          if (cp) fields.ContactPhone = cp;
+          if (recId && Object.keys(fields).length) {
+            await updateOrderRecord(recId, fields).catch(()=>{});
+          }
+        } catch (e) { /* ignore contact persist failure */ }
       }
     } catch (e) {
       console.warn('forward-order: airtable ensure failed', e?.message || e);
@@ -184,7 +200,12 @@ export default async function handler(req, res) {
       }
     }
 
-    // Forward to Pabbly
+    // In partial mode, skip forwarding to Pabbly — just acknowledge after uploads/Airtable
+    if (isPartial) {
+      return res.status(200).json({ ok: true, partial: true, normalized: body, warnings: forwarderWarnings });
+    }
+
+    // Forward to Pabbly for full submissions
     const r = await fetch(pabblyUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
