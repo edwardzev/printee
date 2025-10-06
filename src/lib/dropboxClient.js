@@ -174,7 +174,27 @@ async function createFolder(dropboxPath) {
   });
   const json = await res.json().catch(() => null);
   if (!res.ok) {
+    // Dropbox returns a specific error_summary when the folder already exists.
+    // Treat that case as a success and return the existing metadata where possible.
     const txt = json && json.error_summary ? json.error_summary : `status:${res.status}`;
+    // common indicator: "path/conflict/folder/" or error_summary containing 'already\s+exists' or 'folder already exists'
+    const summary = String(txt || '').toLowerCase();
+    if (summary.includes('path/conflict/folder') || summary.includes('already exists') || summary.includes('folder already exists')) {
+      // Attempt to return metadata by calling files/get_metadata (best-effort). If that fails, return a minimal object.
+      try {
+        const token2 = token;
+        const metaRes = await fetch('https://api.dropboxapi.com/2/files/get_metadata', {
+          method: 'POST',
+          headers: accountHeaders({ 'Authorization': `Bearer ${token2}`, 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ path: dropboxPath, include_media_info: false, include_deleted: false, include_has_explicit_shared_members: false })
+        });
+        const meta = await metaRes.json().catch(()=>null);
+        if (metaRes.ok && meta) return { metadata: meta };
+      } catch (e) {
+        // ignore and fallthrough to return minimal success
+      }
+      return { metadata: { name: dropboxPath.split('/').slice(-1)[0] || dropboxPath, path_display: dropboxPath } };
+    }
     throw new Error('Dropbox create folder failed: ' + txt);
   }
   return json;

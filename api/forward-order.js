@@ -134,8 +134,9 @@ export default async function handler(req, res) {
         const orderFolder = folderKey ? `${DROPBOX_BASE_FOLDER}/${folderKey}` : DROPBOX_BASE_FOLDER;
         const nsPrefix = DROPBOX_NAMESPACE_ID ? `ns:${DROPBOX_NAMESPACE_ID}` : '';
         const folderPath = `${nsPrefix}${orderFolder}`;
-        if (DEBUG_FORWARDER) console.log('forward-order: creating dropbox folder', folderPath);
-        await createFolder(folderPath).catch((e) => { throw e; });
+  if (DEBUG_FORWARDER) console.log('forward-order: creating dropbox folder', folderPath);
+  const createResult = await createFolder(folderPath).catch((e) => { throw e; });
+  if (DEBUG_FORWARDER) console.log('forward-order: createFolder result snippet:', JSON.stringify(createResult).slice(0,400));
       } catch (e) {
         const msg = e && (e.message || String(e)) || 'unknown';
         forwarderWarnings.push({ when: new Date().toISOString(), where: 'dropbox.create_folder', message: msg });
