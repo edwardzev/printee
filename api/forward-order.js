@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import normalize from '../src/lib/normalizeOrderPayload.js';
-import { uploadBuffer, createSharedLink } from '../src/lib/dropboxClient.js';
+import { uploadBuffer, createSharedLink, createFolder } from '../src/lib/dropboxClient.js';
 import { ensureOrderRecord, airtableEnabled } from '../src/lib/airtableClient.js';
 
 // Dropbox uploads base folder (clean, relative to namespace root). Overridable via env.
@@ -124,6 +124,22 @@ export default async function handler(req, res) {
           // attach a note but continue — do not block forwarding for other reasons
           up.container[up.key] = { error: String(msg) };
         }
+      }
+    }
+    else {
+      // No uploads: ensure order folder exists so downstream users can see the order folder even
+      // when there are no attached files. This is non-fatal; record warnings on failure.
+      try {
+        const folderKey = ensured?.order_number || preNormalized?.order?.order_number || ensured?.order_id || preNormalized?.order?.order_id || null;
+        const orderFolder = folderKey ? `${DROPBOX_BASE_FOLDER}/${folderKey}` : DROPBOX_BASE_FOLDER;
+        const nsPrefix = DROPBOX_NAMESPACE_ID ? `ns:${DROPBOX_NAMESPACE_ID}` : '';
+        const folderPath = `${nsPrefix}${orderFolder}`;
+        if (DEBUG_FORWARDER) console.log('forward-order: creating dropbox folder', folderPath);
+        await createFolder(folderPath).catch((e) => { throw e; });
+      } catch (e) {
+        const msg = e && (e.message || String(e)) || 'unknown';
+        forwarderWarnings.push({ when: new Date().toISOString(), where: 'dropbox.create_folder', message: msg });
+        if (DEBUG_FORWARDER) console.warn('forward-order: dropbox create folder failed', msg);
       }
     }
 

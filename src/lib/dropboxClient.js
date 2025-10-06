@@ -165,4 +165,19 @@ async function createSharedLink(dropboxPath) {
   return null;
 }
 
-export { getAccessToken, uploadBuffer, createSharedLink };
+async function createFolder(dropboxPath) {
+  const token = await getAccessToken();
+  const res = await fetch('https://api.dropboxapi.com/2/files/create_folder_v2', {
+    method: 'POST',
+    headers: accountHeaders({ 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ path: dropboxPath, autorename: false })
+  });
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    const txt = json && json.error_summary ? json.error_summary : `status:${res.status}`;
+    throw new Error('Dropbox create folder failed: ' + txt);
+  }
+  return json;
+}
+
+export { getAccessToken, uploadBuffer, createSharedLink, createFolder };
