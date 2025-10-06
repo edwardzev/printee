@@ -1,5 +1,5 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { Toaster } from '@/components/ui/toaster';
 import { LanguageProvider } from '@/contexts/LanguageContext';
@@ -22,6 +22,18 @@ import FAQ from '@/pages/FAQ';
 import ForwardedLogs from '@/pages/ForwardedLogs';
 import DevDashboard from '@/pages/DevDashboard';
 
+function ScrollToTop() {
+  const { pathname, search } = useLocation();
+  useEffect(() => {
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    } catch {
+      window.scrollTo(0, 0);
+    }
+  }, [pathname, search]);
+  return null;
+}
+
 function App() {
   return (
     <LanguageProvider>
@@ -34,6 +46,7 @@ function App() {
               <meta name="description" content="Professional DTF and UV printing services for custom apparel. Design your own t-shirts, hoodies, and more with instant quotes." />
             </Helmet>
             <Header />
+            <ScrollToTop />
             <main className="min-h-screen">
               <Routes>
                 <Route path="/" element={<Home />} />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet';
@@ -21,6 +21,11 @@ const Cart = () => {
   const handleCheckout = () => {
     setModalOpen(true);
   };
+
+  // Always scroll to top on mount so user starts at the top of the cart page
+  useEffect(() => {
+    try { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); } catch { window.scrollTo(0, 0); }
+  }, []);
 
   const handleRemoveItem = (itemId) => {
     removeFromCart(itemId);

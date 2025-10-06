@@ -69,6 +69,59 @@ const Home = () => {
           </div>
         </section>
 
+        {/* How It Works Section */}
+        <section id="how" className="py-16 lg:py-20 bg-[#f9fafb] border-t border-gray-100">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-100px' }}
+              transition={{ duration: 0.5 }}
+              className="text-center mb-12"
+            >
+              <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-3">איך זה עובד</h2>
+              <p className="text-gray-600">תהליך מהיר וברור — משלב העיצוב ועד קבלת ההזמנה</p>
+            </motion.div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              {[{
+                title: 'בחרו מוצר וצבעים',
+                desc: 'גלשו בקטלוג ובחרו סוג בגד, צבעים ומידות.'
+              }, {
+                title: 'העלו את העיצוב',
+                desc: 'צרפו קובץ או תמונה לכל אזור הדפסה.'
+              }, {
+                title: 'אישור ותשלום',
+                desc: 'ממלאים פרטים קצרים ומבצעים תשלום מאובטח.'
+              }, {
+                title: 'ייצור ומשלוח',
+                desc: 'אנחנו מדפיסים, אורזים ושולחים — בדרך אליכם!'
+              }].map((step, idx) => (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, y: 24 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: '-100px' }}
+                  transition={{ duration: 0.5, delay: idx * 0.05 }}
+                  className="relative bg-white rounded-xl p-6 shadow-sm ring-1 ring-gray-100"
+                >
+                  <div className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold shadow">
+                    {idx + 1}
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{step.title}</h3>
+                  <p className="text-gray-600 text-sm leading-relaxed">{step.desc}</p>
+                </motion.div>
+              ))}
+            </div>
+
+            <div className="text-center mt-10">
+              <Link to="/catalog">
+                <Button size="lg" className="bg-gray-900 text-white hover:bg-black px-6 py-6">התחילו עכשיו</Button>
+              </Link>
+            </div>
+          </div>
+        </section>
+
         {/* Features Section */}
         <section className="py-20 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

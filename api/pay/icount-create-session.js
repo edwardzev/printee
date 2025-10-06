@@ -80,8 +80,9 @@ export default async function handler(req, res) {
   const description = normalized.order?.description || normalized.order?.title || '';
   const contactName = normalized.customer?.company_name || normalized.customer?.contact_name || normalized.contact?.name || '';
 
+  const csAmount = Number(normalized?.order?.totals?.grand_total) || 0;
   const icountPayload = {
-    cs: normalized.order?.totals?.grand_total || 0,
+    cs: csAmount,
     cd: description || (orderNum ? `Order ${orderNum}` : `Order ${normalized.order?.order_number || normalized.order?.order_id || ''}`),
     currency_code: normalized.order?.currency || 'ILS',
     full_name: contactName,

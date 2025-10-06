@@ -31,12 +31,7 @@ const ProductConfigurator = () => {
   const [selectedPrintAreas, setSelectedPrintAreas] = useState([]);
   const [uploadedDesigns, setUploadedDesigns] = useState({});
 
-  useEffect(() => {
-    if (product && product.colors.length > 0) {
-      // default to the first color selected for backwards compatibility
-      setSelectedColors([product.colors[0]]);
-    }
-  }, [product]);
+  // Do not preselect any color; user must actively choose
 
   // Persist selected colors to shared payload when they change
   useEffect(() => {
@@ -226,7 +221,12 @@ const ProductConfigurator = () => {
 
   const handleAddToCart = () => {
     const pricing = calculatePrice();
-    
+    // Require at least one color selection
+    if (!selectedColors || selectedColors.length === 0) {
+      toast({ title: language === 'he' ? 'נא לבחור צבע' : 'Please select a color', variant: 'destructive' });
+      return;
+    }
+
     if (selectedPrintAreas.length === 0) {
       toast({
         title: t('selectPrintArea'),
@@ -253,8 +253,8 @@ const ProductConfigurator = () => {
   withDelivery: payload?.withDelivery,
       totalPrice: pricing.totalIls,
       priceBreakdown: pricing.breakdown,
-      // mockup for primary color (first selected)
-      mockupUrl: pickSrc(product.images[(selectedColors && selectedColors[0]) || product.colors[0]], product.images.base1)
+      // mockup: if a color is selected, use its image; otherwise use base image
+      mockupUrl: pickSrc((selectedColors && selectedColors[0]) ? product.images[selectedColors[0]] : product.images.base1, product.images.base1)
     };
 
     const prefillId = location?.state?.prefill?.id;

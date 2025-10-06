@@ -165,7 +165,8 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
 
         // ask server to create a short session for iCount
         // Build a minimal session payload to avoid large body uploads (data URLs, files, etc.)
-        const grandTotal = (payload && payload.order && payload.order.totals && payload.order.totals.grand_total) || (cartSummary && cartSummary.total) || 0;
+        // IMPORTANT: Use the same total we display to the user (subtotal * 1.17 VAT)
+        const grandTotal = Math.round((cartSummary?.total || 0) * 1.17);
         const sessionToSend = {
           idempotency_key: idempotencyKeyRef.current,
           order: { totals: { grand_total: Math.round(grandTotal) } },
