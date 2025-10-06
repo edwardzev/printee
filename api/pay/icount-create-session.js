@@ -93,6 +93,11 @@ export default async function handler(req, res) {
     ipn_url: IPN_URL,
     // include our session token as a custom param (iCount will echo back m__session in IPN)
     ['m__session']: sessionId,
+      // include explicit order metadata so iCount page can show the correct order details
+      ['m__order_number']: orderNum || normalized.order?.order_number || normalized.order?.order_id || '',
+      ['m__order_desc']: description || '',
+      // small cart summary (truncated) to help display items on the payment page if supported
+      ['m__cart']: JSON.stringify((normalized.items || []).slice(0,5)).slice(0, 1000),
     // optionally include the iCount page id if configured
     page_id: ICOUNT_PAGE_ID
   };

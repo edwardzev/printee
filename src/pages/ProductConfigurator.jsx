@@ -388,14 +388,24 @@ const ProductConfigurator = () => {
                 </h2>
                 {/* Helper line showing which color the sizes apply to */}
                 <div className="text-sm text-gray-600 mb-3">
-                  {language === 'he'
-                    ? `${t('chooseSizesForColor')} ${selectedColors.map(c => (colorLabelsHe[c] || c)).join(', ')}`
-                    : `${t('chooseSizesForColor')} ${selectedColors.join(', ')}`
-                  }
+                  {(!selectedColors || selectedColors.length === 0) ? (
+                    <span className="text-gray-700 font-medium">
+                      {language === 'he' ? 'נא לבחור צבע קודם כדי להגדיר מידות' : 'Please choose a color first to set sizes'}
+                    </span>
+                  ) : (
+                    (language === 'he'
+                      ? `${t('chooseSizesForColor')} ${selectedColors.map(c => (colorLabelsHe[c] || c)).join(', ')}`
+                      : `${t('chooseSizesForColor')} ${selectedColors.join(', ')}`
+                    )
+                  )}
                 </div>
                 {/* Render one SizeMatrix per selected color */}
                 <div className="space-y-4">
-                  {selectedColors.map((color) => {
+                  {(!selectedColors || selectedColors.length === 0) ? (
+                    <div className="p-6 bg-white rounded-md border border-dashed border-gray-200 text-center text-gray-600">
+                      {language === 'he' ? 'בחרו צבע כדי להציג ולהגדיר את טבלת המידות.' : 'Select a color to view and set the size matrix.'}
+                    </div>
+                  ) : selectedColors.map((color) => {
                     const matrix = sizeMatrices[color] || {};
                     const setMatrixForColor = (updater) => {
                       setSizeMatrices(prev => {
