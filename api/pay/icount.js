@@ -49,7 +49,15 @@ export default async function handler(req, res) {
 
   // Build inputs from body
   const inputs = Object.keys(body || {}).map(k => {
-    const v = body[k];
+    let v = body[k];
+    // stringify objects/arrays so they serialize correctly into the form
+    if (v !== null && (typeof v === 'object' || Array.isArray(v))) {
+      try {
+        v = JSON.stringify(v);
+      } catch (e) {
+        v = String(v);
+      }
+    }
     return `<input type="hidden" name="${escapeHtml(k)}" value="${escapeHtml(v)}" />`;
   }).join('\n');
 

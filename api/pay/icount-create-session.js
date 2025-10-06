@@ -39,6 +39,8 @@ export default async function handler(req, res) {
     return;
   }
 
+  // Keep the original body so we can prefer explicit totals when the client sent a minimal payload
+  const originalBody = body || {};
   // Normalize payload so we have canonical fields
   const normalized = typeof normalize === 'function' ? normalize(body || {}) : (body || {});
 
@@ -80,7 +82,8 @@ export default async function handler(req, res) {
   const description = normalized.order?.description || normalized.order?.title || '';
   const contactName = normalized.customer?.company_name || normalized.customer?.contact_name || normalized.contact?.name || '';
 
-  const csAmount = Number(normalized?.order?.totals?.grand_total) || 0;
+  // Prefer an explicitly-provided grand_total (from a minimal GET query) if present; otherwise fall back to normalized totals
+  const csAmount = Number(originalBody?.order?.totals?.grand_total ?? normalized?.order?.totals?.grand_total) || 0;
   const icountPayload = {
     cs: csAmount,
     cd: description || (orderNum ? `Order ${orderNum}` : `Order ${normalized.order?.order_number || normalized.order?.order_id || ''}`),

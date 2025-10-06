@@ -5,8 +5,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --primary: 220 90% 56%;
+  --primary: 268 96% 48%; /* purple-pink base */
   --primary-foreground: 0 0% 100%;
+  --brand-gradient-from: 292 100% 50%; /* purple */
+  --brand-gradient-to: 320 100% 55%; /* pink */
   --secondary: 220 14.3% 95.9%;
   --secondary-foreground: 220.9 39.3% 11%;
   --muted: 220 14.3% 95.9%;
@@ -119,7 +121,33 @@ body {
 }
 
 .hero-gradient {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, hsl(var(--brand-gradient-from)), hsl(var(--brand-gradient-to)) 100%);
+}
+
+.brand-gradient {
+  background: linear-gradient(135deg, hsl(var(--brand-gradient-from)) 0%, hsl(var(--brand-gradient-to)) 100%);
+}
+
+/* Brand button helpers */
+.brand-gradient {
+  color: hsl(var(--primary-foreground));
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.btn-brand {
+  background-image: linear-gradient(135deg, hsl(var(--brand-gradient-from)) 0%, hsl(var(--brand-gradient-to)) 100%);
+  color: hsl(var(--primary-foreground));
+  box-shadow: 0 8px 24px rgba(122, 81, 255, 0.18);
+}
+
+.btn-brand:active {
+  transform: translateY(1px);
+}
+
+.btn-brand:focus {
+  outline: 2px solid rgba(255,255,255,0.12);
+  outline-offset: 2px;
 }
 
 .card-hover {
