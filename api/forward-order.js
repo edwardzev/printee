@@ -189,6 +189,17 @@ export default async function handler(req, res) {
     if (forwarderWarnings.length) {
       body._forwarder_warnings = (body._forwarder_warnings || []).concat(forwarderWarnings);
     }
+    // Ensure a top-level cart array exists for downstream systems that expect it (e.g., Pabbly UI)
+    try {
+      const rawCart = (bodyCandidate && bodyCandidate.cart) != null ? bodyCandidate.cart : null;
+      let cartParsed = rawCart;
+      if (typeof rawCart === 'string') {
+        try { cartParsed = JSON.parse(rawCart); } catch { cartParsed = rawCart; }
+      }
+      if (Array.isArray(cartParsed)) {
+        body.cart = cartParsed;
+      }
+    } catch (e) { /* ignore cart attach error */ }
     // log normalized body snippet
   if (DEBUG_FORWARDER) console.log('forward-order normalized body snippet:', JSON.stringify(body).slice(0, 1000));
 

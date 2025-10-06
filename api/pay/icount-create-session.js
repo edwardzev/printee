@@ -24,8 +24,11 @@ export default async function handler(req, res) {
     const q = req.query || {};
     body = {
       idempotency_key: q.idempotency_key,
-      order: { totals: { grand_total: Number(q.grand_total) || 0 } },
-      contact: { name: q.name || '', phone: q.phone || '', email: q.email || '' }
+      order: {
+        totals: { grand_total: Number(q.grand_total) || 0 },
+        description: q.desc || q.description || ''
+      },
+      contact: { name: q.name || q.full_name || '', phone: q.phone || q.contact_phone || '', email: q.email || q.contact_email || '' }
     };
   } else if (req.method === 'POST') {
     try { body = await new Promise((resolve, reject) => { let d=''; req.on('data',c=>d+=c); req.on('end',()=>{ try{ resolve(JSON.parse(d||'{}')); }catch(e){ resolve({}); } }); req.on('error', reject); }); } catch (e) { body = req.body || {}; }
@@ -73,13 +76,17 @@ export default async function handler(req, res) {
   }
 
   // Build a minimal set of iCount params that client can post to iCount page
+  const orderNum = found?.fields && (found.fields['Order#'] || found.fields['Order #'] || found.fields.OrderNumber);
+  const description = normalized.order?.description || normalized.order?.title || '';
+  const contactName = normalized.customer?.company_name || normalized.customer?.contact_name || normalized.contact?.name || '';
+
   const icountPayload = {
     cs: normalized.order?.totals?.grand_total || 0,
-  cd: `Order ${found?.fields && (found.fields['Order#'] || found.fields['Order #'] || found.fields.OrderNumber) ? (found.fields['Order#'] || found.fields['Order #'] || found.fields.OrderNumber) : (normalized.order?.order_number || normalized.order?.order_id || '')}`,
+    cd: description || (orderNum ? `Order ${orderNum}` : `Order ${normalized.order?.order_number || normalized.order?.order_id || ''}`),
     currency_code: normalized.order?.currency || 'ILS',
-    full_name: normalized.customer?.company_name || normalized.customer?.contact_name || '',
-    contact_email: normalized.customer?.email || '',
-    contact_phone: normalized.customer?.phone || '',
+    full_name: contactName,
+    contact_email: normalized.customer?.email || normalized.contact?.email || '',
+    contact_phone: normalized.customer?.phone || normalized.contact?.phone || '',
     success_url: RETURN_SUCCESS,
     failure_url: RETURN_FAIL,
     ipn_url: IPN_URL,

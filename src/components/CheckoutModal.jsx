@@ -62,6 +62,11 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
 
   useEffect(() => {
     if (open) {
+      // Generate a fresh idempotency key for this checkout attempt to avoid reusing a previous order
+      const newKey = `ord-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+      idempotencyKeyRef.current = newKey;
+      try { mergePayload({ idempotency_key: newKey }); } catch {}
+
       // Initialize form fields from the provided prefill snapshot when the modal opens.
       // Do NOT reset the chosen payment method on subsequent contact updates.
       setName(prefillContact?.name || '');
@@ -179,12 +184,17 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
         };
 
         // Use GET with small query params to avoid server/body size limits that caused 413
+        // Build a concise description from cart items (first 2-3 names)
+        const itemDescs = (sanitizedCart || []).slice(0, 3).map(i => `${(i?.product?.name || i?.name || 'פריט')}${i?.quantity ? ' x' + i.quantity : ''}`);
+        const desc = itemDescs.length ? `הזמנה: ${itemDescs.join(', ')}${(sanitizedCart || []).length > 3 ? '…' : ''}` : 'הזמנה';
+
         const qs = new URLSearchParams({
           idempotency_key: sessionToSend.idempotency_key,
           grand_total: String(sessionToSend.order.totals.grand_total || 0),
           name: sessionToSend.contact.name || '',
           phone: sessionToSend.contact.phone || '',
-          email: sessionToSend.contact.email || ''
+          email: sessionToSend.contact.email || '',
+          desc
         }).toString();
         const r = await fetchWithTimeout(`/api/pay/icount-create-session?${qs}`, { method: 'GET' }, 10000);
           if (r.status === 413) {

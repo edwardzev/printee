@@ -27,8 +27,8 @@ const translations = {
     fastDeliveryDesc: 'אנחנו משתמשים בטכנולוגיות הדפסה מתקדמות ביותר לתוצאות מצוינות',
     bestPrices: 'מחירים הוגנים',
     bestPricesDesc: 'מחירים תחרותיים ללא פשרות על איכות',
-    easyDesign: 'עיצוב קל',
-    easyDesignDesc: 'ממשק פשוט ואינטואיטיבי לעיצוב',
+    easyDesign: 'תהליך קל ומהיר',
+    easyDesignDesc: 'ממשק פשוט ואינטואיטיבי להזמנה אונליין',
     
     // Catalog
     catalogTitle: 'קטלוג מוצרים',
