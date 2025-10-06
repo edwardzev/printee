@@ -135,8 +135,18 @@ export default async function handler(req, res) {
         const nsPrefix = DROPBOX_NAMESPACE_ID ? `ns:${DROPBOX_NAMESPACE_ID}` : '';
         const folderPath = `${nsPrefix}${orderFolder}`;
   if (DEBUG_FORWARDER) console.log('forward-order: creating dropbox folder', folderPath);
-  const createResult = await createFolder(folderPath).catch((e) => { throw e; });
-  if (DEBUG_FORWARDER) console.log('forward-order: createFolder result snippet:', JSON.stringify(createResult).slice(0,400));
+        const createResult = await createFolder(folderPath).catch((e) => { throw e; });
+        if (DEBUG_FORWARDER) console.log('forward-order: createFolder result snippet:', JSON.stringify(createResult).slice(0,400));
+        // Attempt to make a shared link for the folder so downstream systems (Pabbly) can access it
+        try {
+          const folderShared = await createSharedLink(folderPath).catch(()=>null);
+          if (folderShared) {
+            bodyCandidate._dropbox_folder_url = folderShared;
+            if (DEBUG_FORWARDER) console.log('forward-order: created shared link for folder', folderShared);
+          }
+        } catch (e) {
+          if (DEBUG_FORWARDER) console.warn('forward-order: createSharedLink failed', e && e.message);
+        }
       } catch (e) {
         const msg = e && (e.message || String(e)) || 'unknown';
         forwarderWarnings.push({ when: new Date().toISOString(), where: 'dropbox.create_folder', message: msg });
