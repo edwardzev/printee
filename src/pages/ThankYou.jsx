@@ -37,15 +37,7 @@ export default function ThankYou() {
             <h1 className="text-3xl font-bold text-gray-900 mb-4">תודה רבה!</h1>
             <p className="text-lg text-gray-600 mb-6">ההזמנה נקלטה בהצלחה. נשלח אליך אישור במייל בקרוב והצוות שלנו ייצור איתך קשר במידה ונצטרך פרטים נוספים.</p>
 
-            <div className="bg-white border rounded-lg p-4 text-left shadow-sm mb-6">
-              <h2 className="text-lg font-semibold mb-3">סיכום הזמנה</h2>
-              <div className="grid grid-cols-2 gap-3 text-sm text-gray-700">
-                <div><strong>מספר הזמנה</strong><div className="text-xs text-gray-500">{orderId || '—'}</div></div>
-                <div><strong>שם</strong><div className="text-xs text-gray-500">{customerName || '—'}</div></div>
-                <div><strong>אימייל</strong><div className="text-xs text-gray-500">{customerEmail || '—'}</div></div>
-                <div><strong>סכום</strong><div className="text-xs text-gray-500">{totals && typeof totals === 'object' ? JSON.stringify(totals) : (totals || '—')}</div></div>
-              </div>
-            </div>
+            {/* Summary removed per request */}
 
             <div className="flex items-center justify-center gap-3 mb-6">
               <Link to="/catalog"><Button>המשך לקניות</Button></Link>

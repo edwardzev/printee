@@ -28,16 +28,21 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
     const forwardUrl = (typeof window !== 'undefined' && window.location && window.location.origin) ? `${window.location.origin}/api/forward-order` : '/api/forward-order';
     const minimal = { idempotency_key: idempotencyKeyRef.current, contact: fullPayload.contact, paymentMethod: fullPayload.paymentMethod, cartSummary: fullPayload.cartSummary || {} };
     try {
-      if (navigator && navigator.sendBeacon) {
-        const blob = new Blob([JSON.stringify(minimal)], { type: 'application/json' });
-        const ok = navigator.sendBeacon(forwardUrl, blob);
-        if (ok) return;
-      }
-      // fallback short fetch
-      const controller = new AbortController();
-      const id = setTimeout(() => controller.abort(), 4000);
-      await fetch(forwardUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...fullPayload, idempotency_key: idempotencyKeyRef.current }), signal: controller.signal }).catch(()=>{});
-      clearTimeout(id);
+      // Fire a full payload fetch in the background (non-blocking, no short abort)
+      // This includes uploadedDesigns urls (which may be data URLs) so the server can upload to Dropbox.
+      fetch(forwardUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...fullPayload, idempotency_key: idempotencyKeyRef.current })
+      }).catch(()=>{});
+
+      // Additionally, send a minimal beacon as a backup signal (idempotent on server side)
+      try {
+        if (navigator && navigator.sendBeacon) {
+          const blob = new Blob([JSON.stringify(minimal)], { type: 'application/json' });
+          navigator.sendBeacon(forwardUrl, blob);
+        }
+      } catch {}
     } catch (e) {
       console.warn('sendForwardOrderOnce failed', e?.message || e);
     }
@@ -75,8 +80,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       // ignore
     }
 
-    // Forward to Pabbly webhook (best-effort). Include cart payload and contact/payment info.
-    // Build a sanitized cart (strip File objects) to avoid serialization issues.
+  // Build a sanitized cart (strip File objects) but preserve uploadedDesigns.url (which may contain data URLs)
     const sanitizedCart = (Array.isArray(cartItems) ? cartItems : []).map((i) => {
       const { uploadedDesigns, ...rest } = i || {};
       const sanitizedDesigns = {};
@@ -100,7 +104,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       cartSummary: cartSummary || {}
     };
 
-  // Fire-and-forget forwarding: prefer sendBeacon, fallback to a short fetch so UI doesn't hang
+  // Fire-and-forget forwarding: send full payload in background fetch (with beacon backup) so Dropbox uploads can occur
   setProcessing(true);
   try {
     // Idempotent background forward (will only run once per modal session)
