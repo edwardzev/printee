@@ -1,61 +1,220 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Pabbly Order Payload",
+  "$id": "https://printee.co.il/schemas/pabbly-order.schema.json",
+  "title": "Pabbly Order Payload (Canonical)",
+  "description": "Canonical payload forwarded to Pabbly for production and invoicing flows.",
   "type": "object",
-  "required": ["airtable_record_id","order_number","customer","cart","finance","dropbox_folder_url"],
+  "additionalProperties": true,
+  "required": [
+    "airtable_record_id",
+    "order_number",
+    "customer",
+    "cart",
+    "finance"
+  ],
   "properties": {
+    "version": { "type": ["string","number"], "description": "Optional payload version for future migrations." },
+    "idempotency_key": { "type": ["string","null"] },
+    "environment": { "type": ["string","null"], "description": "production|staging|development" },
+    "locale": { "type": ["string","null"] },
+    "source": { "type": ["string","null"], "description": "e.g., web, api" },
+
     "airtable_record_id": { "type": ["string","null"] },
     "order_number": { "type": ["string","null"] },
+
+    "order": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "order_id": { "type": ["string","null"] },
+        "order_number": { "type": ["string","null"] },
+        "status": { "type": ["string","null"] },
+        "currency": { "type": ["string","null"], "default": "ILS" },
+        "description": { "type": ["string","null"] },
+        "totals": { "$ref": "#/$defs/order_totals" }
+      }
+    },
+
     "customer": {
       "type": "object",
       "required": ["contact_name"],
+      "additionalProperties": true,
       "properties": {
+        "customer_id": { "type": ["string","null"] },
+        "type": { "type": ["string","null"] },
+        "company_name": { "type": ["string","null"] },
         "contact_name": { "type": "string" },
-        "email": { "type": "string" },
-        "phone": { "type": "string" },
-        "address": {
-          "type": "object",
-          "properties": {
-            "line1": { "type": "string" },
-            "line2": { "type": "string" },
-            "city": { "type": "string" },
-            "postcode": { "type": "string" },
-            "country": { "type": "string" }
+        "email": { "type": ["string","null"], "format": "email" },
+        "phone": { "type": ["string","null"] },
+        "address": { "$ref": "#/$defs/address" }
+      },
+      "allOf": [
+        {
+          "anyOf": [
+            { "required": ["email"] },
+            { "required": ["phone"] }
+          ]
+        }
+      ]
+    },
+
+    "cart": {
+      "type": "array",
+      "minItems": 0,
+      "items": { "$ref": "#/$defs/cart_item" }
+    },
+
+    "dropbox_folder_url": { "type": ["string","null"], "format": "uri" },
+
+    "finance": { "$ref": "#/$defs/finance" },
+
+    "payment": { "$ref": "#/$defs/payment" },
+
+    "delivery": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "required": { "type": "boolean", "default": false }
+      }
+    },
+
+    "_airtable": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "record_id": { "type": ["string","null"] },
+        "order_number": { "type": ["string","null"] },
+        "url": { "type": ["string","null"], "format": "uri" }
+      }
+    },
+
+    "_forwarded_at": { "type": ["string","null"], "format": "date-time" },
+    "is_partial": { "type": "boolean", "default": false },
+    "_forwarder_warnings": { "type": "array", "items": { "type": "object" } },
+    "_app_payload": { "type": ["object","null"] }
+  },
+
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "delivery": {
+            "type": "object",
+            "properties": { "required": { "const": true } },
+            "required": ["required"]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "customer": {
+            "properties": {
+              "address": {
+                "required": ["line1", "city"]
+              }
+            }
           }
         }
       }
-    },
-    "cart": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["line_id","sku","quantity"],
-        "properties": {
-          "line_id": { "type": "string" },
-          "product_name": { "type": "string" },
-          "sku": { "type": "string" },
-          "quantity": { "type": "number" },
-          "unit_price": { "type": "number" },
-          "line_total": { "type": "number" },
-          "colors": { "type": "array" },
-          "print_areas": { "type": "array" }
-        }
+    }
+  ],
+
+  "$defs": {
+    "address": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "line1": { "type": ["string","null"] },
+        "line2": { "type": ["string","null"] },
+        "city": { "type": ["string","null"] },
+        "postcode": { "type": ["string","null"] },
+        "country": { "type": ["string","null"] }
       }
     },
+
+    "size_matrix": {
+      "type": "object",
+      "additionalProperties": { "type": "number", "minimum": 0 },
+      "description": "Map of size code to quantity, e.g., { \"S\": 2, \"M\": 1 }"
+    },
+
+    "color_matrix": {
+      "type": "object",
+      "required": ["color", "size_matrix"],
+      "properties": {
+        "color": { "type": "string" },
+        "size_matrix": { "$ref": "#/$defs/size_matrix" }
+      }
+    },
+
+    "print_area": {
+      "type": "object",
+      "required": ["area_name"],
+      "properties": {
+        "area_name": { "type": "string" },
+        "file_url": { "type": ["string","null"], "format": "uri" },
+        "method": { "type": ["string","null"], "enum": ["print", "embo", null] },
+        "print_color": { "type": ["string","null"] },
+        "designer_comments": { "type": ["string","null"] }
+      }
+    },
+
+    "cart_item": {
+      "type": "object",
+      "required": ["line_id", "sku", "quantity"],
+      "additionalProperties": true,
+      "properties": {
+        "line_id": { "type": "string" },
+        "product_name": { "type": ["string","null"] },
+        "sku": { "type": "string" },
+        "quantity": { "type": "number", "minimum": 0 },
+        "unit_price": { "type": "number", "minimum": 0 },
+        "line_total": { "type": "number", "minimum": 0 },
+        "colors": { "type": "array", "items": { "$ref": "#/$defs/color_matrix" } },
+        "print_areas": { "type": "array", "items": { "$ref": "#/$defs/print_area" } }
+      }
+    },
+
+    "order_totals": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "subtotal": { "type": "number", "minimum": 0 },
+        "delivery": { "type": "number", "minimum": 0 },
+        "vat_percent": { "type": "number", "minimum": 0 },
+        "vat_amount": { "type": "number", "minimum": 0 },
+        "grand_total": { "type": "number", "minimum": 0 }
+      },
+      "required": ["grand_total"]
+    },
+
     "finance": {
       "type": "object",
-      "required": ["grand_total"],
+      "additionalProperties": true,
       "properties": {
         "paid": { "type": "boolean" },
-        "payment_method": { "type": "string" },
-        "subtotal": { "type": "number" },
-        "prints_embossing_cost": { "type": "number" },
-        "delivery_cost": { "type": "number" },
-        "vat_percent": { "type": "number" },
-        "vat_amount": { "type": "number" },
-        "grand_total": { "type": "number" }
-      }
+        "payment_method": { "type": ["string","null"] },
+        "subtotal": { "type": "number", "minimum": 0 },
+        "prints_embossing_cost": { "type": ["number","null"], "minimum": 0 },
+        "delivery_cost": { "type": "number", "minimum": 0 },
+        "vat_percent": { "type": "number", "minimum": 0 },
+        "vat_amount": { "type": "number", "minimum": 0 },
+        "grand_total": { "type": "number", "minimum": 0 }
+      },
+      "required": ["grand_total"]
     },
-    "dropbox_folder_url": { "type": ["string","null"] }
+
+    "payment": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "method": { "type": ["string","null"] },
+        "provider": { "type": ["string","null"] },
+        "session": { "type": ["string","null"] },
+        "amount": { "type": "number", "minimum": 0 },
+        "currency": { "type": ["string","null"], "default": "ILS" },
+        "status": { "type": ["string","null"] }
+      }
+    }
   }
 }

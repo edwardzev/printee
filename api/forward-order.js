@@ -215,20 +215,20 @@ export default async function handler(req, res) {
 
     // --- Canonicalize fields for Pabbly / downstream systems ---
     try {
+      // Version for downstream tracking
+      body.version = body.version || '2025-10-07';
       // Airtable record id (prefer explicit _airtable entry)
       body.airtable_record_id = body._airtable?.record_id || body._airtable?.id || (ensured && (ensured.airtable_record_id || ensured.order_id)) || null;
 
       // Top-level order_number convenience
       body.order_number = body.order?.order_number || (body._airtable && body._airtable.order_number) || null;
 
-      // Ensure customer block exists and merge contact fields (normalize() already populated customer)
+      // Ensure customer block exists and prefer contact fields
       body.customer = body.customer || {};
-      const rawContact = body._app_payload?.contact || {};
-      // After normalize(), customer fields are already populated, but ensure contact fields from _app_payload are preserved
-      if (!body.customer.contact_name && rawContact.name) body.customer.contact_name = rawContact.name;
-      if (!body.customer.email && rawContact.email) body.customer.email = rawContact.email;
-      if (!body.customer.phone && rawContact.phone) body.customer.phone = rawContact.phone;
-      
+      const contact = body.contact || body._app_payload?.contact || {};
+      body.customer.contact_name = body.customer.contact_name || contact.name || contact.fullName || body.customer.contact_name || '';
+      body.customer.email = body.customer.email || contact.email || '';
+      body.customer.phone = body.customer.phone || contact.phone || '';
       // Promote address into customer.address as a normalized object
       body.customer.address = body.customer.address || {
         line1: body.delivery?.address_line1 || '',
@@ -238,13 +238,8 @@ export default async function handler(req, res) {
         country: body.delivery?.country || ''
       };
 
-      // CRITICAL FIX: Cart mapping - normalize() creates items, we need cart for Pabbly
-      // Use items array as cart, or existing cart if already populated
-      if (!Array.isArray(body.cart) && Array.isArray(body.items)) {
-        body.cart = [...body.items]; // Copy items to cart
-      } else if (!Array.isArray(body.cart)) {
-        body.cart = [];
-      }
+  // Ensure cart exists as array
+      if (!Array.isArray(body.cart)) body.cart = [];
 
       // Coerce numeric fields in cart items where possible
       body.cart = body.cart.map((it, idx) => {
@@ -266,6 +261,20 @@ export default async function handler(req, res) {
             designer_comments: pa.designer_comments || pa.designerComments || pa.comments || ''
           }));
         }
+        // If uploadedDesigns exist, map their URLs into corresponding print_areas by area key
+        try {
+          const designs = item.uploadedDesigns || item.uploaded_designs || null;
+          if (designs && typeof designs === 'object' && Array.isArray(item.print_areas)) {
+            for (const pa of item.print_areas) {
+              const key = (pa.area_name || '').toString();
+              const design = designs[key] || designs[pa.area_name] || null;
+              if (design && !pa.file_url) {
+                const url = design.url || design.link || (design.file && design.file.url) || '';
+                if (url) pa.file_url = url;
+              }
+            }
+          }
+        } catch {}
         // Normalize colors/sizeMatrices if present
         if (item.sizeMatrices || item.sizeMatrix || item.size_matrix) {
           const matrices = item.sizeMatrices || item.sizeMatrix || item.size_matrix || {};
@@ -281,22 +290,62 @@ export default async function handler(req, res) {
         return item;
       });
 
-      // Finance block: use existing normalized totals preferentially, fallback to computation
-      // normalize() already computed these correctly from cartSummary and cart items
-      const subtotal = Number(body.order?.totals?.subtotal) || 0;
-      const deliveryCost = Number(body.order?.totals?.delivery) || 0;
-      const vatPercent = Number(body.order?.totals?.vat_percent) || 17;
-      const vatAmount = Number(body.order?.totals?.vat_amount) || 0;
-      const grandTotal = Number(body.order?.totals?.grand_total) || 0;
+      // If normalized items exist (from normalize()), merge print_areas into cart items when missing
+      try {
+        const normItems = Array.isArray(bodyTmp?.items) ? bodyTmp.items : [];
+        if (normItems.length && body.cart.length) {
+          const byLineOrSku = new Map();
+          body.cart.forEach((ci, i) => {
+            const key = String(ci.line_id || ci.sku || i);
+            byLineOrSku.set(key, ci);
+          });
+          normItems.forEach((ni, j) => {
+            const key = String(ni.line_id || ni.product_sku || j);
+            const target = byLineOrSku.get(key);
+            if (target) {
+              if (!Array.isArray(target.print_areas) || target.print_areas.length === 0) {
+                if (Array.isArray(ni.print_areas) && ni.print_areas.length) {
+                  target.print_areas = ni.print_areas.map(pa => ({
+                    area_name: pa.areaKey || pa.key || pa.area_name || pa.name || '',
+                    file_url: '',
+                    method: pa.method || 'print',
+                    print_color: pa.print_color || pa.printColor || '',
+                    designer_comments: pa.designer_comments || pa.designerComments || ''
+                  }));
+                }
+              }
+            }
+          });
+        }
+      } catch (e) {
+        if (DEBUG_FORWARDER) console.warn('forward-order: merge print_areas warning', e && e.message);
+      }
 
-      // Ensure body.order.totals exists with numeric values
+      // Finance block: coerce and compute totals
+      const appTotal = Number(body._app_payload?.cartSummary?.total || 0) || 0;
+      const subtotal = Number(body.order?.totals?.subtotal) || appTotal || body.cart.reduce((s,i)=> s + (Number(i.line_total)||0), 0);
+      const deliveryCost = Number(body.order?.totals?.delivery) || Number(body.delivery?.delivery_cost) || 0;
+      const vatPercent = Number(body.order?.totals?.vat_percent) || 17;
+      const vatAmount = Number(body.order?.totals?.vat_amount) || Math.round((subtotal + deliveryCost) * (vatPercent/100));
+      const grandTotal = Number(body.order?.totals?.grand_total) || (subtotal + deliveryCost + vatAmount);
+
       body.order = body.order || {};
       body.order.totals = body.order.totals || {};
-      body.order.totals.subtotal = subtotal;
-      body.order.totals.delivery = deliveryCost;
-      body.order.totals.vat_percent = vatPercent;
-      body.order.totals.vat_amount = vatAmount;
-      body.order.totals.grand_total = grandTotal;
+      body.order.totals.subtotal = Number(subtotal);
+      body.order.totals.delivery = Number(deliveryCost);
+      body.order.totals.vat_percent = Number(vatPercent);
+      body.order.totals.vat_amount = Number(vatAmount);
+      body.order.totals.grand_total = Number(grandTotal);
+
+      // Build a fallback description from first items if missing
+      if (!body.order.description) {
+        const names = (body.cart || []).slice(0, 3).map(i => {
+          const n = i.product_name || i.name || 'פריט';
+          const q = Number(i.quantity || 0);
+          return q ? `${n} x${q}` : n;
+        });
+        body.order.description = names.length ? `הזמנה: ${names.join(', ')}${(body.cart || []).length > 3 ? '…' : ''}` : '';
+      }
 
       // Top-level finance object
       body.finance = body.finance || {};
@@ -325,27 +374,25 @@ export default async function handler(req, res) {
       // Audit fields
       body._forwarded_at = new Date().toISOString();
       body.is_partial = Boolean(isPartial);
-      
-      // Ensure backward compatibility: map cart to items if items missing
-      if (Array.isArray(body.cart) && !Array.isArray(body.items)) {
-        body.items = [...body.cart];
-      }
     } catch (e) {
       if (DEBUG_FORWARDER) console.warn('forward-order: canonicalization error', e && (e.message || e));
     }
 
+    if (DEBUG_FORWARDER) {
+      try { console.log('forward-order final canonical snippet:', JSON.stringify({
+        airtable_record_id: body.airtable_record_id,
+        order_number: body.order_number,
+        finance: body.finance,
+        cartLen: Array.isArray(body.cart) ? body.cart.length : 0,
+        dropbox_folder_url: body.dropbox_folder_url
+      }).slice(0, 1200)); } catch {}
+    }
+
     if (validate) {
-      // Skip original validation if we have canonical fields (they may not match the old schema)
-      const hasCanonicalFields = body.airtable_record_id || body.finance || body.dropbox_folder_url !== undefined;
-      if (!hasCanonicalFields) {
-        const valid = validate(body);
-        if (!valid) {
-          console.warn('forward-order validation failed', validate.errors);
-          if (DEBUG_FORWARDER) console.log('forward-order: validation failed on body:', JSON.stringify(body).slice(0, 2000));
-          return res.status(400).json({ ok: false, error: 'validation_failed', details: validate.errors, normalized: body });
-        }
-      } else {
-        if (DEBUG_FORWARDER) console.log('forward-order: skipping original schema validation due to canonical fields');
+      const valid = validate(body);
+      if (!valid) {
+        console.warn('forward-order validation failed', validate.errors);
+        return res.status(400).json({ ok: false, error: 'validation_failed', details: validate.errors, normalized: body });
       }
     }
 
@@ -368,15 +415,6 @@ export default async function handler(req, res) {
     }
 
     // Forward to Pabbly for full submissions
-    if (DEBUG_FORWARDER) console.log('forward-order: sending to pabbly - canonical fields check:', { 
-      airtable_record_id: body.airtable_record_id,
-      order_number: body.order_number,
-      customer_name: body.customer?.contact_name,
-      cart_length: body.cart?.length,
-      finance_total: body.finance?.grand_total,
-      dropbox_url: body.dropbox_folder_url
-    });
-    
     const r = await fetch(pabblyUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
