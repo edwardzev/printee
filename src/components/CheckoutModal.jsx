@@ -83,10 +83,34 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       cart: sanitizedCart,
       contact: { name: name.trim(), phone: phone.trim(), email: email.trim() },
       paymentMethod: method,
-      cartSummary: cartSummary || {}
+      // Provide totals to satisfy backend validation; keep currency simple for now
+      totals: {
+        subtotal: Number(cartSummary?.subtotal || 0),
+        total: Number(cartSummary?.total || 0),
+        currency: 'ILS',
+      },
     };
 
   setProcessing(true);
+
+    // Fire-and-forget order POST; prefer sendBeacon to avoid abort on navigation, fallback to fetch
+    try {
+      const json = JSON.stringify(toSend);
+      let sent = false;
+      if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+        const blob = new Blob([json], { type: 'application/json' });
+        sent = navigator.sendBeacon('/api/order', blob);
+      }
+      if (!sent) {
+        // do not await; avoid blocking UI
+        fetch('/api/order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: json,
+          keepalive: true,
+        }).catch(() => {});
+      }
+    } catch (_) {}
 
     if (method === 'card') {
       // Backend removed: show thank-you page with client-only confirmation.
