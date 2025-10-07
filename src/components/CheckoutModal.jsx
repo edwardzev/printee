@@ -112,6 +112,25 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       }
     } catch (_) {}
 
+    // Also create/ensure a draft in Airtable using only the idempotency key (no PII at this stage)
+    try {
+      const idem = (payload && payload.idempotency_key) || idempotencyKeyRef.current;
+      const body = JSON.stringify({ idempotency_key: idem });
+      let beaconsent = false;
+      if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+        const blob = new Blob([body], { type: 'application/json' });
+        beaconsent = navigator.sendBeacon('/api/airtable/order', blob);
+      }
+      if (!beaconsent) {
+        fetch('/api/airtable/order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body,
+          keepalive: true,
+        }).catch(() => {});
+      }
+    } catch (_) {}
+
     if (method === 'card') {
       // Backend removed: show thank-you page with client-only confirmation.
       toast({ title: 'תודה', description: 'הזמנה התקבלה. ניצור קשר להמשך.', variant: 'default' });
