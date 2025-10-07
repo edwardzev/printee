@@ -117,6 +117,78 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       }
     } catch (_) {}
 
+    // Enrich Airtable record with Customer + Financial + Cart and attach file paths.
+    try {
+      // Recreate the same uploads we generated in Cart for naming consistency
+      const uploads = (() => {
+        try {
+          const list = [];
+          (cartItems || []).forEach((item) => {
+            const product = item.productSku || item.product || 'product';
+            const matrices = item.sizeMatrices || {};
+            const colors = item.selectedColors && Array.isArray(item.selectedColors) && item.selectedColors.length
+              ? item.selectedColors
+              : (item.color ? [item.color] : []);
+            const activeColors = [];
+            let totalQtyForItem = 0;
+            colors.forEach((c) => {
+              const mat = (matrices && matrices[c]) || (c === item.color ? (item.sizeMatrix || {}) : {});
+              const qty = Object.values(mat || {}).reduce((s, q) => s + (q || 0), 0);
+              if (qty > 0) { activeColors.push(c); totalQtyForItem += qty; }
+            });
+            if (activeColors.length === 0) return;
+            const areaMethod = {};
+            (item.selectedPrintAreas || []).forEach((sel) => {
+              if (!sel) return;
+              if (typeof sel === 'string') areaMethod[sel] = 'print';
+              else if (sel.areaKey) areaMethod[sel.areaKey] = sel.method || 'print';
+            });
+            const designs = item.uploadedDesigns || {};
+            Object.keys(designs).forEach((areaKey) => {
+              const d = designs[areaKey];
+              if (!d || !d.url) return;
+              const method = areaMethod[areaKey] || 'print';
+              const fileName = d.name || `${areaKey}.png`;
+              list.push({ areaKey, method, product, colors: activeColors, qty: totalQtyForItem, dataUrl: d.url, fileName });
+            });
+          });
+          return list;
+        } catch (e) { return []; }
+      })();
+
+      const financialBlock = {
+        subtotal: Number(cartSummary?.total || 0), // garments + prints total before VAT and delivery
+        delivery: Number((payload?.withDelivery ? (Math.ceil((cartSummary?.totalItems || 0) / 50) * 50) : 0) || 0),
+        vat: Math.round(Number(cartSummary?.total || 0) * 0.17),
+        total: Math.round(Number(cartSummary?.total || 0) * 1.17 + Number((payload?.withDelivery ? (Math.ceil((cartSummary?.totalItems || 0) / 50) * 50) : 0) || 0)),
+        payment_method: method,
+      };
+
+      const enriched = {
+        idempotency_key: idempotencyKeyRef.current,
+        customer: { name, phone, email, address_street: payload?.contact?.address_street || '', address_city: payload?.contact?.address_city || '' },
+        financial: financialBlock,
+        cart: {
+          items: (cartItems || []).map((i) => ({
+            productSku: i.productSku,
+            productName: i.productName,
+            color: i.color,
+            selectedColors: i.selectedColors,
+            sizeMatrix: i.sizeMatrix,
+            sizeMatrices: i.sizeMatrices,
+            selectedPrintAreas: i.selectedPrintAreas,
+          })),
+        },
+        cartUploads: uploads,
+      };
+
+      fetch('/api/airtable/order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(enriched),
+      }).catch(() => {});
+    } catch (_) {}
+
 
     if (method === 'card') {
       // Backend removed: show thank-you page with client-only confirmation.

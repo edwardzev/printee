@@ -21,6 +21,10 @@ function getEnv() {
   fIdem: process.env.AIRTABLE_FIELD_IDEMPOTENCY_KEY || 'IdempotencyKey',
     fStatus: process.env.AIRTABLE_FIELD_STATUS || '',
     statusDraft: process.env.AIRTABLE_STATUS_DRAFT || '',
+  // Long-text JSON fields
+  fCartText: process.env.AIRTABLE_FIELD_CART_TEXT || 'cart_text',
+  fCustomerText: process.env.AIRTABLE_FIELD_CUSTOMER_TEXT || 'customer_text',
+  fFinanceText: process.env.AIRTABLE_FIELD_FINANCE_TEXT || 'finance_text',
     // Dropbox
     dbxAppKey: process.env.DROPBOX_APP_KEY || '',
     dbxAppSecret: process.env.DROPBOX_APP_SECRET || '',
@@ -197,11 +201,15 @@ export default async function handler(req, res) {
   const body = await readJson(req);
   const idempotency_key = String(body.idempotency_key || '').trim();
   const uploads = Array.isArray(body.uploads) ? body.uploads : [];
+  const customer = (body.customer && typeof body.customer === 'object') ? body.customer : null;
+  const financial = (body.financial && typeof body.financial === 'object') ? body.financial : null;
+  const cart = (body.cart && typeof body.cart === 'object') ? body.cart : null;
+  const cartUploads = Array.isArray(body.cartUploads) ? body.cartUploads : [];
   if (!idempotency_key || idempotency_key.length < 6) {
     return res.status(400).json({ ok: false, error: 'invalid_idempotency_key' });
   }
 
-  const { token, baseId, table, fIdem, fStatus, statusDraft, dbxAppKey, dbxAppSecret, dbxRefreshToken, dbxBaseFolder, dbxNamespaceId } = getEnv();
+  const { token, baseId, table, fIdem, fStatus, statusDraft, fCartText, fCustomerText, fFinanceText, dbxAppKey, dbxAppSecret, dbxRefreshToken, dbxBaseFolder, dbxNamespaceId } = getEnv();
   try {
     console.log('[airtable/order] invoked', {
       baseId: baseId ? `${baseId}` : '(missing)',
@@ -302,6 +310,70 @@ export default async function handler(req, res) {
         if (uploadedCount || (failed && failed.length)) {
           dropbox.uploads = { uploaded: uploadedCount, failedCount: (failed && failed.length) || 0, failed };
           try { console.log('[airtable/order] dropbox uploads', dropbox.uploads); } catch {}
+        }
+
+        // If details provided, patch Airtable with JSON blocks into 3 long-text fields
+        const patchFields = {};
+        try {
+          if (fCustomerText && customer) {
+            patchFields[fCustomerText] = JSON.stringify({
+              name: customer.name || '',
+              phone: customer.phone || '',
+              email: customer.email || '',
+              address_street: customer.address_street || customer.adress_street || '',
+              address_city: customer.address_city || customer.adres_city || '',
+            });
+          }
+          if (fFinanceText && financial) {
+            patchFields[fFinanceText] = JSON.stringify({
+              subtotal: Number(financial.subtotal || 0),
+              delivery: Number(financial.delivery || 0),
+              vat: Number(financial.vat || 0),
+              total: Number(financial.total || 0),
+              payment_method: String(financial.payment_method || financial.paymentMethod || ''),
+            });
+          }
+          if (fCartText && (cart || (Array.isArray(cartUploads) && cartUploads.length))) {
+            const payload = {
+              items: Array.isArray(cart?.items) ? cart.items : [],
+              files: [],
+            };
+            if (Array.isArray(cartUploads)) {
+              payload.files = cartUploads.map((u) => {
+                const areaKey = String(u.areaKey || u.print_area || 'area');
+                const method = String(u.method || u.print_type || 'print');
+                const product = String(u.product || u.productSku || 'product');
+                const colors = Array.isArray(u.colors) ? u.colors : (u.color ? [u.color] : []);
+                const qty = Number.isFinite(u.qty) ? u.qty : parseInt(u.qty, 10) || 0;
+                const ext = getExtFromName(u.fileName || '') || 'png';
+                const fileName = composeUploadFilename({ orderId, areaKey, method, product, colors, qty, ext });
+                const path = `${subPath}/${fileName}`.replace(/\/+/, '/');
+                return { areaKey, method, product, colors, qty, fileName, path };
+              });
+            }
+            patchFields[fCartText] = JSON.stringify(payload);
+          }
+        } catch (e) {
+          try { console.warn('[airtable/order] JSON patch build failed', e?.message || String(e)); } catch {}
+        }
+
+        if (Object.keys(patchFields).length > 0 && rec?.id) {
+          try {
+            const patchUrl = `${API_URL}/${encodeURIComponent(baseId)}/${encodeURIComponent(table)}/${encodeURIComponent(rec.id)}`;
+            const patchResp = await fetch(patchUrl, {
+              method: 'PATCH',
+              headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ fields: patchFields, typecast: true }),
+            });
+            if (!patchResp.ok) {
+              const tx = await patchResp.text().catch(() => '');
+              try { console.error('[airtable/order] patch error', patchResp.status, String(tx).slice(0, 200)); } catch {}
+            } else {
+              try { console.log('[airtable/order] patched fields', Object.keys(patchFields)); } catch {}
+            }
+          } catch (e) {
+            try { console.error('[airtable/order] patch exception', e?.message || String(e)); } catch {}
+          }
         }
       } catch (e) {
         try { console.error('[airtable/order] dropbox error', e?.message || String(e)); } catch {}
