@@ -136,13 +136,33 @@ export default async function handler(req, res) {
     }
     collectAndUpload(bodyCandidate);
     if (uploads.length) {
+      let folderLinkSet = false;
       for (const up of uploads) {
         try {
           const filenameHint = (up.container && up.container.name) || (up.container && up.container.file && up.container.file.name) || 'design';
           const result = await uploadDataUrlToDropbox(up.dataUrl, filenameHint);
-          up.container[up.key] = { url: result.url, dropbox_path: result.path, name: result.name, size: result.size };
+          // Replace the original data URL with the shared link string for simplicity
+          up.container[up.key] = result.url;
+          // Preserve metadata under a dedicated key alongside the URL container when available
+          try {
+            if (up.container && typeof up.container === 'object') {
+              up.container._dropbox = { path: result.path, name: result.name, size: result.size, url: result.url };
+            }
+          } catch {}
           // Debug log: show where we uploaded (safe, no tokens)
           if (DEBUG_FORWARDER) console.log('forward-order: uploaded to dropbox path:', result.path);
+          // After the first upload, attempt to set a shared link for the order folder
+          try {
+            if (!folderLinkSet && result && result.path) {
+              const folderPath = result.path.replace(/\/+[^/]+$/, '');
+              const folderShared = await createSharedLink(folderPath).catch(()=>null);
+              if (folderShared) {
+                bodyCandidate._dropbox_folder_url = folderShared;
+                folderLinkSet = true;
+                if (DEBUG_FORWARDER) console.log('forward-order: created shared link for folder from upload', folderShared);
+              }
+            }
+          } catch {}
         } catch (e) {
           const msg = e && (e.message || String(e)) || 'unknown';
           console.error('forward-order: dropbox upload failed', msg);
@@ -301,8 +321,25 @@ export default async function handler(req, res) {
               const key = (pa.area_name || '').toString();
               const design = designs[key] || designs[pa.area_name] || null;
               if (design && !pa.file_url) {
-                const url = design.url || design.link || (design.file && design.file.url) || '';
-                if (url) pa.file_url = url;
+                let url = (design && typeof design.url === 'string') ? design.url : ((design && design.url && typeof design.url.url === 'string') ? design.url.url : (design && (design.link || (design.file && design.file.url))));
+                if (url && typeof url === 'string') pa.file_url = url;
+              }
+            }
+          }
+        } catch {}
+        // Fallback: if still missing file_url, check top-level uploadedDesigns on the payload
+        try {
+          if (Array.isArray(item.print_areas)) {
+            const globalDesigns = (body && (body.uploadedDesigns || body._app_payload?.uploadedDesigns)) || null;
+            if (globalDesigns && typeof globalDesigns === 'object') {
+              for (const pa of item.print_areas) {
+                if (pa.file_url) continue;
+                const key = (pa.area_name || '').toString();
+                const design = globalDesigns[key] || null;
+                if (design) {
+                  let url = (design && typeof design.url === 'string') ? design.url : ((design && design.url && typeof design.url.url === 'string') ? design.url.url : (design && (design.link || (design.file && design.file.url))));
+                  if (url && typeof url === 'string') pa.file_url = url;
+                }
               }
             }
           }
@@ -494,7 +531,25 @@ export default async function handler(req, res) {
       try { console.log('forward-order: forwarding to URL', pabblyUrl); } catch {}
     }
     // Treat 'cart' as the external source of truth; strip internal 'items' to avoid duplication/confusion downstream
-    const outbound = (() => { const o = { ...body }; try { delete o.items; } catch {} return o; })();
+    const outbound = (() => {
+      const o = { ...body };
+      try {
+        // Remove internal/debug fields or duplicates for external consumers
+        delete o.items; // internal normalized list
+        delete o._app_payload; // verbose source payload snapshot
+        delete o._airtable; // we already expose airtable_record_id and order_number
+        delete o.designer_comments; // duplicated at item/area-level; top-level not needed
+        delete o.print_color; // duplicated at item/area-level
+        delete o.cartSummary; // redundant; finance/order.totals are the source of truth
+        // Prefer order.order_number; remove duplicate top-level convenience field
+        if (o.order_number && o.order && o.order.order_number) delete o.order_number;
+        // Delivery: keep 'required' and address; drop 'withDelivery' duplicate
+        if (o.delivery && Object.prototype.hasOwnProperty.call(o.delivery, 'withDelivery')) {
+          delete o.delivery.withDelivery;
+        }
+      } catch {}
+      return o;
+    })();
     const r = await fetch(pabblyUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
