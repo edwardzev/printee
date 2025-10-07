@@ -11,6 +11,7 @@
 const API_URL = 'https://api.airtable.com/v0';
 const DROPBOX_OAUTH_URL = 'https://api.dropboxapi.com/oauth2/token';
 const DROPBOX_API_URL = 'https://api.dropboxapi.com/2';
+const DROPBOX_CONTENT_API_URL = 'https://content.dropboxapi.com/2';
 
 function getEnv() {
   return {
@@ -87,6 +88,85 @@ async function dropboxCreateFolder({ accessToken, namespaceId, folderPath }) {
   throw new Error(`dropbox_create_folder ${resp.status}: ${errText}`);
 }
 
+async function dropboxUploadFile({ accessToken, namespaceId, path, content, mode = { '.tag': 'add' }, autorename = false, mute = false }) {
+  const headers = {
+    'Authorization': `Bearer ${accessToken}`,
+    'Content-Type': 'application/octet-stream',
+    'Dropbox-API-Arg': JSON.stringify({ path, mode, autorename, mute }),
+  };
+  if (namespaceId) {
+    headers['Dropbox-API-Path-Root'] = JSON.stringify({ '.tag': 'namespace_id', namespace_id: namespaceId });
+  }
+  const url = `${DROPBOX_CONTENT_API_URL}/files/upload`;
+  const resp = await fetch(url, { method: 'POST', headers, body: content });
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => '');
+    if (resp.status === 409 && /conflict/i.test(text || '')) {
+      return { ok: true, conflict: true };
+    }
+    throw new Error(`dropbox_upload ${resp.status}: ${text}`);
+  }
+  return resp.json();
+}
+
+function sanitizeSegment(s) {
+  return String(s || '')
+    .trim()
+    .replace(/\s+/g, '_')
+    .replace(/[^a-zA-Z0-9_\-\.]+/g, '-')
+    .replace(/_+/g, '_')
+    .replace(/-+/g, '-')
+    .replace(/^[_\-]+|[_\-]+$/g, '');
+}
+
+function getExtFromName(name) {
+  const m = /\.([a-zA-Z0-9]{1,8})$/.exec(String(name || ''));
+  return m ? m[1].toLowerCase() : '';
+}
+
+function getExtFromMime(mime) {
+  if (!mime) return '';
+  const map = {
+    'image/png': 'png',
+    'image/jpeg': 'jpg',
+    'image/jpg': 'jpg',
+    'image/webp': 'webp',
+    'image/svg+xml': 'svg',
+    'application/pdf': 'pdf',
+  };
+  return map[mime] || '';
+}
+
+function parseDataUrl(dataUrl) {
+  // data:[<mediatype>][;base64],<data>
+  if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) return { mime: '', buffer: null };
+  const firstComma = dataUrl.indexOf(',');
+  if (firstComma === -1) return { mime: '', buffer: null };
+  const meta = dataUrl.slice(5, firstComma);
+  const data = dataUrl.slice(firstComma + 1);
+  const mime = meta.split(';')[0] || '';
+  const isBase64 = /;base64/i.test(meta);
+  try {
+    const buf = isBase64 ? Buffer.from(data, 'base64') : Buffer.from(decodeURIComponent(data), 'utf8');
+    return { mime, buffer: buf };
+  } catch {
+    return { mime: '', buffer: null };
+  }
+}
+
+function composeUploadFilename({ orderId, areaKey, method, product, color, qty, ext }) {
+  const parts = [
+    sanitizeSegment(orderId),
+    sanitizeSegment(areaKey),
+    sanitizeSegment(method),
+    sanitizeSegment(product),
+    sanitizeSegment(color),
+    sanitizeSegment(qty),
+  ].filter(Boolean);
+  const base = parts.join('_');
+  return ext ? `${base}.${ext}` : base;
+}
+
 async function readJson(req) {
   if (req.body && typeof req.body === 'object') return req.body;
   try {
@@ -106,6 +186,7 @@ export default async function handler(req, res) {
 
   const body = await readJson(req);
   const idempotency_key = String(body.idempotency_key || '').trim();
+  const uploads = Array.isArray(body.uploads) ? body.uploads : [];
   if (!idempotency_key || idempotency_key.length < 6) {
     return res.status(400).json({ ok: false, error: 'invalid_idempotency_key' });
   }
@@ -182,6 +263,36 @@ export default async function handler(req, res) {
         const result = await dropboxCreateFolder({ accessToken, namespaceId: dbxNamespaceId, folderPath: subPath });
         dropbox = { path: subPath, created: !result?.conflict, existed: !!result?.conflict };
         try { console.log('[airtable/order] dropbox folder', dropbox); } catch {}
+
+        // If uploads were provided, upload them now
+        let uploadedCount = 0;
+        let failed = [];
+        if (Array.isArray(uploads) && uploads.length) {
+          for (const u of uploads) {
+            try {
+              const areaKey = String(u.areaKey || u.print_area || '') || 'area';
+              const method = String(u.method || u.print_type || 'print');
+              const product = String(u.product || u.productSku || '').trim() || 'product';
+              const color = String(u.color || '').trim() || 'color';
+              const qty = Number.isFinite(u.qty) ? u.qty : parseInt(u.qty, 10) || 0;
+              const dataUrl = String(u.dataUrl || u.url || '');
+              const name = String(u.fileName || u.name || '');
+              const { mime, buffer } = parseDataUrl(dataUrl);
+              if (!buffer || !buffer.length) throw new Error('invalid_data_url');
+              const extRaw = getExtFromName(name) || getExtFromMime(mime) || 'bin';
+              const filename = composeUploadFilename({ orderId, areaKey, method, product, color, qty, ext: extRaw });
+              const filePath = `${subPath}/${filename}`.replace(/\/+/, '/');
+              await dropboxUploadFile({ accessToken, namespaceId: dbxNamespaceId, path: filePath, content: buffer, mode: { '.tag': 'add' }, autorename: false, mute: true });
+              uploadedCount += 1;
+            } catch (e) {
+              try { failed.push({ name: u?.fileName || u?.name || null, error: e?.message || String(e) }); } catch {}
+            }
+          }
+        }
+        if (uploadedCount || (failed && failed.length)) {
+          dropbox.uploads = { uploaded: uploadedCount, failedCount: (failed && failed.length) || 0, failed };
+          try { console.log('[airtable/order] dropbox uploads', dropbox.uploads); } catch {}
+        }
       } catch (e) {
         try { console.error('[airtable/order] dropbox error', e?.message || String(e)); } catch {}
       }

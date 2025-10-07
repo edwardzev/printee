@@ -26,22 +26,73 @@ const Cart = () => {
       try { mergePayload({ idempotency_key: idem }); } catch {}
     }
 
-    // Create/ensure a draft order in Airtable using only the idempotency key (no PII)
+    // Build uploads list from cart items: for each uploaded design (per print area)
+    // create an entry per active color with its quantity.
+    const uploads = (() => {
+      try {
+        const list = [];
+        (cartItems || []).forEach((item) => {
+          const product = item.productSku || item.product || 'product';
+          const matrices = item.sizeMatrices || {};
+          // Determine active colors and their total qty
+          let colors = item.selectedColors && Array.isArray(item.selectedColors) && item.selectedColors.length
+            ? item.selectedColors
+            : (item.color ? [item.color] : []);
+          if (colors.length === 0) return; // nothing to upload without a color context
+
+          const colorQty = {};
+          colors.forEach((c) => {
+            const mat = (matrices && matrices[c]) || (c === item.color ? (item.sizeMatrix || {}) : {});
+            const qty = Object.values(mat || {}).reduce((s, q) => s + (q || 0), 0);
+            colorQty[c] = qty || 0;
+          });
+
+          // Map areaKey -> method
+          const areaMethod = {};
+          (item.selectedPrintAreas || []).forEach((sel) => {
+            if (!sel) return;
+            if (typeof sel === 'string') areaMethod[sel] = 'print';
+            else if (sel.areaKey) areaMethod[sel.areaKey] = sel.method || 'print';
+          });
+
+          const designs = item.uploadedDesigns || {};
+          Object.keys(designs).forEach((areaKey) => {
+            const d = designs[areaKey];
+            if (!d || !d.url) return;
+            const method = areaMethod[areaKey] || 'print';
+            const fileName = d.name || `${areaKey}.png`;
+            colors.forEach((c) => {
+              const qty = colorQty[c] || 0;
+              if (qty > 0) {
+                list.push({
+                  areaKey,
+                  method,
+                  product,
+                  color: c,
+                  qty,
+                  dataUrl: d.url,
+                  fileName,
+                });
+              }
+            });
+          });
+        });
+        return list;
+      } catch (e) {
+        return [];
+      }
+    })();
+
+    // Create/ensure a draft order in Airtable and upload any user-provided design files.
     try {
-      const body = JSON.stringify({ idempotency_key: idem });
-      let beaconsent = false;
-      if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
-        const blob = new Blob([body], { type: 'application/json' });
-        beaconsent = navigator.sendBeacon('/api/airtable/order', blob);
-      }
-      if (!beaconsent) {
-        fetch('/api/airtable/order', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body,
-          keepalive: true,
-        }).catch(() => {});
-      }
+      const body = JSON.stringify({ idempotency_key: idem, uploads });
+      // Note: do NOT use keepalive for potentially large payloads (browsers limit to ~64KB).
+      // Fire-and-forget; we don't await before opening modal.
+      fetch('/api/airtable/order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      }).catch(() => {});
     } catch (_) {}
 
     setModalOpen(true);
