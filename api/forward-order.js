@@ -168,8 +168,27 @@ export default async function handler(req, res) {
           console.error('forward-order: dropbox upload failed', msg);
           // record a warning for the normalized payload so downstream systems can see it
           forwarderWarnings.push({ when: new Date().toISOString(), where: up.key, message: msg });
-          // attach a note but continue — do not block forwarding for other reasons
-          up.container[up.key] = { error: String(msg) };
+          // Do NOT embed the error object or raw data URL back into the payload. Replace with null
+          try { up.container[up.key] = null; } catch {}
+        }
+      }
+      // If uploads attempted but we still have no folder shared link, try to create the order folder link
+      if (!folderLinkSet) {
+        try {
+          const folderKey = ensured?.order_number || preNormalized?.order?.order_number || ensured?.order_id || preNormalized?.order?.order_id || null;
+          const orderFolder = folderKey ? `${DROPBOX_BASE_FOLDER}/${folderKey}` : DROPBOX_BASE_FOLDER;
+          const nsPrefix = DROPBOX_NAMESPACE_ID ? `ns:${DROPBOX_NAMESPACE_ID}` : '';
+          const folderPath = `${nsPrefix}${orderFolder}`;
+          const createResult = await createFolder(folderPath).catch((e) => { throw e; });
+          const folderShared = await createSharedLink(folderPath).catch(()=>null);
+          if (folderShared) {
+            bodyCandidate._dropbox_folder_url = folderShared;
+            if (DEBUG_FORWARDER) console.log('forward-order: created shared link for folder after uploads (fallback)', folderShared);
+          }
+        } catch (e) {
+          const msg = e && (e.message || String(e)) || 'unknown';
+          forwarderWarnings.push({ when: new Date().toISOString(), where: 'dropbox.create_folder.fallback', message: msg });
+          if (DEBUG_FORWARDER) console.warn('forward-order: dropbox create folder fallback failed', msg);
         }
       }
     }
@@ -233,6 +252,26 @@ export default async function handler(req, res) {
     } catch (e) { /* ignore cart attach error */ }
     // log normalized body snippet
   if (DEBUG_FORWARDER) console.log('forward-order normalized body snippet:', JSON.stringify(body).slice(0, 1000));
+
+    // Remove any remaining raw data: URLs from the payload to avoid sending large inline blobs to downstream
+    function stripDataUrls(obj) {
+      if (!obj || typeof obj !== 'object') return;
+      for (const k of Object.keys(obj)) {
+        try {
+          const v = obj[k];
+          if (typeof v === 'string' && v.startsWith('data:')) {
+            obj[k] = null;
+            continue;
+          }
+          if (Array.isArray(v)) {
+            v.forEach(it => stripDataUrls(it));
+          } else if (v && typeof v === 'object') {
+            stripDataUrls(v);
+          }
+        } catch (e) {}
+      }
+    }
+    try { stripDataUrls(body); } catch (e) { if (DEBUG_FORWARDER) console.warn('forward-order: stripDataUrls failed', e && e.message); }
 
     // --- Canonicalize fields for Pabbly / downstream systems ---
     try {

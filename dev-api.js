@@ -8,7 +8,8 @@ import path from 'path';
 
 const app = express();
 const PORT = process.env.DEV_API_PORT || 3001;
-const PABBLY_URL = process.env.PABBLY_URL || "https://connect.pabbly.com/workflow/sendwebhookdata/IjU3NjYwNTY1MDYzZTA0MzU1MjZkNTUzZDUxM2Ii_pc";
+// Default to the capture URL in dev unless overridden by env
+const PABBLY_URL = process.env.PABBLY_URL || "https://webhook.site/b8a571ab-96ef-4bfc-82fa-226594dc2a4a";
 
 const schemaPath = path.resolve(process.cwd(), 'schemas', 'order.schema.json');
 let orderSchema = null;
@@ -48,6 +49,7 @@ function appendForwardLog(entry) {
 app.post('/api/forward-order', async (req, res) => {
   try {
     const rawBody = req.body;
+    const isPartial = Boolean((rawBody && (rawBody._partial || rawBody.partial)) || req.headers['x-forward-partial'] || req.headers['x-partial-forward']);
     // Early normalize to extract order context for Airtable
     const preNormalized = typeof normalize === 'function' ? normalize(rawBody || {}) : (rawBody || {});
 
@@ -134,9 +136,21 @@ app.post('/api/forward-order', async (req, res) => {
       if (!ok) return res.status(400).json({ ok: false, error: 'validation_failed', details: validate.errors, normalized });
     }
 
-    // append raw + normalized to local forward log (for dev diagnostics)
-    appendForwardLog({ ts: new Date().toISOString(), status: 'queued', raw: rawBody, payload: normalized });
+    // Skip forwarding in dev for partials or when cart is clearly missing/empty
+    const hasCart = Array.isArray(rawBody?.cart) && rawBody.cart.length > 0;
+    if (isPartial || !hasCart) {
+      const entry = { ts: new Date().toISOString(), status: 'partial', raw: rawBody, payload: normalized };
+      appendForwardLog(entry);
+      return res.status(200).json({ ok: true, partial: true, forwarded: false, reason: isPartial ? 'explicit_partial' : 'empty_cart', normalized });
+    }
 
+    // Mark submitted when forwarding
+    try { if (normalized && normalized.event === 'order.partial') normalized.event = 'order.submitted'; } catch {}
+
+    // append raw + normalized to local forward log (for dev diagnostics)
+    appendForwardLog({ ts: new Date().toISOString(), status: 'queued', raw: rawBody, payload: normalized, forwardedTo: PABBLY_URL });
+
+    console.log('dev-api: forwarding to URL', PABBLY_URL);
     const r = await fetch(PABBLY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -147,8 +161,8 @@ app.post('/api/forward-order', async (req, res) => {
   const entry = { ts: new Date().toISOString(), status: r.ok ? 'forwarded' : 'failed', statusCode: r.status, body: text, payload: normalized };
     appendForwardLog(entry);
 
-    if (!r.ok) return res.status(502).json({ ok: false, status: r.status, body: text });
-    return res.status(200).json({ ok: true, status: r.status, body: text });
+    if (!r.ok) return res.status(502).json({ ok: false, forwarded: false, forwardedTo: PABBLY_URL, status: r.status, body: text });
+    return res.status(200).json({ ok: true, forwarded: true, forwardedTo: PABBLY_URL, status: r.status, body: text });
   } catch (err) {
     console.error('dev-api forward-order error', err);
     return res.status(500).json({ ok: false, error: err?.message || String(err) });
