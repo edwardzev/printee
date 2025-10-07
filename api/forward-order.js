@@ -12,7 +12,8 @@ const DROPBOX_BASE_FOLDER = process.env.DROPBOX_BASE_FOLDER || '/printee/uploads
 // Namespace targeting: when set, prefix paths with ns:<id> so writes occur under that namespace root
 const DROPBOX_NAMESPACE_ID = process.env.DROPBOX_NAMESPACE_ID || process.env.DROPBOX_ROOT_NAMESPACE_ID || null;
 
-const DEFAULT_PABBY_URL = "https://connect.pabbly.com/workflow/sendwebhookdata/IjU3NjYwNTY1MDYzZTA0MzU1MjZkNTUzZDUxM2Ii_pc";
+// TEMP: Capture endpoint for debugging payloads. Override with env PABBLY_URL in prod.
+const DEFAULT_PABBY_URL = "https://webhook.site/b8a571ab-96ef-4bfc-82fa-226594dc2a4a";
 // Verbose logging toggle
 const DEBUG_FORWARDER = String(process.env.DEBUG_FORWARDER || '0') === '1';
 
@@ -239,7 +240,7 @@ export default async function handler(req, res) {
       };
 
   // Ensure cart exists as array
-      if (!Array.isArray(body.cart)) body.cart = [];
+  if (!Array.isArray(body.cart)) body.cart = [];
 
       // Coerce numeric fields in cart items where possible
       body.cart = body.cart.map((it, idx) => {
@@ -289,6 +290,32 @@ export default async function handler(req, res) {
         }
         return item;
       });
+
+      // Fallback: if cart is still empty but normalized items exist, synthesize a minimal cart from items
+      try {
+        if ((!Array.isArray(body.cart) || body.cart.length === 0) && Array.isArray(bodyTmp?.items) && bodyTmp.items.length) {
+          body.cart = bodyTmp.items.map((ni, idx) => {
+            const qty = Array.isArray(ni.size_breakdown) ? ni.size_breakdown.reduce((s, r) => s + (Number(r.qty)||0), 0) : 0;
+            return {
+              line_id: ni.line_id || `line-${idx}`,
+              product_name: ni.product_name || '',
+              sku: ni.product_sku || '',
+              quantity: qty,
+              unit_price: 0,
+              line_total: 0,
+              print_areas: Array.isArray(ni.print_areas) ? ni.print_areas.map(pa => ({
+                area_name: pa.areaKey || pa.key || pa.area_name || pa.name || '',
+                file_url: '',
+                method: pa.method || 'print',
+                print_color: pa.print_color || pa.printColor || '',
+                designer_comments: pa.designer_comments || pa.designerComments || ''
+              })) : []
+            };
+          });
+        }
+      } catch (e) {
+        if (DEBUG_FORWARDER) console.warn('forward-order: build cart from items failed', e && e.message);
+      }
 
       // If normalized items exist (from normalize()), merge print_areas into cart items when missing
       try {
