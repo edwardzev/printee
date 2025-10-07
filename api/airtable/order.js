@@ -9,6 +9,8 @@
 // - AIRTABLE_STATUS_DRAFT (default: draft)
 
 const API_URL = 'https://api.airtable.com/v0';
+const DROPBOX_OAUTH_URL = 'https://api.dropboxapi.com/oauth2/token';
+const DROPBOX_API_URL = 'https://api.dropboxapi.com/2';
 
 function getEnv() {
   return {
@@ -16,9 +18,73 @@ function getEnv() {
     baseId: process.env.AIRTABLE_BASE_ID || '',
     table: process.env.AIRTABLE_ORDERS_TABLE || process.env.AIRTABLE_TABLE_ORDERS || '',
   fIdem: process.env.AIRTABLE_FIELD_IDEMPOTENCY_KEY || 'IdempotencyKey',
-    fStatus: process.env.AIRTABLE_FIELD_STATUS || 'Status',
-    statusDraft: process.env.AIRTABLE_STATUS_DRAFT || 'draft',
+    fStatus: process.env.AIRTABLE_FIELD_STATUS || '',
+    statusDraft: process.env.AIRTABLE_STATUS_DRAFT || '',
+    // Dropbox
+    dbxAppKey: process.env.DROPBOX_APP_KEY || '',
+    dbxAppSecret: process.env.DROPBOX_APP_SECRET || '',
+    dbxRefreshToken: process.env.DROPBOX_REFRESH_TOKEN || '',
+    dbxBaseFolder: process.env.DROPBOX_BASE_FOLDER || '',
+    dbxNamespaceId: process.env.DROPBOX_NAMESPACE_ID || '',
   };
+}
+
+async function airtableFetchRecord(baseId, table, recordId, token) {
+  const url = `${API_URL}/${encodeURIComponent(baseId)}/${encodeURIComponent(table)}/${encodeURIComponent(recordId)}`;
+  const resp = await fetch(url, {
+    method: 'GET',
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => '');
+    throw new Error(`airtable_get_record ${resp.status}: ${text}`);
+  }
+  return resp.json();
+}
+
+async function getDropboxAccessToken({ appKey, appSecret, refreshToken }) {
+  const basic = Buffer.from(`${appKey}:${appSecret}`).toString('base64');
+  const params = new URLSearchParams({
+    grant_type: 'refresh_token',
+    refresh_token: refreshToken,
+  });
+  const resp = await fetch(DROPBOX_OAUTH_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Basic ${basic}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: params.toString(),
+  });
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => '');
+    throw new Error(`dropbox_token ${resp.status}: ${text}`);
+  }
+  const data = await resp.json();
+  return data.access_token;
+}
+
+async function dropboxCreateFolder({ accessToken, namespaceId, folderPath }) {
+  const headers = {
+    'Authorization': `Bearer ${accessToken}`,
+    'Content-Type': 'application/json',
+  };
+  if (namespaceId) {
+    headers['Dropbox-API-Path-Root'] = JSON.stringify({ '.tag': 'namespace_id', namespace_id: namespaceId });
+  }
+  const url = `${DROPBOX_API_URL}/files/create_folder_v2`;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ path: folderPath, autorename: false }),
+  });
+  if (resp.ok) return resp.json();
+  const errText = await resp.text().catch(() => '');
+  // Treat conflict (already exists) as success
+  if (resp.status === 409 && /conflict/i.test(errText)) {
+    return { ok: true, conflict: true };
+  }
+  throw new Error(`dropbox_create_folder ${resp.status}: ${errText}`);
 }
 
 async function readJson(req) {
@@ -44,7 +110,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ ok: false, error: 'invalid_idempotency_key' });
   }
 
-  const { token, baseId, table, fIdem, fStatus, statusDraft } = getEnv();
+  const { token, baseId, table, fIdem, fStatus, statusDraft, dbxAppKey, dbxAppSecret, dbxRefreshToken, dbxBaseFolder, dbxNamespaceId } = getEnv();
   try {
     console.log('[airtable/order] invoked', {
       baseId: baseId ? `${baseId}` : '(missing)',
@@ -70,10 +136,11 @@ export default async function handler(req, res) {
         performUpsert: { fieldsToMergeOn: [fIdem] },
         records: [
           {
-            fields: {
-              [fIdem]: idempotency_key,
-              [fStatus]: statusDraft,
-            },
+            fields: (() => {
+              const f = { [fIdem]: idempotency_key };
+              if (fStatus && statusDraft) f[fStatus] = statusDraft;
+              return f;
+            })(),
           },
         ],
         typecast: true,
@@ -88,7 +155,41 @@ export default async function handler(req, res) {
     const data = await resp.json();
     const rec = (data.records && data.records[0]) || null;
     try { console.log('[airtable/order] upserted', { recordId: rec?.id, created: !!rec?.created }); } catch {}
-    return res.status(200).json({ ok: true, record: rec ? { id: rec.id, created: !!rec.created } : null });
+
+    // Try to get Order_id from returned fields or fetch full record
+    let orderId = rec?.fields?.Order_id || rec?.fields?.order_id;
+    if (!orderId && rec?.id) {
+      try {
+        const full = await airtableFetchRecord(baseId, table, rec.id, token);
+        orderId = full?.fields?.Order_id || full?.fields?.order_id;
+      } catch (e) {
+        try { console.warn('[airtable/order] fetch full record failed', e?.message || String(e)); } catch {}
+      }
+    }
+
+    // Dropbox folder creation if configured and we have an orderId
+    let dropbox = null;
+    if (dbxAppKey && dbxAppSecret && dbxRefreshToken && orderId) {
+      try {
+        const accessToken = await getDropboxAccessToken({ appKey: dbxAppKey, appSecret: dbxAppSecret, refreshToken: dbxRefreshToken });
+        const base = (dbxBaseFolder || '').trim();
+        const normalizedBase = base ? (base.startsWith('/') ? base : `/${base}`) : '';
+        // Create base folder if provided (best-effort)
+        if (normalizedBase) {
+          try { await dropboxCreateFolder({ accessToken, namespaceId: dbxNamespaceId, folderPath: normalizedBase }); } catch (e) {}
+        }
+        const subPath = `${normalizedBase}/${String(orderId)}`.replace(/\/+/, '/');
+        const result = await dropboxCreateFolder({ accessToken, namespaceId: dbxNamespaceId, folderPath: subPath });
+        dropbox = { path: subPath, created: !result?.conflict, existed: !!result?.conflict };
+        try { console.log('[airtable/order] dropbox folder', dropbox); } catch {}
+      } catch (e) {
+        try { console.error('[airtable/order] dropbox error', e?.message || String(e)); } catch {}
+      }
+    } else {
+      try { console.log('[airtable/order] dropbox skipped', { configured: !!(dbxAppKey && dbxAppSecret && dbxRefreshToken), haveOrderId: !!orderId }); } catch {}
+    }
+
+    return res.status(200).json({ ok: true, record: rec ? { id: rec.id, created: !!rec.created } : null, orderId: orderId || null, dropbox });
   } catch (e) {
     try { console.error('[airtable/order] exception', e?.message || String(e)); } catch {}
     return res.status(500).json({ ok: false, error: 'airtable_exception', details: e?.message || String(e) });
