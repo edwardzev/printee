@@ -27,7 +27,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
     // Reuse the same in-flight promise if already started
     if (forwardPromiseRef.current) return forwardPromiseRef.current;
     const forwardUrl = (typeof window !== 'undefined' && window.location && window.location.origin) ? `${window.location.origin}/api/forward-order` : '/api/forward-order';
-    const minimal = { idempotency_key: idempotencyKeyRef.current, contact: fullPayload.contact, paymentMethod: fullPayload.paymentMethod, cartSummary: fullPayload.cartSummary || {} };
+  const minimal = { idempotency_key: idempotencyKeyRef.current, contact: fullPayload.contact, paymentMethod: fullPayload.paymentMethod, cartSummary: fullPayload.cartSummary || {}, _partial: true };
     try {
       // Fire a full payload fetch in the background and store the promise so callers can await if needed.
       // This includes uploadedDesigns urls (which may be data URLs) so the server can upload to Dropbox.

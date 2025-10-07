@@ -247,11 +247,27 @@ export default async function handler(req, res) {
         const item = (typeof it === 'string') ? (() => { try { return JSON.parse(it); } catch { return { name: String(it) }; } })() : (it || {});
         // ensure keys
         item.line_id = item.line_id || item.id || `line-${idx}`;
-        item.product_name = item.product_name || (item.product && (item.product.name || item.productName)) || item.name || '';
-        item.sku = item.sku || item.product_sku || (item.product && item.product.sku) || '';
+  item.product_name = item.product_name || item.productName || (item.product && (item.product.name || item.product.productName)) || item.name || '';
+  item.sku = item.sku || item.product_sku || item.productSku || (item.product && item.product.sku) || '';
+        // Derive quantity from size matrices when not explicitly provided
+        try {
+          if (!(Number(item.quantity) > 0)) {
+            const matrices = item.sizeMatrices || item.sizeMatrix || {};
+            if (matrices && typeof matrices === 'object') {
+              let q = 0;
+              const colors = Object.keys(matrices);
+              for (const c of colors) {
+                const mat = matrices[c] || {};
+                for (const s of Object.keys(mat || {})) q += Number(mat[s] || 0) || 0;
+              }
+              item.quantity = Number(q) || 0;
+            }
+          }
+        } catch {}
         item.quantity = Number(item.quantity || item.qty || 0) || 0;
         item.unit_price = Number(item.unit_price || item.price || item.unitPrice || 0) || 0;
-        item.line_total = Number(item.line_total || item.totalPrice || item.unit_price * item.quantity || 0) || 0;
+        // Prefer explicit line_total, then totalPrice from client, then unit*qty
+        item.line_total = Number(item.line_total || item.totalPrice || (item.unit_price * item.quantity) || 0) || 0;
         // Normalize print_areas if present
         if (item.print_areas && Array.isArray(item.print_areas)) {
           item.print_areas = item.print_areas.map(pa => ({
@@ -261,6 +277,21 @@ export default async function handler(req, res) {
             print_color: pa.print_color || pa.printColor || '',
             designer_comments: pa.designer_comments || pa.designerComments || pa.comments || ''
           }));
+        }
+        // If print_areas missing but selectedPrintAreas exist (client-side shape), map them
+        if ((!Array.isArray(item.print_areas) || item.print_areas.length === 0) && Array.isArray(item.selectedPrintAreas)) {
+          try {
+            item.print_areas = item.selectedPrintAreas.map((spa) => {
+              const pa = (typeof spa === 'string') ? { areaKey: spa, method: 'print' } : (spa || {});
+              return {
+                area_name: pa.areaKey || pa.key || pa.area_name || pa.name || '',
+                file_url: '',
+                method: pa.method || 'print',
+                print_color: pa.print_color || pa.printColor || '',
+                designer_comments: pa.designer_comments || pa.designerComments || pa.comments || ''
+              };
+            });
+          } catch {}
         }
         // If uploadedDesigns exist, map their URLs into corresponding print_areas by area key
         try {
@@ -366,12 +397,13 @@ export default async function handler(req, res) {
 
       // Build a fallback description from first items if missing
       if (!body.order.description) {
-        const names = (body.cart || []).slice(0, 3).map(i => {
-          const n = i.product_name || i.name || 'פריט';
-          const q = Number(i.quantity || 0);
+        const srcCart = (body.cart && body.cart.length) ? body.cart : (Array.isArray(bodyTmp?.items) ? bodyTmp.items : []);
+        const names = (srcCart || []).slice(0, 3).map(i => {
+          const n = i.product_name || i.name || i.product_name || 'פריט';
+          const q = Number(i.quantity || (Array.isArray(i.size_breakdown) ? i.size_breakdown.reduce((s,r)=>s+(Number(r.qty)||0),0) : 0) || 0);
           return q ? `${n} x${q}` : n;
         });
-        body.order.description = names.length ? `הזמנה: ${names.join(', ')}${(body.cart || []).length > 3 ? '…' : ''}` : '';
+        body.order.description = names.length ? `הזמנה: ${names.join(', ')}${(srcCart || []).length > 3 ? '…' : ''}` : '';
       }
 
       // Top-level finance object
@@ -400,7 +432,7 @@ export default async function handler(req, res) {
 
       // Audit fields
       body._forwarded_at = new Date().toISOString();
-      body.is_partial = Boolean(isPartial);
+      // We'll set is_partial after computing derivedPartial below
     } catch (e) {
       if (DEBUG_FORWARDER) console.warn('forward-order: canonicalization error', e && (e.message || e));
     }
@@ -428,6 +460,10 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, partial: true, normalized: body, warnings: forwarderWarnings });
     }
 
+    // Determine partial status: explicit partial, order.partial event, or clearly incomplete (no cart)
+    const derivedPartial = Boolean(isPartial || body?.event === 'order.partial' || !(Array.isArray(body.cart) && body.cart.length > 0));
+    body.is_partial = derivedPartial;
+
     // Validate final payload against pabbly schema (non-blocking)
     if (validatePabbly) {
       try {
@@ -441,11 +477,18 @@ export default async function handler(req, res) {
       }
     }
 
+    // If still partial (explicit or derived), do NOT forward to Pabbly
+    if (derivedPartial) {
+      return res.status(200).json({ ok: true, partial: true, normalized: body, warnings: forwarderWarnings });
+    }
+
     // Forward to Pabbly for full submissions
+    // Treat 'cart' as the external source of truth; strip internal 'items' to avoid duplication/confusion downstream
+    const outbound = (() => { const o = { ...body }; try { delete o.items; } catch {} return o; })();
     const r = await fetch(pabblyUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify(outbound),
     });
 
     const text = await r.text().catch(() => '');
