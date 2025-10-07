@@ -25,10 +25,20 @@ try {
   console.warn('Could not load schema for payload validation', err?.message || err);
 }
 
+// Load a lighter Pabbly schema for final payload checks (optional, non-blocking)
+let pabblySchema = null;
+try {
+  const pPath = path.resolve(process.cwd(), 'schemas', 'pabbly-order.schema.json');
+  pabblySchema = JSON.parse(fs.readFileSync(pPath, 'utf8'));
+} catch (e) {
+  if (DEBUG_FORWARDER) console.warn('Could not load pabbly-order.schema.json', e && e.message);
+}
+
 const ajv = new Ajv({ allErrors: true, strict: false });
 // Enable standard string formats like date-time, email, uri, etc.
 addFormats(ajv);
 const validate = orderSchema ? ajv.compile(orderSchema) : null;
+const validatePabbly = pabblySchema ? ajv.compile(pabblySchema) : null;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -203,6 +213,114 @@ export default async function handler(req, res) {
     // log normalized body snippet
   if (DEBUG_FORWARDER) console.log('forward-order normalized body snippet:', JSON.stringify(body).slice(0, 1000));
 
+    // --- Canonicalize fields for Pabbly / downstream systems ---
+    try {
+      // Airtable record id (prefer explicit _airtable entry)
+      body.airtable_record_id = body._airtable?.record_id || body._airtable?.id || (ensured && (ensured.airtable_record_id || ensured.order_id)) || null;
+
+      // Top-level order_number convenience
+      body.order_number = body.order?.order_number || (body._airtable && body._airtable.order_number) || null;
+
+      // Ensure customer block exists and prefer contact fields
+      body.customer = body.customer || {};
+      const contact = body.contact || body._app_payload?.contact || {};
+      body.customer.contact_name = body.customer.contact_name || contact.name || contact.fullName || body.customer.contact_name || '';
+      body.customer.email = body.customer.email || contact.email || '';
+      body.customer.phone = body.customer.phone || contact.phone || '';
+      // Promote address into customer.address as a normalized object
+      body.customer.address = body.customer.address || {
+        line1: body.delivery?.address_line1 || '',
+        line2: body.delivery?.address_line2 || '',
+        city: body.delivery?.city || '',
+        postcode: body.delivery?.postcode || '',
+        country: body.delivery?.country || ''
+      };
+
+      // Ensure cart exists as array
+      if (!Array.isArray(body.cart)) body.cart = [];
+
+      // Coerce numeric fields in cart items where possible
+      body.cart = body.cart.map((it, idx) => {
+        const item = (typeof it === 'string') ? (() => { try { return JSON.parse(it); } catch { return { name: String(it) }; } })() : (it || {});
+        // ensure keys
+        item.line_id = item.line_id || item.id || `line-${idx}`;
+        item.product_name = item.product_name || (item.product && (item.product.name || item.productName)) || item.name || '';
+        item.sku = item.sku || item.product_sku || (item.product && item.product.sku) || '';
+        item.quantity = Number(item.quantity || item.qty || 0) || 0;
+        item.unit_price = Number(item.unit_price || item.price || item.unitPrice || 0) || 0;
+        item.line_total = Number(item.line_total || item.totalPrice || item.unit_price * item.quantity || 0) || 0;
+        // Normalize print_areas if present
+        if (item.print_areas && Array.isArray(item.print_areas)) {
+          item.print_areas = item.print_areas.map(pa => ({
+            area_name: pa.areaKey || pa.key || pa.area_name || pa.name || '',
+            file_url: (pa.url || pa.file_url || (pa.file && pa.file.url)) || '',
+            method: pa.method || pa.print_method || 'print',
+            print_color: pa.print_color || pa.printColor || '',
+            designer_comments: pa.designer_comments || pa.designerComments || pa.comments || ''
+          }));
+        }
+        // Normalize colors/sizeMatrices if present
+        if (item.sizeMatrices || item.sizeMatrix || item.size_matrix) {
+          const matrices = item.sizeMatrices || item.sizeMatrix || item.size_matrix || {};
+          const colors = [];
+          for (const c of Object.keys(matrices)) {
+            const mat = matrices[c] || {};
+            const size_matrix = {};
+            for (const s of Object.keys(mat || {})) size_matrix[s] = Number(mat[s] || 0) || 0;
+            colors.push({ color: c, size_matrix });
+          }
+          if (colors.length) item.colors = colors;
+        }
+        return item;
+      });
+
+      // Finance block: coerce and compute totals
+      const appTotal = Number(body._app_payload?.cartSummary?.total || 0) || 0;
+      const subtotal = Number(body.order?.totals?.subtotal) || appTotal || body.cart.reduce((s,i)=> s + (Number(i.line_total)||0), 0);
+      const deliveryCost = Number(body.order?.totals?.delivery) || Number(body.delivery?.delivery_cost) || 0;
+      const vatPercent = Number(body.order?.totals?.vat_percent) || 17;
+      const vatAmount = Number(body.order?.totals?.vat_amount) || Math.round((subtotal + deliveryCost) * (vatPercent/100));
+      const grandTotal = Number(body.order?.totals?.grand_total) || (subtotal + deliveryCost + vatAmount);
+
+      body.order = body.order || {};
+      body.order.totals = body.order.totals || {};
+      body.order.totals.subtotal = Number(subtotal);
+      body.order.totals.delivery = Number(deliveryCost);
+      body.order.totals.vat_percent = Number(vatPercent);
+      body.order.totals.vat_amount = Number(vatAmount);
+      body.order.totals.grand_total = Number(grandTotal);
+
+      // Top-level finance object
+      body.finance = body.finance || {};
+      body.finance.paid = Boolean(body.finance.paid || (body._app_payload && body._app_payload.paid) || false);
+      body.finance.payment_method = body.finance.payment_method || body._app_payload?.paymentMethod || body.paymentMethod || '';
+      body.finance.subtotal = body.finance.subtotal || Number(body.order.totals.subtotal) || 0;
+      body.finance.delivery_cost = body.finance.delivery_cost || Number(body.order.totals.delivery) || 0;
+      body.finance.vat_percent = Number(body.order.totals.vat_percent) || vatPercent;
+      body.finance.vat_amount = Number(body.order.totals.vat_amount) || vatAmount;
+      body.finance.grand_total = Number(body.order.totals.grand_total) || grandTotal;
+
+      // Dropbox folder url promoted to top-level if present
+      body.dropbox_folder_url = body._app_payload?._dropbox_folder_url || body._dropbox_folder_url || null;
+
+      // Delivery boolean flag
+      body.delivery = body.delivery || {};
+      body.delivery.required = Boolean(body.delivery.withDelivery || body.delivery.with_delivery || body.delivery.withDelivery === true || body.delivery.withDelivery === '1');
+
+      // Payment object
+      body.payment = body.payment || {};
+      body.payment.method = body.payment.method || body.finance.payment_method || '';
+      body.payment.amount = body.payment.amount || Number(body.finance.grand_total) || 0;
+      body.payment.currency = body.payment.currency || body.order?.currency || 'ILS';
+      body.payment.status = body.payment.status || (body.payment.amount ? 'pending' : 'unpaid');
+
+      // Audit fields
+      body._forwarded_at = new Date().toISOString();
+      body.is_partial = Boolean(isPartial);
+    } catch (e) {
+      if (DEBUG_FORWARDER) console.warn('forward-order: canonicalization error', e && (e.message || e));
+    }
+
     if (validate) {
       const valid = validate(body);
       if (!valid) {
@@ -214,6 +332,19 @@ export default async function handler(req, res) {
     // In partial mode, skip forwarding to Pabbly — just acknowledge after uploads/Airtable
     if (isPartial) {
       return res.status(200).json({ ok: true, partial: true, normalized: body, warnings: forwarderWarnings });
+    }
+
+    // Validate final payload against pabbly schema (non-blocking)
+    if (validatePabbly) {
+      try {
+        const ok = validatePabbly(body);
+        if (!ok) {
+          forwarderWarnings.push({ when: new Date().toISOString(), where: 'pabbly.validation', message: 'pabbly validation failed', details: validatePabbly.errors });
+          if (DEBUG_FORWARDER) console.warn('forward-order: pabbly validation failed', validatePabbly.errors);
+        }
+      } catch (e) {
+        if (DEBUG_FORWARDER) console.warn('forward-order: pabbly validation error', e && e.message);
+      }
     }
 
     // Forward to Pabbly for full submissions

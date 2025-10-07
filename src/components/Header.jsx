@@ -174,15 +174,21 @@ export default function Header({ dir = "rtl" }) {
             const baseStyle = {
               textDecoration: "none",
               color: active === id ? "#000" : "#333",
-              padding: cta ? "10px 14px" : "8px 10px",
+              padding: cta ? "10px 18px" : "8px 10px",
               borderRadius: cta ? 999 : 10,
+              // Use the brand gradient for CTA to match primary buttons; keep
+              // a subtle hover-friendly contrast for active/non-cta links.
               background: cta
-                ? "#111"
+                ? "linear-gradient(90deg,#6b21a8 0%,#9b1fd6 50%,#db00ff 100%)"
                 : active === id
                 ? "#f0f0f0"
                 : "transparent",
               color: cta ? "#fff" : undefined,
-              fontWeight: 500,
+              fontWeight: 600,
+              boxShadow: cta ? "0 6px 18px rgba(107,33,168,0.12)" : undefined,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
             };
 
             // Render a routed Link for the FAQ item so it navigates to /faq

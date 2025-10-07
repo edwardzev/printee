@@ -7,8 +7,11 @@ const buttonVariants = cva(
 	'inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
 	{
 		variants: {
-				variant: {
-					default: 'brand-gradient text-primary-foreground hover:opacity-95',
+			variant: {
+				// Use explicit blue/white classes for the default variant to ensure
+				// primary action buttons remain visible even if CSS variables
+				// or theme values are missing or overridden.
+				default: 'bg-blue-600 text-white hover:bg-blue-700',
 				destructive:
           'bg-destructive text-destructive-foreground hover:bg-destructive/90',
 				outline:
