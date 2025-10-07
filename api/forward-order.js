@@ -450,8 +450,9 @@ export default async function handler(req, res) {
     if (validate) {
       const valid = validate(body);
       if (!valid) {
-        console.warn('forward-order validation failed', validate.errors);
-        return res.status(400).json({ ok: false, error: 'validation_failed', details: validate.errors, normalized: body });
+        console.warn('forward-order validation failed (non-blocking)', validate.errors);
+        forwarderWarnings.push({ when: new Date().toISOString(), where: 'schema.validation', message: 'order.schema.json failed', details: validate.errors });
+        // intentionally continue to allow capture/testing even if schema fails
       }
     }
 
@@ -460,8 +461,8 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, partial: true, normalized: body, warnings: forwarderWarnings });
     }
 
-    // Determine partial status: explicit partial, order.partial event, or clearly incomplete (no cart)
-    const derivedPartial = Boolean(isPartial || body?.event === 'order.partial' || !(Array.isArray(body.cart) && body.cart.length > 0));
+  // Determine partial status: explicit partial or clearly incomplete (no cart)
+  const derivedPartial = Boolean(isPartial || !(Array.isArray(body.cart) && body.cart.length > 0));
     body.is_partial = derivedPartial;
 
     // Validate final payload against pabbly schema (non-blocking)
@@ -479,10 +480,19 @@ export default async function handler(req, res) {
 
     // If still partial (explicit or derived), do NOT forward to Pabbly
     if (derivedPartial) {
+      if (DEBUG_FORWARDER) {
+        try { console.warn('forward-order: skipping forward due to partial/incomplete payload', { cartLen: Array.isArray(body.cart) ? body.cart.length : 0, explicitPartial: !!isPartial, event: body.event }); } catch {}
+      }
       return res.status(200).json({ ok: true, partial: true, normalized: body, warnings: forwarderWarnings });
     }
 
+    // Mark event as submitted for downstreams if cart is present and we are forwarding
+    try { if (body && body.event === 'order.partial') body.event = 'order.submitted'; } catch {}
+
     // Forward to Pabbly for full submissions
+    if (DEBUG_FORWARDER) {
+      try { console.log('forward-order: forwarding to URL', pabblyUrl); } catch {}
+    }
     // Treat 'cart' as the external source of truth; strip internal 'items' to avoid duplication/confusion downstream
     const outbound = (() => { const o = { ...body }; try { delete o.items; } catch {} return o; })();
     const r = await fetch(pabblyUrl, {
@@ -497,10 +507,10 @@ export default async function handler(req, res) {
     }
 
     if (!r.ok) {
-      return res.status(502).json({ ok: false, status: r.status, body: text });
+      return res.status(502).json({ ok: false, forwarded: false, forwardedTo: pabblyUrl, status: r.status, body: text });
     }
 
-    return res.status(200).json({ ok: true, status: r.status, body: text });
+    return res.status(200).json({ ok: true, forwarded: true, forwardedTo: pabblyUrl, status: r.status, body: text });
   } catch (err) {
     // log server-side
     // eslint-disable-next-line no-console
