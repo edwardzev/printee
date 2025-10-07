@@ -135,56 +135,12 @@ export const CartProvider = ({ children }) => {
         localStorage.setItem('order_payload', JSON.stringify(next));
       } catch (err) {}
 
-      // send partial to server-side dev API so we persist user progress (abandonment recovery)
-      try {
-        // debounce server sends to avoid high-frequency duplicates
-        lastPayloadRef.current = next;
-        if (pendingSendRef.current) clearTimeout(pendingSendRef.current);
-        pendingSendRef.current = setTimeout(() => {
-          try {
-            const url = '/api/save-payload';
-            const body = JSON.stringify(lastPayloadRef.current || {});
-            if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
-              try {
-                const blob = new Blob([body], { type: 'application/json' });
-                navigator.sendBeacon(url, blob);
-              } catch (e) {
-                fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }).catch(()=>{});
-              }
-            } else {
-              fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }).catch(()=>{});
-            }
-          } catch (e) {}
-          pendingSendRef.current = null;
-        }, 2000);
-      } catch (e) {
-        // ignore
-      }
+      // backend removed: no server beacons; localStorage persistence only
       return next;
     });
   };
 
-  // Flush pending payload on unload (best-effort)
-  useEffect(() => {
-    const onUnload = () => {
-      try {
-        if (pendingSendRef.current) {
-          clearTimeout(pendingSendRef.current);
-          pendingSendRef.current = null;
-        }
-        const body = JSON.stringify(lastPayloadRef.current || {});
-        if (navigator && navigator.sendBeacon) {
-          try { navigator.sendBeacon('/api/save-payload', new Blob([body], { type: 'application/json' })); } catch (e) {}
-        } else {
-          // synchronous XHR fallback is deprecated; just attempt a fetch without awaiting
-          fetch('/api/save-payload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }).catch(()=>{});
-        }
-      } catch (e) {}
-    };
-
-    window.addEventListener('beforeunload', onUnload);
-    return () => window.removeEventListener('beforeunload', onUnload);
-  }, []);
+  // backend removed: no unload beacons
 
   const clearPayload = () => {
     setPayload({});

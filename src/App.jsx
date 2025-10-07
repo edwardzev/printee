@@ -13,14 +13,12 @@ import ProductConfigurator from '@/pages/ProductConfigurator';
 import Cart from '@/pages/Cart';
 import CheckoutResult from '@/pages/CheckoutResult';
 import ThankYou from '@/pages/ThankYou';
-import ThankYouIcount from '@/pages/ThankYouIcount';
+// Backend removed: iCount thank-you route may be unused but can remain if purely client-side
 import Admin from '@/pages/Admin';
 import Terms from '@/pages/Terms';
 import Privacy from '@/pages/Privacy';
 import Returns from '@/pages/Returns';
 import FAQ from '@/pages/FAQ';
-import ForwardedLogs from '@/pages/ForwardedLogs';
-import DevDashboard from '@/pages/DevDashboard';
 
 function ScrollToTop() {
   const { pathname, search } = useLocation();
@@ -56,10 +54,9 @@ function App() {
                 <Route path="/checkout/success" element={<CheckoutResult success={true} />} />
                 <Route path="/checkout/cancel" element={<CheckoutResult success={false} />} />
                 <Route path="/thank-you" element={<ThankYou />} />
-                <Route path="/thank-you/icount" element={<ThankYouIcount />} />
+                { /* Backend removed: iCount thank-you route disabled */ }
                 <Route path="/admin" element={<Admin />} />
-                <Route path="/forwards" element={<ForwardedLogs />} />
-                <Route path="/dev" element={<DevDashboard />} />
+                { /* Backend dev pages removed */ }
                 <Route path="/faq" element={<FAQ />} />
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/privacy" element={<Privacy />} />

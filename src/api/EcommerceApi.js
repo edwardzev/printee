@@ -408,45 +408,7 @@ export async function getProducts({ids, offset, limit, order, sort_by, is_hidden
 	};
 }
 
-// --- Pabbly webhook sender -------------------------------------------------
-// IMPORTANT: Do NOT hardcode the Pabbly webhook URL in client code.
-// All forwarding must go through our server at /api/forward-order where the
-// webhook destination is configured via environment variables.
-import normalize from '../lib/normalizeOrderPayload.js';
-
-/**
- * Send order payload to Pabbly webhook URL with simple retries.
- * @param {Object} payload - JSON-serializable order payload
- * @param {Object} [opts]
- * @param {string} [opts.url] - webhook URL (defaults to DEFAULT_PABBY_URL)
- * @param {number} [opts.retries] - number of retries on failure (default 2)
- */
-export async function sendOrderToPabbly(payload, opts = {}) {
-	// Client must go through the server forwarder. We keep a short timeout so UI stays responsive.
-	try {
-		const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-		const signal = controller ? controller.signal : undefined;
-		const timeoutMs = typeof opts.localTimeout === 'number' ? opts.localTimeout : 4000;
-		let timeoutId;
-		if (controller) timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-		const r = await fetch('/api/forward-order', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(payload),
-			signal,
-		});
-
-		if (controller) clearTimeout(timeoutId);
-		if (r && r.ok) return { ok: true, proxied: true, status: r.status };
-
-		// Surface failure to caller; do not attempt to call Pabbly directly from the browser.
-		const text = await r.text().catch(()=>'<no-body>');
-		return { ok: false, error: `forwarder_error_${r.status}`, body: text };
-	} catch (err) {
-		return { ok: false, error: err?.name === 'AbortError' ? 'forwarder_timeout' : (err?.message || String(err)) };
-	}
-}
+// Backend removed: no direct webhook sender from client
 
 
 /**
