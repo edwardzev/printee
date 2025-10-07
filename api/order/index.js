@@ -1,16 +1,18 @@
-import { createOrder, listOrders } from './store.js';
+import { createOrder, listOrders, listOrdersFromFile } from './store.js';
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
     const limit = parseInt(String(req.query?.limit || '20'), 10) || 20;
-    const items = listOrders(limit);
+    const from = String(req.query?.from || '').toLowerCase();
+    const useFile = from === 'file' || from === 'fs' || from === 'disk';
+    const items = useFile ? await listOrdersFromFile(limit) : listOrders(limit);
     return res.status(200).json({ ok: true, items, count: items.length });
   }
   if (req.method === 'POST') {
     try {
       const body = req.body || {};
       // minimal shape: cart[], contact{}, paymentMethod?, totals?
-      const rec = createOrder({
+      const rec = await createOrder({
         cart: Array.isArray(body.cart) ? body.cart : [],
         contact: body.contact || {},
         paymentMethod: body.paymentMethod || '',
