@@ -19,6 +19,31 @@ const Cart = () => {
   const navigate = useNavigate();
 
   const handleCheckout = () => {
+    // Ensure we have an idempotency key before opening the modal
+    let idem = payload?.idempotency_key;
+    if (!idem) {
+      idem = `ord-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+      try { mergePayload({ idempotency_key: idem }); } catch {}
+    }
+
+    // Create/ensure a draft order in Airtable using only the idempotency key (no PII)
+    try {
+      const body = JSON.stringify({ idempotency_key: idem });
+      let beaconsent = false;
+      if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+        const blob = new Blob([body], { type: 'application/json' });
+        beaconsent = navigator.sendBeacon('/api/airtable/order', blob);
+      }
+      if (!beaconsent) {
+        fetch('/api/airtable/order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body,
+          keepalive: true,
+        }).catch(() => {});
+      }
+    } catch (_) {}
+
     setModalOpen(true);
   };
 

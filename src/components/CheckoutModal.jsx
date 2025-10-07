@@ -25,10 +25,15 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
 
   useEffect(() => {
     if (open) {
-      // Generate a fresh idempotency key for this checkout attempt to avoid reusing a previous order
-      const newKey = `ord-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
-      idempotencyKeyRef.current = newKey;
-      try { mergePayload({ idempotency_key: newKey }); } catch {}
+      // Ensure we have an idempotency key, but don't overwrite if one already exists (Cart ensured this earlier)
+      const existing = payload && payload.idempotency_key;
+      if (existing) {
+        idempotencyKeyRef.current = existing;
+      } else {
+        const newKey = `ord-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+        idempotencyKeyRef.current = newKey;
+        try { mergePayload({ idempotency_key: newKey }); } catch {}
+      }
 
       // Initialize form fields from the provided prefill snapshot when the modal opens.
       // Do NOT reset the chosen payment method on subsequent contact updates.
@@ -112,24 +117,6 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       }
     } catch (_) {}
 
-    // Also create/ensure a draft in Airtable using only the idempotency key (no PII at this stage)
-    try {
-      const idem = (payload && payload.idempotency_key) || idempotencyKeyRef.current;
-      const body = JSON.stringify({ idempotency_key: idem });
-      let beaconsent = false;
-      if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
-        const blob = new Blob([body], { type: 'application/json' });
-        beaconsent = navigator.sendBeacon('/api/airtable/order', blob);
-      }
-      if (!beaconsent) {
-        fetch('/api/airtable/order', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body,
-          keepalive: true,
-        }).catch(() => {});
-      }
-    } catch (_) {}
 
     if (method === 'card') {
       // Backend removed: show thank-you page with client-only confirmation.
