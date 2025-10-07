@@ -409,7 +409,9 @@ export async function getProducts({ids, offset, limit, order, sort_by, is_hidden
 }
 
 // --- Pabbly webhook sender -------------------------------------------------
-const DEFAULT_PABBY_URL = "https://connect.pabbly.com/workflow/sendwebhookdata/IjU3NjYwNTY1MDYzZTA0MzU1MjZkNTUzZDUxM2Ii_pc";
+// IMPORTANT: Do NOT hardcode the Pabbly webhook URL in client code.
+// All forwarding must go through our server at /api/forward-order where the
+// webhook destination is configured via environment variables.
 import normalize from '../lib/normalizeOrderPayload.js';
 
 /**
@@ -420,16 +422,11 @@ import normalize from '../lib/normalizeOrderPayload.js';
  * @param {number} [opts.retries] - number of retries on failure (default 2)
  */
 export async function sendOrderToPabbly(payload, opts = {}) {
-	const url = opts.url || DEFAULT_PABBY_URL;
-	const retries = typeof opts.retries === 'number' ? opts.retries : 2;
-
-	// Try the local forwarder first so client-side callers that fall back to
-	// this function still get normalized payload handling. Use a short timeout
-	// so UI flows don't block.
+	// Client must go through the server forwarder. We keep a short timeout so UI stays responsive.
 	try {
 		const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
 		const signal = controller ? controller.signal : undefined;
-		const timeoutMs = typeof opts.localTimeout === 'number' ? opts.localTimeout : 3000;
+		const timeoutMs = typeof opts.localTimeout === 'number' ? opts.localTimeout : 4000;
 		let timeoutId;
 		if (controller) timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -438,54 +435,17 @@ export async function sendOrderToPabbly(payload, opts = {}) {
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify(payload),
 			signal,
-		}).catch((e) => { throw e; });
+		});
 
 		if (controller) clearTimeout(timeoutId);
-		if (r && r.ok) {
-			return { ok: true, proxied: true, status: r.status };
-		}
-		// if local forwarder returned non-ok, fall through to direct webhook below
+		if (r && r.ok) return { ok: true, proxied: true, status: r.status };
+
+		// Surface failure to caller; do not attempt to call Pabbly directly from the browser.
+		const text = await r.text().catch(()=>'<no-body>');
+		return { ok: false, error: `forwarder_error_${r.status}`, body: text };
 	} catch (err) {
-		// ignore local forwarder failures here — we'll attempt direct webhook below
-		console.warn('Local forwarder attempt failed in sendOrderToPabbly:', err?.message || err);
+		return { ok: false, error: err?.name === 'AbortError' ? 'forwarder_timeout' : (err?.message || String(err)) };
 	}
-
-	let attempt = 0;
-	const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-
-	while (attempt <= retries) {
-		try {
-			attempt++;
-			// Normalize before sending directly to Pabbly so it receives the canonical shape
-			const normalized = typeof normalize === 'function' ? normalize(payload || {}) : (payload || {});
-			const res = await fetch(url, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(normalized),
-				// keep a short timeout for webhook forwarding
-			});
-
-			if (!res.ok) {
-				const text = await res.text().catch(()=>'<no-body>');
-				throw new Error(`HTTP ${res.status}: ${text}`);
-			}
-
-			// success
-			return { ok: true, status: res.status };
-		} catch (err) {
-			// last attempt -> rethrow
-			if (attempt > retries) {
-				return { ok: false, error: err?.message || String(err) };
-			}
-			// exponential backoff
-			const backoff = 250 * Math.pow(2, attempt - 1);
-			// best-effort logging to console
-			console.warn(`sendOrderToPabbly attempt ${attempt} failed, retrying in ${backoff}ms:`, err?.message || err);
-			await wait(backoff);
-		}
-	}
-
-	return { ok: false, error: 'unreachable' };
 }
 
 

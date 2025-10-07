@@ -34,6 +34,9 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       forwardPromiseRef.current = fetch(forwardUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        // help keep the request alive if the page navigates; browser may limit payload size for keepalive
+        keepalive: true,
+        credentials: 'same-origin',
         body: JSON.stringify({ ...fullPayload, idempotency_key: idempotencyKeyRef.current })
       })
         .then(async (r) => {
@@ -160,8 +163,19 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
           cartSummary: cartSummary || {}
         };
 
-        // best-effort forward as beacon; do not wait — uploads continue independently in this tab
-        try { sendForwardOrderOnce(toSend).catch(()=>{}); } catch (e) { /* ignore */ }
+        // Ensure the full forward reaches the server before redirecting, up to a short timeout.
+        // This greatly increases reliability that Pabbly receives the final payload.
+        const waitWithTimeout = (p, ms) => {
+          return new Promise((resolve) => {
+            let settled = false;
+            const timer = setTimeout(() => { if (!settled) resolve(null); }, ms);
+            p.then((r) => { if (!settled) { settled = true; clearTimeout(timer); resolve(r); } })
+             .catch(() => { if (!settled) { settled = true; clearTimeout(timer); resolve(null); } });
+          });
+        };
+        try {
+          await waitWithTimeout(sendForwardOrderOnce(toSend), 2500);
+        } catch (e) { /* ignore */ }
 
         // ask server to create a short session for iCount
         // Build a minimal session payload to avoid large body uploads (data URLs, files, etc.)

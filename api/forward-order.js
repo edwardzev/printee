@@ -51,7 +51,8 @@ export default async function handler(req, res) {
     try { console.log('forward-order incoming request', { url: req.url, method: req.method, headersSnippet: JSON.stringify({ 'content-length': req.headers['content-length'] || null }).slice(0,200) }); } catch (e) {}
   }
 
-  const pabblyUrl = process.env.PABBLY_URL || DEFAULT_PABBY_URL;
+  // In production, require PABBLY_URL to be configured. In non-production, fall back to a capture URL.
+  const pabblyUrl = process.env.PABBLY_URL || (process.env.NODE_ENV === 'production' ? null : DEFAULT_PABBY_URL);
 
   try {
     const appBody = req.body;
@@ -560,6 +561,13 @@ export default async function handler(req, res) {
 
     // Mark event as submitted for downstreams if cart is present and we are forwarding
     try { if (body && body.event === 'order.partial') body.event = 'order.submitted'; } catch {}
+
+    // If in production and PABBLY_URL is not configured, do not forward and return an explicit error
+    if (!pabblyUrl) {
+      const msg = 'PABBLY_URL not configured in production environment';
+      console.error('forward-order:', msg);
+      return res.status(500).json({ ok: false, forwarded: false, error: msg });
+    }
 
     // Forward to Pabbly for full submissions
     if (DEBUG_FORWARDER) {
