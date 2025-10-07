@@ -1,4 +1,4 @@
-import { getOrder, getOrderFromFile } from './store.js';
+import { getOrder, getOrderFromFile, DEV_PERSIST } from './store.js';
 
 export default async function handler(req, res) {
   const { id } = req.query || {};
@@ -8,7 +8,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ ok: false, error: 'Method Not Allowed' });
   }
   const from = String(req.query?.from || '').toLowerCase();
-  const useFile = from === 'file' || from === 'fs' || from === 'disk';
+  const explicitMem = from === 'mem' || from === 'memory';
+  const explicitFile = from === 'file' || from === 'fs' || from === 'disk';
+  const useFile = explicitFile || (!explicitMem && DEV_PERSIST);
   const rec = useFile ? await getOrderFromFile(id) : getOrder(id);
   if (!rec) return res.status(404).json({ ok: false, error: 'not_found' });
   return res.status(200).json({ ok: true, order: rec });

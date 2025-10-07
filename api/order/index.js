@@ -1,11 +1,13 @@
-import { createOrder, listOrders, listOrdersFromFile } from './store.js';
+import { createOrder, listOrders, listOrdersFromFile, DEV_PERSIST } from './store.js';
 import { validateOrderPayload } from './validate.js';
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
     const limit = parseInt(String(req.query?.limit || '20'), 10) || 20;
     const from = String(req.query?.from || '').toLowerCase();
-    const useFile = from === 'file' || from === 'fs' || from === 'disk';
+    const explicitMem = from === 'mem' || from === 'memory';
+    const explicitFile = from === 'file' || from === 'fs' || from === 'disk';
+    const useFile = explicitFile || (!explicitMem && DEV_PERSIST);
     const items = useFile ? await listOrdersFromFile(limit) : listOrders(limit);
     return res.status(200).json({ ok: true, items, count: items.length });
   }
