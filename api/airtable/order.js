@@ -154,13 +154,23 @@ function parseDataUrl(dataUrl) {
   }
 }
 
-function composeUploadFilename({ orderId, areaKey, method, product, color, qty, ext }) {
+function composeUploadFilename({ orderId, areaKey, method, product, colors, color, qty, ext }) {
+  const colorsPart = (() => {
+    if (Array.isArray(colors) && colors.length) {
+      return colors.map((c) => sanitizeSegment(c)).filter(Boolean).join('_');
+    }
+    if (typeof colors === 'string' && colors.trim()) {
+      return colors.split(/[\s,;]+/).map((c) => sanitizeSegment(c)).filter(Boolean).join('_');
+    }
+    if (color) return sanitizeSegment(color);
+    return '';
+  })();
   const parts = [
     sanitizeSegment(orderId),
     sanitizeSegment(areaKey),
     sanitizeSegment(method),
     sanitizeSegment(product),
-    sanitizeSegment(color),
+    colorsPart,
     sanitizeSegment(qty),
   ].filter(Boolean);
   const base = parts.join('_');
@@ -273,14 +283,14 @@ export default async function handler(req, res) {
               const areaKey = String(u.areaKey || u.print_area || '') || 'area';
               const method = String(u.method || u.print_type || 'print');
               const product = String(u.product || u.productSku || '').trim() || 'product';
-              const color = String(u.color || '').trim() || 'color';
+              const colors = Array.isArray(u.colors) ? u.colors : (typeof u.colors === 'string' ? u.colors : (u.color ? [u.color] : []));
               const qty = Number.isFinite(u.qty) ? u.qty : parseInt(u.qty, 10) || 0;
               const dataUrl = String(u.dataUrl || u.url || '');
               const name = String(u.fileName || u.name || '');
               const { mime, buffer } = parseDataUrl(dataUrl);
               if (!buffer || !buffer.length) throw new Error('invalid_data_url');
               const extRaw = getExtFromName(name) || getExtFromMime(mime) || 'bin';
-              const filename = composeUploadFilename({ orderId, areaKey, method, product, color, qty, ext: extRaw });
+              const filename = composeUploadFilename({ orderId, areaKey, method, product, colors, qty, ext: extRaw });
               const filePath = `${subPath}/${filename}`.replace(/\/+/, '/');
               await dropboxUploadFile({ accessToken, namespaceId: dbxNamespaceId, path: filePath, content: buffer, mode: { '.tag': 'add' }, autorename: false, mute: true });
               uploadedCount += 1;

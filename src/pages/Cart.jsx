@@ -40,12 +40,18 @@ const Cart = () => {
             : (item.color ? [item.color] : []);
           if (colors.length === 0) return; // nothing to upload without a color context
 
-          const colorQty = {};
+          // Reduce to active colors with qty > 0, and compute total qty for all colors
+          const activeColors = [];
+          let totalQtyForItem = 0;
           colors.forEach((c) => {
             const mat = (matrices && matrices[c]) || (c === item.color ? (item.sizeMatrix || {}) : {});
             const qty = Object.values(mat || {}).reduce((s, q) => s + (q || 0), 0);
-            colorQty[c] = qty || 0;
+            if (qty > 0) {
+              activeColors.push(c);
+              totalQtyForItem += qty;
+            }
           });
+          if (activeColors.length === 0) return;
 
           // Map areaKey -> method
           const areaMethod = {};
@@ -61,19 +67,15 @@ const Cart = () => {
             if (!d || !d.url) return;
             const method = areaMethod[areaKey] || 'print';
             const fileName = d.name || `${areaKey}.png`;
-            colors.forEach((c) => {
-              const qty = colorQty[c] || 0;
-              if (qty > 0) {
-                list.push({
-                  areaKey,
-                  method,
-                  product,
-                  color: c,
-                  qty,
-                  dataUrl: d.url,
-                  fileName,
-                });
-              }
+            // Single combined upload per area: include all active colors and the total qty
+            list.push({
+              areaKey,
+              method,
+              product,
+              colors: activeColors,
+              qty: totalQtyForItem,
+              dataUrl: d.url,
+              fileName,
             });
           });
         });
