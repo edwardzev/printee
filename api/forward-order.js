@@ -120,7 +120,8 @@ export default async function handler(req, res) {
 
     // scan uploadedDesigns at top-level and inside cart items for data URLs and upload them
     const bodyCandidate = JSON.parse(JSON.stringify(appBody || {}));
-  const uploads = [];
+    const uploads = [];
+    // collect references to data URLs; later we'll dedupe by the data URL string
     function collectAndUpload(obj, parentKey) {
       if (!obj || typeof obj !== 'object') return;
       for (const k of Object.keys(obj)) {
@@ -136,60 +137,55 @@ export default async function handler(req, res) {
     }
     collectAndUpload(bodyCandidate);
     if (uploads.length) {
-      let folderLinkSet = false;
+      // Deduplicate by exact data URL string. Map dataUrl -> { result, refs: [{container,key,filenameHint}] }
+      const byDataUrl = new Map();
       for (const up of uploads) {
+        const hint = (up.container && up.container.name) || (up.container && up.container.file && up.container.file.name) || 'design';
+        if (!byDataUrl.has(up.dataUrl)) byDataUrl.set(up.dataUrl, { refs: [], filenameHint: hint, result: null });
+        byDataUrl.get(up.dataUrl).refs.push({ container: up.container, key: up.key });
+      }
+
+      // Upload each unique blob once
+      const uploadedResults = [];
+      for (const [dataUrl, entry] of byDataUrl.entries()) {
         try {
-          const filenameHint = (up.container && up.container.name) || (up.container && up.container.file && up.container.file.name) || 'design';
-          const result = await uploadDataUrlToDropbox(up.dataUrl, filenameHint);
-          // Replace the original data URL with the shared link string for simplicity
-          up.container[up.key] = result.url;
-          // Preserve metadata under a dedicated key alongside the URL container when available
-          try {
-            if (up.container && typeof up.container === 'object') {
-              up.container._dropbox = { path: result.path, name: result.name, size: result.size, url: result.url };
-            }
-          } catch {}
-          // Debug log: show where we uploaded (safe, no tokens)
-          if (DEBUG_FORWARDER) console.log('forward-order: uploaded to dropbox path:', result.path);
-          // After the first upload, attempt to set a shared link for the order folder
-          try {
-            if (!folderLinkSet && result && result.path) {
-              const folderPath = result.path.replace(/\/+[^/]+$/, '');
-              const folderShared = await createSharedLink(folderPath).catch(()=>null);
-              if (folderShared) {
-                bodyCandidate._dropbox_folder_url = folderShared;
-                folderLinkSet = true;
-                if (DEBUG_FORWARDER) console.log('forward-order: created shared link for folder from upload', folderShared);
-              }
-            }
-          } catch {}
+          const result = await uploadDataUrlToDropbox(dataUrl, entry.filenameHint);
+          entry.result = result;
+          uploadedResults.push(result);
+          // populate each reference location with the shared link string and metadata container
+          for (const ref of entry.refs) {
+            try { ref.container[ref.key] = result.url; } catch {}
+            try { if (ref.container && typeof ref.container === 'object') ref.container._dropbox = { path: result.path, name: result.name, size: result.size, url: result.url }; } catch {}
+          }
+          if (DEBUG_FORWARDER) console.log('forward-order: uploaded unique blob to dropbox path:', result.path);
         } catch (e) {
           const msg = e && (e.message || String(e)) || 'unknown';
           console.error('forward-order: dropbox upload failed', msg);
-          // record a warning for the normalized payload so downstream systems can see it
-          forwarderWarnings.push({ when: new Date().toISOString(), where: up.key, message: msg });
-          // Do NOT embed the error object or raw data URL back into the payload. Replace with null
-          try { up.container[up.key] = null; } catch {}
+          forwarderWarnings.push({ when: new Date().toISOString(), where: 'upload', message: msg });
+          // ensure we clear the references to avoid sending data URLs or errors
+          for (const ref of entry.refs) {
+            try { ref.container[ref.key] = null; } catch {}
+          }
         }
       }
-      // If uploads attempted but we still have no folder shared link, try to create the order folder link
-      if (!folderLinkSet) {
-        try {
-          const folderKey = ensured?.order_number || preNormalized?.order?.order_number || ensured?.order_id || preNormalized?.order?.order_id || null;
-          const orderFolder = folderKey ? `${DROPBOX_BASE_FOLDER}/${folderKey}` : DROPBOX_BASE_FOLDER;
-          const nsPrefix = DROPBOX_NAMESPACE_ID ? `ns:${DROPBOX_NAMESPACE_ID}` : '';
-          const folderPath = `${nsPrefix}${orderFolder}`;
-          const createResult = await createFolder(folderPath).catch((e) => { throw e; });
-          const folderShared = await createSharedLink(folderPath).catch(()=>null);
-          if (folderShared) {
-            bodyCandidate._dropbox_folder_url = folderShared;
-            if (DEBUG_FORWARDER) console.log('forward-order: created shared link for folder after uploads (fallback)', folderShared);
-          }
-        } catch (e) {
-          const msg = e && (e.message || String(e)) || 'unknown';
-          forwarderWarnings.push({ when: new Date().toISOString(), where: 'dropbox.create_folder.fallback', message: msg });
-          if (DEBUG_FORWARDER) console.warn('forward-order: dropbox create folder fallback failed', msg);
+
+      // After uploads, attempt to create a single shared link for the order folder if any uploads succeeded
+      try {
+        const folderKey = ensured?.order_number || preNormalized?.order?.order_number || ensured?.order_id || preNormalized?.order?.order_id || null;
+        const orderFolder = folderKey ? `${DROPBOX_BASE_FOLDER}/${folderKey}` : DROPBOX_BASE_FOLDER;
+        const nsPrefix = DROPBOX_NAMESPACE_ID ? `ns:${DROPBOX_NAMESPACE_ID}` : '';
+        const folderPath = `${nsPrefix}${orderFolder}`;
+        // Ensure folder exists (idempotent on Dropbox client side)
+        await createFolder(folderPath).catch(()=>{});
+        const folderShared = await createSharedLink(folderPath).catch(()=>null);
+        if (folderShared) {
+          bodyCandidate._dropbox_folder_url = folderShared;
+          if (DEBUG_FORWARDER) console.log('forward-order: created shared link for folder after unique uploads', folderShared);
         }
+      } catch (e) {
+        const msg = e && (e.message || String(e)) || 'unknown';
+        forwarderWarnings.push({ when: new Date().toISOString(), where: 'dropbox.create_folder.fallback', message: msg });
+        if (DEBUG_FORWARDER) console.warn('forward-order: dropbox create folder fallback failed', msg);
       }
     }
     else {

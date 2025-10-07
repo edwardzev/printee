@@ -179,7 +179,7 @@ export default function Header({ dir = "rtl" }) {
               // Use the brand gradient for CTA to match primary buttons; keep
               // a subtle hover-friendly contrast for active/non-cta links.
               background: cta
-                ? "linear-gradient(90deg,#6b21a8 0%,#9b1fd6 50%,#db00ff 100%)"
+                ? "linear-gradient(90deg,#7a00ff 0%,#fe00ff 100%)"
                 : active === id
                 ? "#f0f0f0"
                 : "transparent",
