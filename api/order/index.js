@@ -1,4 +1,5 @@
 import { createOrder, listOrders, listOrdersFromFile } from './store.js';
+import { validateOrderPayload } from './validate.js';
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
@@ -11,6 +12,11 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     try {
       const body = req.body || {};
+      // validate first
+      const { valid, errors } = validateOrderPayload(body);
+      if (!valid) {
+        return res.status(400).json({ ok: false, error: 'invalid_payload', details: errors });
+      }
       // minimal shape: cart[], contact{}, paymentMethod?, totals?
       const rec = await createOrder({
         cart: Array.isArray(body.cart) ? body.cart : [],

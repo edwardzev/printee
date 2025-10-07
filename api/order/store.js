@@ -3,6 +3,7 @@
 import fs from 'fs';
 import { promises as fsp } from 'fs';
 import path from 'path';
+import { v4 as uuidv4 } from 'uuid';
 
 const state = {
   orders: new Map(),
@@ -57,7 +58,7 @@ async function readAllOrdersFromFile() {
 }
 
 export async function createOrder(order) {
-  const id = order.id || String(Date.now());
+  const id = order.id || uuidv4();
   const now = new Date().toISOString();
   const rec = { id, created_at: now, ...order };
   state.orders.set(id, rec);
