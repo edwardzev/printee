@@ -25,6 +25,9 @@ function getEnv() {
   fCartText: process.env.AIRTABLE_FIELD_CART_TEXT || 'cart_text',
   fCustomerText: process.env.AIRTABLE_FIELD_CUSTOMER_TEXT || 'customer_text',
   fFinanceText: process.env.AIRTABLE_FIELD_FINANCE_TEXT || 'finance_text',
+  fPaid: process.env.AIRTABLE_FIELD_PAID || 'paid',
+  fInvrecNum: process.env.AIRTABLE_FIELD_INVREC_NUM || 'invrec_num',
+  fInvrecLink: process.env.AIRTABLE_FIELD_INVREC_LINK || 'invrec_link',
     // Dropbox
     dbxAppKey: process.env.DROPBOX_APP_KEY || '',
     dbxAppSecret: process.env.DROPBOX_APP_SECRET || '',
@@ -209,7 +212,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ ok: false, error: 'invalid_idempotency_key' });
   }
 
-  const { token, baseId, table, fIdem, fStatus, statusDraft, fCartText, fCustomerText, fFinanceText, dbxAppKey, dbxAppSecret, dbxRefreshToken, dbxBaseFolder, dbxNamespaceId } = getEnv();
+  const { token, baseId, table, fIdem, fStatus, statusDraft, fCartText, fCustomerText, fFinanceText, fPaid, fInvrecNum, fInvrecLink, dbxAppKey, dbxAppSecret, dbxRefreshToken, dbxBaseFolder, dbxNamespaceId } = getEnv();
   try {
     console.log('[airtable/order] invoked', {
       baseId: baseId ? `${baseId}` : '(missing)',
@@ -325,13 +328,25 @@ export default async function handler(req, res) {
             });
           }
           if (fFinanceText && financial) {
-            patchFields[fFinanceText] = JSON.stringify({
+            const financePayload = {
               subtotal: Number(financial.subtotal || 0),
               delivery: Number(financial.delivery || 0),
               vat: Number(financial.vat || 0),
               total: Number(financial.total || 0),
               payment_method: String(financial.payment_method || financial.paymentMethod || ''),
-            });
+            };
+            if (financial.invrec && typeof financial.invrec === 'object') {
+              if (financial.invrec.docnum != null) financePayload.invrec_num = String(financial.invrec.docnum);
+              if (financial.invrec.link != null) financePayload.invrec_link = String(financial.invrec.link);
+            }
+            patchFields[fFinanceText] = JSON.stringify(financePayload);
+            if (fPaid && (financial.paid === true || financial.paid === 'true' || financial.paid === 1)) {
+              patchFields[fPaid] = true;
+            }
+            if (financial.invrec && typeof financial.invrec === 'object') {
+              if (fInvrecNum && financial.invrec.docnum != null) patchFields[fInvrecNum] = String(financial.invrec.docnum);
+              if (fInvrecLink && financial.invrec.link != null) patchFields[fInvrecLink] = String(financial.invrec.link);
+            }
           }
           if (fCartText && (cart || (Array.isArray(cartUploads) && cartUploads.length))) {
             const payload = {

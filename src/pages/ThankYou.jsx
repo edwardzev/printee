@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet';
@@ -17,11 +17,36 @@ function safeGet(obj, path, fallback = '') {
 export default function ThankYou() {
   const { payload, clearPayload } = useCart();
   const [showRaw, setShowRaw] = useState(false);
+  const [marked, setMarked] = useState(false);
 
   const orderId = safeGet(payload, 'order.id') || safeGet(payload, 'order_number') || safeGet(payload, 'id') || '';
   const customerName = safeGet(payload, 'customer.name') || safeGet(payload, 'contact.name') || safeGet(payload, 'contact?.name');
   const customerEmail = safeGet(payload, 'customer.email') || safeGet(payload, 'contact.email');
   const totals = safeGet(payload, 'order.totals') || safeGet(payload, 'cartSummary') || {};
+
+  // When returning from iCount, mark Airtable record as paid using idempotency key in query string
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const idem = params.get('idem');
+      if (!idem || marked) return;
+      const invrec = {};
+      const docnum = params.get('docnum') || params.get('doc') || null;
+      const link = params.get('invlink') || params.get('link') || null;
+      if (docnum) invrec.docnum = docnum;
+      if (link) invrec.link = link;
+      const payload = { idempotency_key: idem, financial: { paid: true } };
+      if (Object.keys(invrec).length > 0) payload.financial.invrec = invrec;
+      fetch('/api/airtable/order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }).catch(() => {});
+      setMarked(true);
+      // optionally clear client payload now
+      try { clearPayload(); } catch {}
+    } catch {}
+  }, [marked, clearPayload]);
 
   return (
     <>

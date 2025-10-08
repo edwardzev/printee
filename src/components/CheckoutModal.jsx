@@ -174,15 +174,31 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
         },
         financial: financialBlock,
         cart: {
-          items: (cartItems || []).map((i) => ({
-            productSku: i.productSku,
-            productName: i.productName,
-            color: i.color,
-            selectedColors: i.selectedColors,
-            sizeMatrix: i.sizeMatrix,
-            sizeMatrices: i.sizeMatrices,
-            selectedPrintAreas: i.selectedPrintAreas,
-          })),
+          items: (cartItems || []).map((i) => {
+            // Normalize selected print areas
+            const areas = (i.selectedPrintAreas || []).map((sel) => {
+              if (!sel) return null;
+              if (typeof sel === 'string') return { areaKey: sel, method: 'print', printColor: 'as-is', designerComments: '' };
+              return {
+                areaKey: sel.areaKey,
+                method: sel.method || 'print',
+                printColor: sel.printColor || 'as-is',
+                designerComments: sel.designerComments || '',
+              };
+            }).filter(Boolean);
+
+            // Ensure sizeMatrices exists; fallback from legacy single color/sizeMatrix if needed
+            const matrices = (i.sizeMatrices && typeof i.sizeMatrices === 'object')
+              ? i.sizeMatrices
+              : (i.color ? { [i.color]: (i.sizeMatrix || {}) } : {});
+
+            return {
+              productSku: i.productSku,
+              productName: i.productName,
+              sizeMatrices: matrices,
+              selectedPrintAreas: areas,
+            };
+          }),
         },
         cartUploads: uploads,
       };
@@ -196,12 +212,46 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
 
 
     if (method === 'card') {
-      // Backend removed: show thank-you page with client-only confirmation.
-      toast({ title: 'תודה', description: 'הזמנה התקבלה. ניצור קשר להמשך.', variant: 'default' });
-      try { navigate('/thank-you'); } catch (e) { /* ignore */ }
-      setProcessing(false);
-      onClose();
-      return;
+      // Build iCount payment URL and redirect
+      try {
+        const pageCode = (import.meta?.env?.VITE_ICOUNT_PAGE_CODE || '6fa96').trim();
+        const base = (import.meta?.env?.VITE_ICOUNT_BASE_URL || 'https://www.icount.co.il/m').replace(/\/$/, '');
+        const amountParam = (import.meta?.env?.VITE_ICOUNT_AMOUNT_PARAM || 'sum');
+        const refParam = (import.meta?.env?.VITE_ICOUNT_REF_PARAM || 'cField1');
+  const successParam = (import.meta?.env?.VITE_ICOUNT_SUCCESS_URL_PARAM || 'success_url');
+  const cancelParam = (import.meta?.env?.VITE_ICOUNT_CANCEL_URL_PARAM || 'cancel_url');
+  const nameParam = (import.meta?.env?.VITE_ICOUNT_NAME_PARAM || 'name');
+  const emailParam = (import.meta?.env?.VITE_ICOUNT_EMAIL_PARAM || 'email');
+
+        const subtotal = Number(cartSummary?.total || 0);
+        const delivery = payload?.withDelivery ? Math.ceil(Number(getTotalItems?.() || 0) / 50) * 50 : 0;
+        const totalToCharge = Math.round((subtotal + delivery) * 1.17);
+
+        const u = new URL(`${base}/${pageCode}`);
+        u.searchParams.set(amountParam, String(totalToCharge));
+        u.searchParams.set(refParam, idempotencyKeyRef.current);
+        if (name && name.trim()) u.searchParams.set(nameParam, name.trim());
+        if (email && email.trim()) u.searchParams.set(emailParam, email.trim());
+        try {
+          const idem = encodeURIComponent(idempotencyKeyRef.current);
+          // We append 'docnum' and 'invlink' in the success URL template; iCount may replace or add these.
+          // If iCount can't forward them, we still mark paid by idem; otherwise we'll also capture doc & link.
+          u.searchParams.set(successParam, `${window.location.origin}/thank-you?idem=${idem}&docnum={docnum}&invlink={link}`);
+          u.searchParams.set(cancelParam, `${window.location.origin}/cart`);
+        } catch {}
+
+        setProcessing(false);
+        onClose();
+        window.location.assign(u.toString());
+        return;
+      } catch (e) {
+        // As a fallback, keep the original UX
+        toast({ title: 'תודה', description: 'הזמנה התקבלה. ניצור קשר להמשך.', variant: 'default' });
+        try { navigate('/thank-you'); } catch (err) {}
+        setProcessing(false);
+        onClose();
+        return;
+      }
     }
 
     if (method === 'bit') {
