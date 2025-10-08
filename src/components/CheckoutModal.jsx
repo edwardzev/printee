@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 export default function CheckoutModal({ open, onClose, cartSummary, prefillContact }) {
   const { t, language } = useLanguage();
   const { toast } = useToast();
-  const { mergePayload, payload, cartItems } = useCart();
+  const { mergePayload, payload, cartItems, getTotalItems } = useCart();
   const navigate = useNavigate();
   const [method, setMethod] = useState('card');
   const [name, setName] = useState(prefillContact?.name || '');
@@ -156,17 +156,22 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
         } catch (e) { return []; }
       })();
 
-      const financialBlock = {
-        subtotal: Number(cartSummary?.total || 0), // garments + prints total before VAT and delivery
-        delivery: Number((payload?.withDelivery ? (Math.ceil((cartSummary?.totalItems || 0) / 50) * 50) : 0) || 0),
-        vat: Math.round(Number(cartSummary?.total || 0) * 0.17),
-        total: Math.round(Number(cartSummary?.total || 0) * 1.17 + Number((payload?.withDelivery ? (Math.ceil((cartSummary?.totalItems || 0) / 50) * 50) : 0) || 0)),
-        payment_method: method,
-      };
+      const subtotal = Number(cartSummary?.total || 0);
+      const delivery = payload?.withDelivery ? Math.ceil(Number(getTotalItems?.() || 0) / 50) * 50 : 0;
+      const vat = Math.round((subtotal + delivery) * 0.17);
+      const total = Math.round((subtotal + delivery) * 1.17);
+      const financialBlock = { subtotal, delivery, vat, total, payment_method: method };
 
       const enriched = {
         idempotency_key: idempotencyKeyRef.current,
-        customer: { name, phone, email, address_street: payload?.contact?.address_street || '', address_city: payload?.contact?.address_city || '' },
+        customer: {
+          name,
+          phone,
+          email,
+          // Map our DeliveryOptions contact shape (street/city) into canonical fields
+          address_street: payload?.contact?.street || payload?.contact?.address_street || '',
+          address_city: payload?.contact?.city || payload?.contact?.address_city || '',
+        },
         financial: financialBlock,
         cart: {
           items: (cartItems || []).map((i) => ({
