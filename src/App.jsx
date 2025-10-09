@@ -13,6 +13,7 @@ import ProductConfigurator from '@/pages/ProductConfigurator';
 import Cart from '@/pages/Cart';
 import CheckoutResult from '@/pages/CheckoutResult';
 import ThankYou from '@/pages/ThankYou';
+import ThankYouCC from '@/pages/ThankYouCC';
 // Backend removed: iCount thank-you route may be unused but can remain if purely client-side
 import Admin from '@/pages/Admin';
 import Terms from '@/pages/Terms';
@@ -54,6 +55,7 @@ function App() {
                 <Route path="/checkout/success" element={<CheckoutResult success={true} />} />
                 <Route path="/checkout/cancel" element={<CheckoutResult success={false} />} />
                 <Route path="/thank-you" element={<ThankYou />} />
+                <Route path="/thank-you-cc" element={<ThankYouCC />} />
                 { /* Backend removed: iCount thank-you route disabled */ }
                 <Route path="/admin" element={<Admin />} />
                 { /* Backend dev pages removed */ }
