@@ -233,6 +233,11 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
 
         const u = new URL(`${base}/${pageCode}`);
   u.searchParams.set(amountParam, String(totalToCharge));
+  // For compatibility: some iCount pages accept 'cs' (custom sum) or 'sum'. Send both.
+  try { u.searchParams.set('cs', String(totalToCharge)); } catch {}
+  // Include a short description and currency code to help some page configurations
+  try { u.searchParams.set('cd', `Order ${idempotencyKeyRef.current}`); } catch {}
+  try { u.searchParams.set('currency_code', 'ILS'); } catch {}
   // Attach idempotency as a custom 'm__' prefixed field so iCount echoes it back in IPN / redirect
   u.searchParams.set(idemParam, idempotencyKeyRef.current);
   if (name && name.trim()) u.searchParams.set(nameParam, name.trim());
