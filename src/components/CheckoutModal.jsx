@@ -215,13 +215,14 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       // Build iCount payment URL and redirect
       try {
         const pageCode = (import.meta?.env?.VITE_ICOUNT_PAGE_CODE || '6fa96').trim();
-        const base = (import.meta?.env?.VITE_ICOUNT_BASE_URL || 'https://www.icount.co.il/m').replace(/\/$/, '');
+  const base = (import.meta?.env?.VITE_ICOUNT_BASE_URL || 'https://app.icount.co.il/m').replace(/\/$/, '');
     // iCount docs: use 'sum' for amount, standard customer fields like 'full_name', 'contact_email', 'contact_phone'
     // and any custom fields prefixed with 'm__' are returned in IPN with the prefix removed.
     const amountParam = (import.meta?.env?.VITE_ICOUNT_AMOUNT_PARAM || 'sum');
     // We'll send our idempotency key as a custom field so iCount returns it back in IPN: m__idem
     const idemParam = (import.meta?.env?.VITE_ICOUNT_IDEM_PARAM || 'm__idem');
   const successParam = (import.meta?.env?.VITE_ICOUNT_SUCCESS_URL_PARAM || 'success_url');
+  const failureParam = (import.meta?.env?.VITE_ICOUNT_FAILURE_URL_PARAM || 'failure_url');
   const cancelParam = (import.meta?.env?.VITE_ICOUNT_CANCEL_URL_PARAM || 'cancel_url');
   const nameParam = (import.meta?.env?.VITE_ICOUNT_NAME_PARAM || 'full_name');
   const emailParam = (import.meta?.env?.VITE_ICOUNT_EMAIL_PARAM || 'contact_email');
@@ -237,7 +238,10 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
   try { u.searchParams.set('cs', String(totalToCharge)); } catch {}
   // Include a short description and currency code to help some page configurations
   try { u.searchParams.set('cd', `Order ${idempotencyKeyRef.current}`); } catch {}
-  try { u.searchParams.set('currency_code', 'ILS'); } catch {}
+  // Set numeric currency id (1 = ILS) — some iCount pages expect currency_id instead of currency_code
+  try { u.searchParams.set('currency_id', '1'); } catch {}
+  // Avoid iCount overriding incoming UTM params when the page is configured to respect them
+  try { u.searchParams.set('utm_nooverride', '1'); } catch {}
   // Attach idempotency as a custom 'm__' prefixed field so iCount echoes it back in IPN / redirect
   u.searchParams.set(idemParam, idempotencyKeyRef.current);
   if (name && name.trim()) u.searchParams.set(nameParam, name.trim());
@@ -248,6 +252,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
           // We append 'docnum' and 'invlink' in the success URL template; iCount will replace these placeholders.
           // Also include our idem so the app can mark the Airtable record as paid on return.
           u.searchParams.set(successParam, `${window.location.origin}/thank-you-cc?idem=${idem}&docnum={docnum}&invlink={link}`);
+          u.searchParams.set(failureParam, `${window.location.origin}/cart?status=failed`);
           u.searchParams.set(cancelParam, `${window.location.origin}/cart`);
         } catch {}
 
