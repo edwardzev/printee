@@ -241,21 +241,12 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
   try {
     const firstItem = (cartItems && cartItems[0]) || null;
     const itemName = firstItem ? (firstItem.productName || firstItem.productSku || 'Product') : 'Product';
-    const totalQty = (Array.isArray(cartItems) ? cartItems.reduce((s, it) => {
-      const matrices = it.sizeMatrices || (it.sizeMatrix ? it.sizeMatrix : {});
-      if (matrices && typeof matrices === 'object') {
-        const qty = Object.values(matrices).reduce((ss, v) => ss + (Number(v) || 0), 0);
-        return s + qty;
-      }
-      // fallback: try qty or amount fields
-      return s + (Number(it.qty) || 0);
-    }, 0) : 0);
+    // Use getTotalItems() (CartContext) to compute total quantity so it's accurate and consistent
+    const totalQty = typeof getTotalItems === 'function' ? Number(getTotalItems() || 0) : (Array.isArray(cartItems) ? cartItems.length : 0);
     const pretty = `${itemName} ${totalQty} incl מיתוג`;
     u.searchParams.set('cd', pretty);
   } catch {}
-  // Set numeric currency id (1 = ILS) — some iCount pages expect currency_id instead of currency_code
-  try { u.searchParams.set('currency_id', '1'); } catch {}
-  try { u.searchParams.set('currency_code', 'ILS'); } catch {}
+  // Do not force currency here — let the iCount page configuration determine displayed currency (it may be EUR)
   // Avoid iCount overriding incoming UTM params when the page is configured to respect them
   try { u.searchParams.set('utm_nooverride', '1'); } catch {}
   // Attach idempotency as a custom 'm__' prefixed field so iCount echoes it back in IPN / redirect
