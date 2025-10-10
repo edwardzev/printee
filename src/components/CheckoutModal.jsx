@@ -237,9 +237,25 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
   // For compatibility: some iCount pages accept 'cs' (custom sum) or 'sum'. Send both.
   try { u.searchParams.set('cs', String(totalToCharge)); } catch {}
   // Include a short description and currency code to help some page configurations
-  try { u.searchParams.set('cd', `Order ${idempotencyKeyRef.current}`); } catch {}
+  // Build a prettier description: use first product name (fallback to sku) and total qty, include 'מיתוג'
+  try {
+    const firstItem = (cartItems && cartItems[0]) || null;
+    const itemName = firstItem ? (firstItem.productName || firstItem.productSku || 'Product') : 'Product';
+    const totalQty = (Array.isArray(cartItems) ? cartItems.reduce((s, it) => {
+      const matrices = it.sizeMatrices || (it.sizeMatrix ? it.sizeMatrix : {});
+      if (matrices && typeof matrices === 'object') {
+        const qty = Object.values(matrices).reduce((ss, v) => ss + (Number(v) || 0), 0);
+        return s + qty;
+      }
+      // fallback: try qty or amount fields
+      return s + (Number(it.qty) || 0);
+    }, 0) : 0);
+    const pretty = `${itemName} ${totalQty} incl מיתוג`;
+    u.searchParams.set('cd', pretty);
+  } catch {}
   // Set numeric currency id (1 = ILS) — some iCount pages expect currency_id instead of currency_code
   try { u.searchParams.set('currency_id', '1'); } catch {}
+  try { u.searchParams.set('currency_code', 'ILS'); } catch {}
   // Avoid iCount overriding incoming UTM params when the page is configured to respect them
   try { u.searchParams.set('utm_nooverride', '1'); } catch {}
   // Attach idempotency as a custom 'm__' prefixed field so iCount echoes it back in IPN / redirect
