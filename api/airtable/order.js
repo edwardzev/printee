@@ -378,6 +378,10 @@ export default async function handler(req, res) {
             if (financial.dropbox_shared_link) {
               financePayload.dropbox_shared_link = String(financial.dropbox_shared_link);
             }
+            // If client didn't send it but server just created/fetched it, include it now (write-through)
+            if (!financePayload.dropbox_shared_link && dropbox && dropbox.shared_link) {
+              financePayload.dropbox_shared_link = String(dropbox.shared_link);
+            }
             if (financial.invrec && typeof financial.invrec === 'object') {
               if (financial.invrec.docnum != null) financePayload.invrec_num = String(financial.invrec.docnum);
               if (financial.invrec.link != null) financePayload.invrec_link = String(financial.invrec.link);
