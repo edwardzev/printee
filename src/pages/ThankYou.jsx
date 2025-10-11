@@ -51,7 +51,8 @@ export default function ThankYou() {
   return (
     <>
       <Helmet>
-        <title>תודה - Print Market</title>
+        <title>תודה - Printeam</title>
+        <link rel="canonical" href="https://printeam.co.il/thank-you" />
         <meta name="description" content="תודה על הזמנתך. פרטי האישור והשלבים הבאים יישלחו אליך במייל." />
       </Helmet>
 

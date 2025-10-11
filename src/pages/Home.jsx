@@ -31,13 +31,41 @@ const Home = () => {
   return (
     <>
       <Helmet>
-        <title>{t('heroTitle')} - Print Market</title>
+        <title>{t('heroTitle')} - Printeam</title>
         <meta name="description" content={t('heroSubtitle')} />
+        <link rel="canonical" href="https://printeam.co.il/" />
         {/* Preload the expected primary hero image to reduce time-to-first-hero */}
-        <link rel="preload" as="image" href="/hero_images/hero_1.jpg" />
+        <link rel="preload" as="image" href="/hero_images/hero_23.jpg" />
+        {/* Organization & WebSite structured data */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            name: "Printeam",
+            url: "https://printeam.co.il/",
+            logo: "https://printeam.co.il/logo_printee.png",
+            contactPoint: [
+              {
+                "@type": "ContactPoint",
+                contactType: "customer support",
+                email: "support@printeam.co.il",
+                availableLanguage: ["he", "en"]
+              }
+            ]
+          })}
+        </script>
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            name: "Printeam",
+            url: "https://printeam.co.il/"
+          })}
+        </script>
       </Helmet>
 
       <div className="min-h-screen">
+        
         {/* Hero Section */}
         <section className="bg-white py-14 lg:py-20 border-b border-gray-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">

@@ -38,7 +38,7 @@ const faqs = [
   },
   {
     q: 'איך ליצור קשר לתמיכה?',
-    a: 'ניתן לפנות דרך טופס יצירת קשר בדף ההתקשרות או לשלוח מייל ל-support@printee.co.il' 
+  a: 'ניתן לפנות דרך טופס יצירת קשר בדף ההתקשרות או לשלוח מייל ל-support@printeam.co.il' 
   },
   {
     q: 'האם יש מבצעים לכמויות גדולות?',
@@ -51,7 +51,23 @@ export default function FAQ() {
   return (
     <div className="min-h-screen py-12">
       <Helmet>
-        <title>שאלות נפוצות – Printee</title>
+        <title>שאלות נפוצות – Printeam</title>
+        <link rel="canonical" href="https://printeam.co.il/faq" />
+        {/* FAQPage structured data */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: faqs.map((f) => ({
+              "@type": "Question",
+              name: f.q,
+              acceptedAnswer: {
+                "@type": "Answer",
+                text: f.a
+              }
+            }))
+          })}
+        </script>
       </Helmet>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-6">שאלות נפוצות</h1>

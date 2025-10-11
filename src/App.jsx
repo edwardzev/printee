@@ -20,6 +20,9 @@ import Terms from '@/pages/Terms';
 import Privacy from '@/pages/Privacy';
 import Returns from '@/pages/Returns';
 import FAQ from '@/pages/FAQ';
+import PrintQuality from '@/pages/PrintQuality';
+import GarmentsQuality from '@/pages/GarmentsQuality';
+import ServiceQuality from '@/pages/ServiceQuality';
 
 function ScrollToTop() {
   const { pathname, search } = useLocation();
@@ -41,8 +44,8 @@ function App() {
           <Router>
             <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
             <Helmet>
-              <title>Print Market - Custom Apparel Printing</title>
-              <meta name="description" content="Professional DTF and UV printing services for custom apparel. Design your own t-shirts, hoodies, and more with instant quotes." />
+              <title>Printeam – Custom Apparel Printing</title>
+              <meta name="description" content="Custom apparel printing: design your own t‑shirts, hoodies and more. Fast quotes, quality prints, delivery across Israel." />
             </Helmet>
             <Header />
             <ScrollToTop />
@@ -60,6 +63,9 @@ function App() {
                 <Route path="/admin" element={<Admin />} />
                 { /* Backend dev pages removed */ }
                 <Route path="/faq" element={<FAQ />} />
+                <Route path="/print-quality" element={<PrintQuality />} />
+                <Route path="/garments-quality" element={<GarmentsQuality />} />
+                <Route path="/service-quality" element={<ServiceQuality />} />
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/returns" element={<Returns />} />

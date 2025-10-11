@@ -9,8 +9,9 @@ const Returns = () => {
   return (
     <>
       <Helmet>
-        <title>{t('returnsTitle')} - Print Market</title>
-        <meta name="description" content={`Read the ${t('returnsTitle')} policy for Print Market.`} />
+        <title>{t('returnsTitle')} - Printeam</title>
+        <meta name="description" content={`Read the ${t('returnsTitle')} policy for Printeam.`} />
+        <link rel="canonical" href="https://printeam.co.il/returns" />
       </Helmet>
 
       <div className="min-h-screen py-12">
@@ -50,7 +51,7 @@ const Returns = () => {
 
               <h2 className="text-2xl font-semibold mt-6 mb-4">צור קשר</h2>
               <p>
-                לשאלות או בקשות לגבי החזרות והחלפות פנו אלינו בכתובת: info@printmarket.co.il
+                לשאלות או בקשות לגבי החזרות והחלפות פנו אלינו בכתובת: info@printeam.co.il
               </p>
             </div>
           </motion.div>

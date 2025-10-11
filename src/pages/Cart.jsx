@@ -116,7 +116,8 @@ const Cart = () => {
     return (
       <>
         <Helmet>
-          <title>{t('cartTitle')} - Print Market</title>
+    <title>{t('cartTitle')} - Printeam</title>
+    <link rel="canonical" href="https://printeam.co.il/cart" />
           <meta name="description" content="Your shopping cart" />
         </Helmet>
 
@@ -151,7 +152,7 @@ const Cart = () => {
   return (
     <>
       <Helmet>
-        <title>{t('cartTitle')} - Print Market</title>
+  <title>{t('cartTitle')} - Printeam</title>
         <meta name="description" content="Review your custom apparel orders" />
       </Helmet>
 

@@ -72,8 +72,10 @@ const Admin = () => {
   return (
     <>
       <Helmet>
-        <title>Admin Dashboard - Print Market</title>
-        <meta name="description" content="Admin dashboard for Print Market" />
+        <title>Admin Dashboard - Printeam</title>
+        <meta name="description" content="Admin dashboard for Printeam" />
+        <meta name="robots" content="noindex,nofollow" />
+        <link rel="canonical" href="https://printeam.co.il/admin" />
       </Helmet>
 
       <div className="min-h-screen py-8">

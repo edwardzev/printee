@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { products } from '../src/data/products.js';
 
-const hostname = process.env.SITE_HOSTNAME || 'https://printee.co.il';
+const hostname = process.env.SITE_HOSTNAME || 'https://printeam.co.il';
 const pages = ['/', '/catalog', '/faq', '/terms', '/privacy', '/returns'];
 
 const urls = new Set(pages.map(p => `${hostname}${p}`));

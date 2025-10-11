@@ -11,7 +11,7 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Company info */}
           <div>
-            <h3 className="text-xl font-bold mb-4">Print Market</h3>
+            <h3 className="text-xl font-bold mb-4">Printeam</h3>
             <p className="text-gray-300 mb-4">
               {t('company')}
             </p>
@@ -49,7 +49,7 @@ const Footer = () => {
           <div>
             <h4 className="text-lg font-semibold mb-4">צור קשר</h4>
             <div className="text-gray-300 space-y-2">
-              <p>info@printmarket.co.il</p>
+              <p>info@printeam.co.il</p>
               <p>+972-50-123-4567</p>
             </div>
           </div>

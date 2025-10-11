@@ -1,5 +1,5 @@
 {
-  "name": "print-market-app",
+  "name": "printeam",
   "type": "module",
   "version": "0.0.0",
   "private": true,
@@ -57,17 +57,17 @@
     "terser": "^5.39.0",
     "vite": "^4.4.5"
   },
-  "description": "Printee",
+  "description": "Printeam - custom apparel printing",
   "main": "postcss.config.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/edwardzev/printee.git"
+    "url": "git+https://github.com/edwardzev/printeam.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/edwardzev/printee/issues"
+    "url": "https://github.com/edwardzev/printeam/issues"
   },
-  "homepage": "https://github.com/edwardzev/printee#readme"
+  "homepage": "https://printeam.co.il"
 }

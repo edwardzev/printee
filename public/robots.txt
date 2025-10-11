@@ -1,3 +1,11 @@
 User-agent: *
 Disallow: /admin
-Sitemap: https://printee.co.il/sitemap.xml
+
+# Explicit allowances for AI crawlers
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+Sitemap: https://printeam.co.il/sitemap.xml

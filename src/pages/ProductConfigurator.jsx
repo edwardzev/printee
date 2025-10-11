@@ -289,33 +289,68 @@ const ProductConfigurator = () => {
   const pricing = calculatePrice();
   const canAddToCart = selectedPrintAreas.length > 0;
 
+  // Structured data: compute Product and Breadcrumb JSON-LD objects
+  const productImagesAbs = React.useMemo(() => {
+    try {
+      const vals = Object.values(product.images || {}).flat().filter(Boolean);
+      return vals.map((p) => (typeof p === 'string' ? p : '')).filter(Boolean).map((p) => p.startsWith('http') ? p : `https://printeam.co.il${p}`);
+    } catch {
+      return [];
+    }
+  }, [product]);
+
+  const productOffers = React.useMemo(() => {
+    const rules = pricingRules && pricingRules[product.sku];
+    if (rules && Array.isArray(rules.tiers) && rules.tiers.length > 0) {
+      const prices = rules.tiers.map(t => t.price);
+      return {
+        "@type": "AggregateOffer",
+        priceCurrency: "ILS",
+        lowPrice: Math.min(...prices).toFixed(2),
+        highPrice: Math.max(...prices).toFixed(2),
+        offerCount: String(rules.tiers.length),
+        availability: "https://schema.org/InStock"
+      };
+    }
+    return {
+      "@type": "Offer",
+      priceCurrency: "ILS",
+      price: Number(product.basePrice || 0).toFixed(2),
+      availability: "https://schema.org/InStock"
+    };
+  }, [product]);
+
+  const productLd = React.useMemo(() => ({
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: language === 'he' ? product.nameHe : product.name,
+    description: desc,
+    brand: "Printeam",
+    sku: product.sku,
+    image: productImagesAbs.slice(0, 10),
+    offers: productOffers
+  }), [language, product, desc, productImagesAbs, productOffers]);
+
+  const breadcrumbLd = React.useMemo(() => ({
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: "https://printeam.co.il/" },
+      { "@type": "ListItem", position: 2, name: "Catalog", item: "https://printeam.co.il/catalog" },
+      { "@type": "ListItem", position: 3, name: (language === 'he' ? product.nameHe : product.name), item: `https://printeam.co.il/product/${sku}` }
+    ]
+  }), [language, product, sku]);
+
   return (
     <>
       <Helmet>
-  <title>{language === 'he' ? product.nameHe : product.name} – Printem</title>
+  <title>{language === 'he' ? product.nameHe : product.name} – Printeam</title>
         <meta name="description" content={`Customize your ${product.name} with our design tool`} />
-        {/* Product structured data for SEO */}
-        <script type="application/ld+json">{`
-          {
-            "@context": "https://schema.org",
-            "@type": "Product",
-            "name": "${language === 'he' ? product.nameHe : product.name}",
-            "description": "${(product.description || '').replace(/"/g, '\\"')}",
-            "sku": "${product.sku}",
-            "image": "${Array.isArray(product.images.base1) ? product.images.base1[0] : product.images.base1}",
-            "brand": {
-              "@type": "Brand",
-              "name": "Printem"
-            },
-            "offers": {
-              "@type": "Offer",
-              "priceCurrency": "ILS",
-              "price": "${product.basePrice || 0}",
-              "availability": "https://schema.org/InStock",
-              "url": "${typeof window !== 'undefined' ? window.location.href : ''}"
-            }
-          }
-        `}</script>
+        <link rel="canonical" href={`https://printeam.co.il/product/${sku}`} />
+        {/* Product structured data */}
+        <script type="application/ld+json">{JSON.stringify(productLd)}</script>
+        {/* BreadcrumbList for Home > Catalog > Product */}
+        <script type="application/ld+json">{JSON.stringify(breadcrumbLd)}</script>
       </Helmet>
 
       <div className="min-h-screen py-4">

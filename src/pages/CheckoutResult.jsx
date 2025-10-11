@@ -12,7 +12,8 @@ const CheckoutResult = ({ success = true }) => {
   return (
     <>
       <Helmet>
-        <title>{success ? 'Order Successful' : 'Order Failed'} - Print Market</title>
+        <title>{success ? 'Order Successful' : 'Order Failed'} - Printeam</title>
+        <link rel="canonical" href={`https://printeam.co.il/checkout/${success ? 'success' : 'cancel'}`} />
         <meta name="description" content={success ? 'Your order has been placed successfully' : 'There was an issue with your order'} />
       </Helmet>
 

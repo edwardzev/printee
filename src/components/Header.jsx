@@ -117,7 +117,7 @@ export default function Header({ dir = "rtl" }) {
       >
         <Link
           to="/"
-          aria-label="Printee – Print your apparel"
+          aria-label="Printeam – Custom apparel printing"
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -127,7 +127,7 @@ export default function Header({ dir = "rtl" }) {
         >
           <img
             src="/logo_printee.png"
-            alt="PRINTEE"
+            alt="PRINTEAM"
             style={{
               height: 84, // keep layout height small so header doesn't grow
               width: "auto",
@@ -258,7 +258,7 @@ export default function Header({ dir = "rtl" }) {
           >
             <div className="flex items-center justify-between mb-6">
               <Link to="/" onClick={() => setOpen(false)}>
-                <img src="/logo_printee.png" alt="printee" style={{ height: 32, transform: 'scale(1.25)', transformOrigin: 'left center' }} />
+                <img src="/logo_printee.png" alt="printeaM" style={{ height: 32, transform: 'scale(1.25)', transformOrigin: 'left center' }} />
               </Link>
               <button onClick={() => setOpen(false)} aria-label="Close menu" style={{ border: 0, background: 'transparent', fontSize: 22 }}>✕</button>
             </div>

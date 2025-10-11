@@ -171,8 +171,8 @@
       "doc_type": "tax_invoice",
       "doc_number": null,
       "ipn_payload": null,
-      "return_url_success": "https://printee.co.il/thank-you",
-      "return_url_fail": "https://printee.co.il/payment-failed"
+  "return_url_success": "https://printeam.co.il/thank-you",
+  "return_url_fail": "https://printeam.co.il/payment-failed"
     }
   },
 
@@ -181,7 +181,7 @@
   "attribution": {
     "utm_source": "google",
     "utm_medium": "cpc",
-    "utm_campaign": "printee_brand_he",
+  "utm_campaign": "printeam_brand_he",
     "utm_term": "חולצות מודפסות",
     "utm_content": "ad1",
     "gclid": "CjwK...",
@@ -189,7 +189,7 @@
     "gbraid": null,
     "fbclid": null,
     "referrer": "https://www.google.com/",
-    "landing_page": "https://printee.co.il/",
+  "landing_page": "https://printeam.co.il/",
     "session_id": "sess_8d1b4",
     "campaign_id": "cmp_001",
     "adgroup_id": "ag_01",

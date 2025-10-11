@@ -9,8 +9,9 @@ const Privacy = () => {
   return (
     <>
       <Helmet>
-        <title>{t('privacyTitle')} - Print Market</title>
-        <meta name="description" content={`Read the ${t('privacyTitle')} for Print Market.`} />
+        <title>{t('privacyTitle')} - Printeam</title>
+        <meta name="description" content={`Read the ${t('privacyTitle')} for Printeam.`} />
+        <link rel="canonical" href="https://printeam.co.il/privacy" />
       </Helmet>
 
       <div className="min-h-screen py-12">
@@ -25,10 +26,10 @@ const Privacy = () => {
             </h1>
             <div className="prose max-w-none text-gray-600">
               <p>
-                פרטיות המשתמש חשובה לנו ב-Print Market. מדיניות פרטיות זו מתארת אילו נתונים אנו אוספים, כיצד אנו משתמשים בהם וכיצד אנו מגינים עליהם.
+                פרטיות המשתמש חשובה לנו ב-Printeam. מדיניות פרטיות זו מתארת אילו נתונים אנו אוספים, כיצד אנו משתמשים בהם וכיצד אנו מגינים עליהם.
               </p>
               <p>
-                אם יש לכם שאלות נוספות לגבי מדיניות הפרטיות, אנא צרו קשר במייל: info@printmarket.co.il
+                אם יש לכם שאלות נוספות לגבי מדיניות הפרטיות, אנא צרו קשר במייל: info@printeam.co.il
               </p>
 
               <h2 className="text-2xl font-semibold mt-6 mb-4">נתונים שאנו אוספים</h2>

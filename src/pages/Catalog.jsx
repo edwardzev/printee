@@ -39,8 +39,9 @@ const Catalog = () => {
   return (
     <>
       <Helmet>
-        <title>{t('catalogTitle')} – Printee</title>
+        <title>{t('catalogTitle')} – Printeam</title>
         <meta name="description" content={t('catalogSubtitle')} />
+        <link rel="canonical" href="https://printeam.co.il/catalog" />
       </Helmet>
 
       <div className="min-h-screen py-12">

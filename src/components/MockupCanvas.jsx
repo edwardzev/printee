@@ -17,9 +17,9 @@ const MockupCanvas = ({ areaKey, baseImage, onFileUpload, uploadedDesign, templa
   
   // Any non-back area (front, chest, sleeves, neck) is grouped as 'front'
   const areaGroup = areaKey?.startsWith('back') ? 'back' : 'front';
-  const memoryKey = areaGroup ? `printee:design:${areaGroup}` : null;
-  const clearedFlagKey = areaGroup ? `printee:design-cleared:${areaGroup}` : null;
-  const areaClearedKey = areaKey ? `printee:design-cleared:area:${areaKey}` : null;
+  const memoryKey = areaGroup ? `printeam:design:${areaGroup}` : null;
+  const clearedFlagKey = areaGroup ? `printeam:design-cleared:${areaGroup}` : null;
+  const areaClearedKey = areaKey ? `printeam:design-cleared:area:${areaKey}` : null;
   const [remembered, setRemembered] = useState(null);   // { name, url (dataURL) }
   const [uploadedObjUrl, setUploadedObjUrl] = useState(null);
 
@@ -122,7 +122,12 @@ const MockupCanvas = ({ areaKey, baseImage, onFileUpload, uploadedDesign, templa
       return;
     }
     if (!uploadedDesign) {
-      const raw = sessionStorage.getItem(memoryKey);
+      // read new key, fallback once to old key for backward compat
+      let raw = sessionStorage.getItem(memoryKey);
+      if (!raw && areaGroup) {
+        const oldKey = `printee:design:${areaGroup}`;
+        raw = sessionStorage.getItem(oldKey);
+      }
       if (raw) {
         try {
           const payload = JSON.parse(raw);

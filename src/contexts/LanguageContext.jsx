@@ -101,7 +101,7 @@ const translations = {
     notImplemented: '🚧 התכונה הזו עדיין לא מוכנה - אבל אל תדאגו! תוכלו לבקש אותה בהודעה הבאה! 🚀',
     
     // Footer
-    company: 'Print Market Ltd.',
+  company: 'Printeam Ltd.',
     allRightsReserved: 'כל הזכויות שמורות',
     terms: 'תנאי שימוש',
     privacy: 'מדיניות פרטיות',
@@ -209,7 +209,7 @@ const translations = {
     notImplemented: '🚧 This feature isn\'t implemented yet—but don\'t worry! You can request it in your next prompt! 🚀',
     
     // Footer
-    company: 'Print Market Ltd.',
+  company: 'Printeam Ltd.',
     allRightsReserved: 'All rights reserved',
     terms: 'Terms of Service',
     privacy: 'Privacy Policy',
