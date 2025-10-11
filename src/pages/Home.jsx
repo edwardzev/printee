@@ -79,16 +79,10 @@ const Home = () => {
               </p>
               <div className="flex gap-3 justify-end flex-wrap">
                 <Link to="/catalog">
-                  <Button size="lg" className="bg-gray-900 text-white hover:bg-black px-6 py-6">
-                    התחילו בהזמנה
-                    <ArrowRight className="h-5 w-5 mr-2 rotate-180" />
+                  <Button size="lg" className="px-8 py-4 rounded-full text-lg font-bold text-white" style={{ background: 'linear-gradient(90deg,#7a00ff 0%,#fe00ff 100%)' }}>
+                    התחל בהזמנה
                   </Button>
                 </Link>
-                <a href="#how" className="inline-flex">
-                  <Button size="lg" variant="outline" className="px-6 py-6">
-                    ראו איך זה עובד
-                  </Button>
-                </a>
               </div>
             </div>
 
@@ -146,7 +140,7 @@ const Home = () => {
 
             <div className="text-center mt-10">
               <Link to="/catalog">
-                <Button size="lg" className="bg-gray-900 text-white hover:bg-black px-6 py-6">התחילו עכשיו</Button>
+                <Button size="lg" className="px-8 py-4 rounded-full text-lg font-bold text-white" style={{ background: 'linear-gradient(90deg,#7a00ff 0%,#fe00ff 100%)' }}>התחילו עכשיו</Button>
               </Link>
             </div>
           </div>
@@ -190,8 +184,8 @@ const Home = () => {
           </div>
         </section>
 
-        {/* CTA Section */}
-        <section className="py-20 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+  {/* CTA Section */}
+  <section className="py-20 cta-soft-gradient text-white">
           <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
@@ -203,9 +197,8 @@ const Home = () => {
               </h2>
               
               <Link to="/catalog">
-                <Button size="lg" className="bg-white text-blue-600 hover:bg-blue-50 text-lg px-8 py-4">
+                <Button size="lg" className="bg-white text-blue-600 hover:bg-blue-50 text-lg px-8 py-4 rounded-full">
                   {t('startOrder')}
-                  <ArrowRight className={`h-5 w-5 ${isRTL ? 'mr-2' : 'ml-2'}`} />
                 </Button>
               </Link>
             </motion.div>

@@ -277,13 +277,13 @@ const MockupCanvas = ({ areaKey, baseImage, onFileUpload, uploadedDesign, templa
                 <option value="yellow">צהוב</option>
                 <option value="other">אחר</option>
               </select>
-            <div className="ml-4">
+            <div className="ml-4 max-w-full sm:max-w-none">
               <label htmlFor={`designer-notes-${areaKey}`} className="text-sm text-gray-700 block mb-1">
                 הערות לגרפיקאי
               </label>
               <textarea
                 id={`designer-notes-${areaKey}`}
-                className="rounded-md border border-gray-300 px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[220px]"
+                className="rounded-md border border-gray-300 px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-0 w-full sm:w-auto sm:min-w-[220px]"
                 rows={2}
                 maxLength={200}
                 placeholder="עד 200 תווים…"
@@ -300,7 +300,7 @@ const MockupCanvas = ({ areaKey, baseImage, onFileUpload, uploadedDesign, templa
             </div>
             </div>
           ) : <div />}
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-end gap-3 w-full">
             <Button
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); fileInputRef.current?.click(); }}
               className="rounded-full px-5 py-3 bg-gradient-to-l from-blue-600 to-indigo-600 text-white shadow-md transition-transform hover:scale-[1.03] active:scale-[0.98] hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"

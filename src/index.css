@@ -4,6 +4,59 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
+/* Global: kill horizontal scroll & enforce full width */
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
+}
+#root, #root > div {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+section { width: 100%; max-width: 100%; }
+
+/* Header sizing helpers: keep header fixed but avoid layout shift */
+
+:root {
+  --header-height-desktop: 120px;
+  --header-height-mobile: 88px;
+}
+
+@media (min-width: 768px) {
+  :root { --header-height: var(--header-height-desktop); }
+}
+
+@media (max-width: 767px) {
+  :root { --header-height: var(--header-height-mobile); }
+}
+
+header.fixed-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--header-height);
+  display: block;
+  z-index: 1200;
+}
+
+main {
+  padding-top: var(--header-height);
+}
+
+/* Softer CTA gradient that shares the same purple/pink palette but is more subdued */
+.cta-soft-gradient {
+  background: linear-gradient(90deg, #2f3566 0%, #5b2fb8 45%, #b47cff 100%);
+  /* subtle overlay to reduce contrast */
+  color: #fff;
+}
+
+.cta-soft-gradient .cta-subtle {
+  color: rgba(255,255,255,0.9);
+}
+
 :root {
   --primary: 220 90% 56%;
   --primary-foreground: 0 0% 100%;

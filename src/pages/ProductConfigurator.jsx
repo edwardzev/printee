@@ -591,7 +591,11 @@ const ProductConfigurator = () => {
               {/* Delivery moved to Cart page */}
             </div>
 
-            <div className="lg:col-span-1">
+            {/* Sticky sidebar on desktop: apply sticky to the grid item itself for robust behavior in CSS Grid */}
+            <div
+              className="lg:col-span-1 lg:self-start lg:sticky"
+              style={{ top: 'var(--header-height, 120px)' }}
+            >
               <PricePanel
                 pricing={pricing}
                 selectedAreas={selectedPrintAreas}

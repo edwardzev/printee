@@ -94,25 +94,17 @@ export default function Header({ dir = "rtl" }) {
   }, [open]);
 
   return (
-    <header
-      dir={dir}
-      style={{
-        position: "sticky",
-        top: 0,
-        zIndex: 50,
-        background: "#000",
-        // removed thin bottom border to avoid stray line in header
-        backdropFilter: "saturate(180%) blur(8px)",
-      }}
-    >
+    <header dir={dir} className="fixed-header" style={{ background: '#000' }}>
       <div
         style={{
           maxWidth: 1200,
           margin: "0 auto",
-          padding: "12px 16px",
+          padding: "0 12px",
           display: "flex",
           alignItems: "center",
-          gap: 16,
+          gap: 12,
+          width: '100%',
+          height: '100%'
         }}
       >
         <Link
@@ -129,11 +121,10 @@ export default function Header({ dir = "rtl" }) {
             src="/logo_printee.png"
             alt="PRINTEAM"
             style={{
-              height: 84, // keep layout height small so header doesn't grow
+              height: isMobile ? 110 : 210,
               width: "auto",
               display: "block",
-              transform: 'scale(2.2)', // visually enlarge the logo
-              transformOrigin: 'left center',
+              objectFit: 'contain'
             }}
           />
         </Link>
@@ -146,7 +137,9 @@ export default function Header({ dir = "rtl" }) {
             onClick={() => setOpen((v) => !v)}
             style={{
               marginInlineStart: "auto",
-              display: "inline-flex",
+              display: "flex",
+              flexDirection: "column",
+              gap: 4,
               background: "transparent",
               border: 0,
               padding: 8,
@@ -154,9 +147,9 @@ export default function Header({ dir = "rtl" }) {
             }}
             ref={burgerRef}
           >
-            <span style={{ display: "block", width: 24, height: 2, background: "#fff", margin: "4px 0" }} />
-            <span style={{ display: "block", width: 24, height: 2, background: "#fff", margin: "4px 0" }} />
-            <span style={{ display: "block", width: 24, height: 2, background: "#fff", margin: "4px 0" }} />
+            <span style={{ display: "block", width: 24, height: 2, background: "#fff" }} />
+            <span style={{ display: "block", width: 24, height: 2, background: "#fff" }} />
+            <span style={{ display: "block", width: 24, height: 2, background: "#fff" }} />
           </button>
         )}
 
@@ -164,7 +157,6 @@ export default function Header({ dir = "rtl" }) {
         <nav
           style={{
             marginInlineStart: "auto",
-            display: "flex",
             alignItems: "center",
             gap: 14,
           }}
@@ -221,34 +213,49 @@ export default function Header({ dir = "rtl" }) {
               </a>
             );
           })}
-          {/* Cart icon */}
-            <Link
+          {/* Cart icon with badge */}
+          <Link
             to="/cart"
-            aria-label="Cart"
+            aria-label={`Cart - ${getTotalItems()} items`}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 8,
               textDecoration: 'none',
-                color: '#fff',
-              position: 'relative'
+              color: '#fff',
+              position: 'relative',
+              padding: '8px'
             }}
           >
-            <ShoppingCart size={20} />
-            <span style={{
-              background: '#ff3b30',
-              color: '#fff',
-              borderRadius: 999,
-              padding: '2px 6px',
-              fontSize: 12,
-              fontWeight: 600
-            }}>{getTotalItems()}</span>
+            <div style={{ position: 'relative', display: 'inline-flex' }}>
+              <ShoppingCart size={20} />
+              {getTotalItems() > 0 && (
+                <span style={{
+                  position: 'absolute',
+                  top: -8,
+                  right: -8,
+                  background: '#ff3b30',
+                  color: '#fff',
+                  borderRadius: 999,
+                  padding: '2px 6px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  lineHeight: 1,
+                  minWidth: 18,
+                  height: 18,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '2px solid #000'
+                }}>{getTotalItems()}</span>
+              )}
+            </div>
           </Link>
         </nav>
         {/* Mobile menu overlay - only render on mobile viewports */}
         {isMobile && open && (
           <div
-            className="fixed inset-0 z-50 bg-white/98 flex flex-col p-6"
+            className="fixed inset-0 flex flex-col overflow-y-auto"
+            style={{ zIndex: 9999 }}
             role="dialog"
             aria-modal="true"
             ref={menuRef => { if (menuRef) menuContainerRef.current = menuRef }}
@@ -256,27 +263,60 @@ export default function Header({ dir = "rtl" }) {
               if (e.key === 'Escape') setOpen(false);
             }}
           >
-            <div className="flex items-center justify-between mb-6">
-              <Link to="/" onClick={() => setOpen(false)}>
-                <img src="/logo_printee.png" alt="printeaM" style={{ height: 32, transform: 'scale(1.25)', transformOrigin: 'left center' }} />
-              </Link>
-              <button onClick={() => setOpen(false)} aria-label="Close menu" style={{ border: 0, background: 'transparent', fontSize: 22 }}>✕</button>
+            {/* Black top bar behind logo for contrast */}
+            <div className="w-full bg-black text-white">
+              <div className="max-w-[1200px] mx-auto flex items-center justify-between px-6 py-4">
+                <Link to="/" onClick={() => setOpen(false)}>
+                  <img src="/logo_printee.png" alt="Printeam" style={{ height: 60, width: 'auto' }} />
+                </Link>
+                <button 
+                  onClick={() => setOpen(false)} 
+                  aria-label="Close menu" 
+                  className="text-white text-3xl font-light leading-none p-2"
+                  style={{ border: 0, background: 'transparent' }}
+                >
+                  ×
+                </button>
+              </div>
             </div>
-            <div className="flex flex-col gap-4" ref={menuListRef}>
-              {/* language-aware ordering: put primary CTA first for LTR, last for RTL */}
-                  {dir === 'rtl' ? (
+            <nav className="flex flex-col gap-5 bg-white px-6 pb-6 pt-6" ref={menuListRef}>
+              {dir === 'rtl' ? (
                 <>
-                  <Link to="/catalog" onClick={() => setOpen(false)} className="text-lg font-medium inline-flex items-center gap-3"><List className="h-5 w-5" /> קטלוג</Link>
-                  <Link to="/catalog" onClick={() => setOpen(false)} className="text-lg font-medium inline-flex items-center gap-3"><DollarSign className="h-5 w-5" /> מחירים</Link>
+                  <Link to="/catalog" onClick={() => setOpen(false)} className="text-xl font-semibold text-gray-900 py-3 border-b border-gray-200 inline-flex items-center gap-3">
+                    <List className="h-6 w-6" /> קטלוג
+                  </Link>
+                  <Link to="/catalog" onClick={() => setOpen(false)} className="text-xl font-semibold text-gray-900 py-3 border-b border-gray-200 inline-flex items-center gap-3">
+                    <DollarSign className="h-6 w-6" /> מחירים
+                  </Link>
                 </>
               ) : (
                 <>
-                  <Link to="/catalog" onClick={() => setOpen(false)} className="text-lg font-medium inline-flex items-center gap-3">Catalog <List className="h-5 w-5" /></Link>
+                  <Link to="/catalog" onClick={() => setOpen(false)} className="text-xl font-semibold text-gray-900 py-3 border-b border-gray-200 inline-flex items-center gap-3">
+                    Catalog <List className="h-6 w-6" />
+                  </Link>
                 </>
               )}
-              <a href="#how" onClick={goTo('how')} className="text-lg inline-flex items-center gap-3"><Info className="h-5 w-5" /> איך זה עובד</a>
-              <Link to="/faq" onClick={() => setOpen(false)} className="text-lg inline-flex items-center gap-3"><HelpCircle className="h-5 w-5" /> שאלות נפוצות</Link>
-              <Link to="/cart" onClick={() => setOpen(false)} className="text-lg inline-flex items-center gap-3"><CartIcon className="h-5 w-5" /> עגלה</Link>
+              <a href="#how" onClick={goTo('how')} className="text-xl font-semibold text-gray-900 py-3 border-b border-gray-200 inline-flex items-center gap-3">
+                <Info className="h-6 w-6" /> איך זה עובד
+              </a>
+              <Link to="/faq" onClick={() => setOpen(false)} className="text-xl font-semibold text-gray-900 py-3 border-b border-gray-200 inline-flex items-center gap-3">
+                <HelpCircle className="h-6 w-6" /> שאלות נפוצות
+              </Link>
+              <Link to="/cart" onClick={() => setOpen(false)} className="text-xl font-semibold text-gray-900 py-3 border-b border-gray-200 inline-flex items-center gap-3">
+                <CartIcon className="h-6 w-6" /> עגלה ({getTotalItems()})
+              </Link>
+            </nav>
+            
+            {/* CTA Button at bottom of menu */}
+            <div className="mt-auto pt-8 bg-white px-6 pb-8">
+              <Link to="/catalog" onClick={() => setOpen(false)}>
+                <button 
+                  className="w-full py-4 px-6 rounded-full text-lg font-bold text-white"
+                  style={{ background: 'linear-gradient(90deg,#7a00ff 0%,#fe00ff 100%)' }}
+                >
+                  התחל בהזמנה
+                </button>
+              </Link>
             </div>
           </div>
         )}

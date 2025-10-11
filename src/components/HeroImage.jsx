@@ -157,30 +157,39 @@ export default function HeroImage({
         .hero-wrap {
           position: relative;
           width: 100%;
-          min-height: clamp(240px, 48vh, 720px);
+          min-height: clamp(300px, 50vh, 720px);
           overflow: hidden;
           background: ${bg};
-          /* removed bottom border to avoid visible stray line under header */
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
         .hero-stage {
           position: absolute;
           inset: 0;
+          width: 100%;
+          height: 100%;
         }
         .hero-img {
           position: absolute;
           inset: 0;
           width: 100%;
           height: 100%;
-          object-fit: contain;   /* default: show full image without cropping */
+          object-fit: contain;
           object-position: center center;
-          background: ${bg};     /* letterboxing color */
+          background: ${bg};
           opacity: 0;
           transition: opacity ${transitionMs}ms ease;
         }
 
         /* On small screens prefer cover to fill viewport */
         @media (max-width: 640px) {
-          .hero-img { object-fit: cover; }
+          .hero-wrap {
+            min-height: 400px;
+          }
+          .hero-img { 
+            object-fit: cover;
+          }
         }
         .hero-img.active { opacity: 1; }
         .nav {
@@ -192,6 +201,7 @@ export default function HeroImage({
           transform: translateY(-50%);
           padding: 0 10px;
           pointer-events: none;
+          z-index: 10;
         }
         .nav button {
           pointer-events: auto;
@@ -209,6 +219,7 @@ export default function HeroImage({
           bottom: 12px; left: 50%;
           transform: translateX(-50%);
           display: flex; gap: 6px;
+          z-index: 10;
         }
         .dot {
           width: 8px; height: 8px; border-radius: 999px;

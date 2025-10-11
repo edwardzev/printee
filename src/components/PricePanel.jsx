@@ -19,36 +19,18 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
   const [addedOnce, setAddedOnce] = useState(false);
   const sheetRef = useRef(null);
   const lastFocusedRef = useRef(null);
+  const lastScrollRef = useRef(0);
+  // Desktop: sticky fallback via fixed positioning
+  const desktopWrapperRef = useRef(null);
+  const [forceFixed, setForceFixed] = useState(false);
+  const [fixedStyle, setFixedStyle] = useState({});
 
-  // Robust scroll lock: freeze body when mobile sheet open, restore on close/unmount
+  // Track scroll position only; do not lock overflow to avoid persistent disable/jump.
   useEffect(() => {
-    const lock = () => {
-      const y = window.scrollY || window.pageYOffset;
-      document.documentElement.style.overflow = 'hidden';
-      document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.width = '100%';
-      document.body.style.top = `-${y}px`;
-    };
-    const unlock = () => {
-      const top = document.body.style.top;
-      document.documentElement.style.overflow = '';
-      document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.width = '';
-      document.body.style.top = '';
-      if (top) {
-        const y = parseInt(top, 10) * -1;
-        if (!Number.isNaN(y)) window.scrollTo(0, y);
-      }
-    };
-
     if (isSheetOpen) {
-      lock();
-    } else {
-      unlock();
+      lastScrollRef.current = window.scrollY || window.pageYOffset || 0;
     }
-    return () => unlock();
+    return () => {};
   }, [isSheetOpen]);
 
   // handle Escape key to close (mobile sheet only)
@@ -57,7 +39,27 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
       if (e.key === 'Escape' && isSheetOpen) setIsSheetOpen(false);
     };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+
+    // prevent background scroll on mobile when sheet is open
+    const preventScroll = (e) => {
+      // allow scrolling within the sheet
+      if (!sheetRef.current) return;
+      if (sheetRef.current.contains(e.target)) return;
+      e.preventDefault?.();
+      e.stopPropagation?.();
+      return false;
+    };
+
+    if (isSheetOpen) {
+      document.addEventListener('touchmove', preventScroll, { passive: false });
+      document.addEventListener('wheel', preventScroll, { passive: false });
+    }
+
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.removeEventListener('touchmove', preventScroll);
+      document.removeEventListener('wheel', preventScroll);
+    };
   }, [isSheetOpen]);
 
   // restore focus when closing (mobile sheet only)
@@ -70,17 +72,78 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
     }
   }, [isSheetOpen]);
 
+  // Desktop sticky fallback: if native sticky fails (due to transform/stacking contexts), switch to fixed with computed left/width
+  useEffect(() => {
+    if (isMobile) {
+      setForceFixed(false);
+      return;
+    }
+
+    const getHeaderHeight = () => {
+      try {
+        const v = getComputedStyle(document.documentElement).getPropertyValue('--header-height') || '120px';
+        const n = parseInt(v.toString().replace('px', '').trim(), 10);
+        return Number.isFinite(n) ? n : 120;
+      } catch {
+        return 120;
+      }
+    };
+
+    const update = () => {
+      const el = desktopWrapperRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const headerH = getHeaderHeight();
+      const threshold = headerH + 16; // 16px breathing room
+
+      // When the wrapper's top scrolls above header, fix the inner panel.
+      if (rect.top <= threshold) {
+        setForceFixed(true);
+        setFixedStyle({
+          position: 'fixed',
+          top: `${threshold}px`,
+          left: `${Math.max(0, rect.left)}px`,
+          width: `${rect.width}px`,
+          zIndex: 1000
+        });
+      } else {
+        setForceFixed(false);
+        setFixedStyle({});
+      }
+    };
+
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  }, [isMobile]);
+
   const toggleExpand = () => {
     if (!isMobile) setIsDesktopExpanded((v) => !v);
   };
 
+  // Helper: close sheet and restore scroll state
+  const closeSheet = () => {
+    setIsSheetOpen(false);
+    // restore previous scroll position after next tick
+    const y = lastScrollRef.current || 0;
+    requestAnimationFrame(() => {
+      try { window.scrollTo(0, y); } catch {}
+    });
+  };
+
   return (
     <>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="price-panel hidden lg:block p-6 bg-white rounded-xl shadow-lg lg:sticky lg:top-24"
-      >
+      <div ref={desktopWrapperRef} className="hidden lg:block">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`price-panel p-6 bg-white rounded-xl shadow-lg ${forceFixed ? '' : 'lg:sticky'}`}
+          style={forceFixed ? fixedStyle : { top: 'var(--header-height, 88px)' }}
+        >
         <div className="flex justify-between items-center cursor-pointer lg:cursor-default" onClick={toggleExpand}>
           <h2 className="text-xl font-semibold text-gray-900">
             {t('priceBreakdown')}
@@ -208,17 +271,68 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
             </motion.div>
           )}
         </AnimatePresence>
-      </motion.div>
+        </motion.div>
+      </div>
 
-      {/* Mobile floating button + bottom sheet */}
+      {/* Mobile sticky bottom bar + bottom sheet */}
       <div className="lg:hidden">
-        <button
-          aria-label="Open pricing"
-          onClick={() => { lastFocusedRef.current = document.activeElement; setIsSheetOpen(true); }}
-          className="fixed bottom-6 right-4 bg-blue-600 text-white px-4 py-3 rounded-full shadow-lg z-50"
-        >
-          {t('priceBreakdown')}
-        </button>
+        {/* Spacer so content isn't covered by the fixed bottom bar (slightly taller to account for 2-row layout) */}
+        <div className="h-[124px]" aria-hidden="true" />
+
+        <div className="fixed inset-x-0 bottom-0 bg-white border-t shadow-[0_-6px_18px_rgba(0,0,0,0.08)] z-[1900]">
+          <div className="max-w-7xl mx-auto px-3 py-2 pb-[calc(env(safe-area-inset-bottom,0)+8px)] flex flex-wrap items-start gap-3">
+            {/* Left: concise multi-line summary */}
+            <div className="flex-1 leading-tight min-w-0 basis-full space-y-1 text-sm">
+              <div className="flex justify-between text-[14px] font-semibold">
+                <span>{language === 'he' ? 'כמות' : 'Qty'}</span>
+                <span>{pricing?.totalQty || 0}</span>
+              </div>
+              <div className="flex justify-between text-[13px] text-gray-700">
+                <span>{language === 'he' ? 'מחיר בסיס' : 'Base'}</span>
+                <span>₪{pricing?.breakdown?.unitBase || 0} × {pricing?.totalQty || 0}</span>
+              </div>
+              {selectedAreas.length > 0 && (
+                <div className="flex justify-between text-[13px] text-gray-700">
+                  <span>{language === 'he' ? 'עלויות מיתוג' : 'Placement'}</span>
+                  <span>₪{pricing?.breakdown?.placementFeesTotal?.toLocaleString() || 0}</span>
+                </div>
+              )}
+              {pricing?.breakdown?.emboFeeTotal > 0 && (
+                <div className="flex justify-between text-[13px] text-gray-700">
+                  <span>{language === 'he' ? 'דמי גלופה' : 'Embo fee'}</span>
+                  <span>₪{pricing?.breakdown?.emboFeeTotal?.toLocaleString() || 0}</span>
+                </div>
+              )}
+              {pricing?.breakdown?.deliveryCost > 0 && (
+                <div className="flex justify-between text-[13px] text-gray-700">
+                  <span>{language === 'he' ? 'משלוח' : 'Delivery'}</span>
+                  <span>₪{pricing?.breakdown?.deliveryCost?.toLocaleString() || 0}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-[15px] font-bold pt-1 border-t">
+                <span>{language === 'he' ? 'סה"כ' : 'Total'}</span>
+                <span className="text-blue-600">₪{pricing?.totalIls?.toLocaleString() || 0}</span>
+              </div>
+            </div>
+
+            {/* Right: actions */}
+            <div className="basis-full grid grid-cols-2 gap-2">
+              <Button
+                size="lg"
+                disabled={!canAddToCart}
+                onClick={() => { onAddToCart(); setAddedOnce(true); }}
+                className="rounded-full w-full"
+              >
+                {t('addToCart')}
+              </Button>
+              <Link to="/cart" onClick={closeSheet} className="w-full">
+                <Button size="lg" variant="default" className="rounded-full w-full">
+                  {language === 'he' ? 'לעגלה' : 'Cart'}
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
 
         <AnimatePresence>
           {isSheetOpen && createPortal(
@@ -229,8 +343,8 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
                 animate={{ opacity: 0.5 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
-                className="fixed inset-0 bg-black z-[100]"
-                onClick={() => setIsSheetOpen(false)}
+                className="fixed inset-0 bg-black z-[2000]"
+                onClick={closeSheet}
               />
 
               <motion.div
@@ -238,7 +352,7 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                className="fixed left-0 right-0 bottom-0 bg-white rounded-t-2xl shadow-2xl p-4 z-[110] overflow-auto max-h-[70vh] pb-[calc(env(safe-area-inset-bottom,0)+16px)]"
+                className="fixed left-0 right-0 bottom-0 bg-white rounded-t-2xl shadow-2xl p-4 z-[2100] overflow-auto max-h-[70vh] pb-[calc(env(safe-area-inset-bottom,0)+16px)]"
                 ref={sheetRef}
                 role="dialog"
                 aria-modal="true"
@@ -256,7 +370,7 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
                 {/* handle removed to avoid stray small centered line appearing in header */}
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-lg font-semibold">{t('priceBreakdown')}</h3>
-                  <button onClick={() => setIsSheetOpen(false)} aria-label="Close pricing" className="text-gray-600">✕</button>
+                  <button onClick={closeSheet} aria-label="Close pricing" className="text-gray-600">✕</button>
                 </div>
                 <div className="space-y-4 mb-6 pt-1">
                   <div className="flex justify-between">
@@ -274,18 +388,18 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
                     size="lg"
                     variant={addedOnce ? 'outline' : 'default'}
                     disabled={!canAddToCart}
-                    onClick={() => { onAddToCart(); setIsSheetOpen(false); setAddedOnce(true); }}
+                    onClick={() => { onAddToCart(); closeSheet(); setAddedOnce(true); }}
                   >
                     {t('addToCart')}
                   </Button>
                   {addedOnce && (
                     <>
-                      <Link to="/cart" onClick={() => setIsSheetOpen(false)}>
+                      <Link to="/cart" onClick={closeSheet}>
                         <Button className="w-full mt-2" size="lg" variant="default">
                           {language === 'he' ? 'עבור לעגלה' : 'Go to cart'}
                         </Button>
                       </Link>
-                      <Link to="/catalog" onClick={() => setIsSheetOpen(false)}>
+                      <Link to="/catalog" onClick={closeSheet}>
                         <Button className="w-full mt-2" size="lg" variant="outline">
                           {language === 'he' ? 'בחר מוצר נוסף' : 'Choose another product'}
                         </Button>
