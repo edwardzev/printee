@@ -12,6 +12,7 @@ export default function HeroImage({
   transitionMs = 600,
   dir = "rtl",
   bg = "#f6f7f9",
+  primaryIndex = 1,
 }) {
   const [images, setImages] = useState([]);
   const [idx, setIdx] = useState(0);
@@ -75,16 +76,16 @@ export default function HeroImage({
     };
 
     (async () => {
-      // 1) Try to find a primary image (index 1) quickly in parallel and show it asap
+      // 1) Try to find a primary image (configurable index) quickly in parallel and show it asap
       let primary = null;
       try {
         const primaryCandidates = [];
         const exts = ['webp','jpg','png','jpeg'];
         for (const ext of exts) {
-          primaryCandidates.push(`/hero_images/hero_1_sm.${ext}`);
-          primaryCandidates.push(`/hero_images/hero_1_lg.${ext}`);
-          primaryCandidates.push(`/hero_images/hero_1.${ext}`);
-          primaryCandidates.push(`/hero_images/hero-1.${ext}`);
+          primaryCandidates.push(`/hero_images/hero_${primaryIndex}_sm.${ext}`);
+          primaryCandidates.push(`/hero_images/hero_${primaryIndex}_lg.${ext}`);
+          primaryCandidates.push(`/hero_images/hero_${primaryIndex}.${ext}`);
+          primaryCandidates.push(`/hero_images/hero-${primaryIndex}.${ext}`);
         }
         // try all primary candidates in parallel and pick first success
         const primaryPromises = primaryCandidates.map((c) => tryLoad(c));
@@ -96,10 +97,10 @@ export default function HeroImage({
       if (primary) setImages([primary]);
 
       // 2) Preload the rest concurrently with a modest concurrency limit
-      const maxIndex = 50;
+  const maxIndex = 50;
       const concurrency = 6;
       const results = [];
-      let current = 1;
+  let current = 1;
 
       const worker = async () => {
         while (!cancelled) {
@@ -127,7 +128,7 @@ export default function HeroImage({
       cancelled = true;
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [candidates]);
+  }, [candidates, primaryIndex]);
 
   // Autoplay
   useEffect(() => {

@@ -6,6 +6,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { useCart } from '@/contexts/CartContext';
 import { CreditCard, Smartphone, Banknote, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { composeMockupImage } from '@/lib/composeMockupImage';
+import { composeWorksheetImage } from '@/lib/composeWorksheetImage';
 
 export default function CheckoutModal({ open, onClose, cartSummary, prefillContact }) {
   const { t, language } = useLanguage();
@@ -120,10 +122,13 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
     // Enrich Airtable record with Customer + Financial + Cart and attach file paths.
     try {
       // Recreate the same uploads we generated in Cart for naming consistency
-      const uploads = (() => {
+      const uploads = (async () => {
         try {
           const list = [];
-          (cartItems || []).forEach((item) => {
+          // helper to push an upload record
+          const pushUpload = (u) => { if (u) list.push(u); };
+
+          for (const item of (cartItems || [])) {
             const product = item.productSku || item.product || 'product';
             const matrices = item.sizeMatrices || {};
             const colors = item.selectedColors && Array.isArray(item.selectedColors) && item.selectedColors.length
@@ -131,11 +136,11 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
               : (item.color ? [item.color] : []);
             const activeColors = [];
             let totalQtyForItem = 0;
-            colors.forEach((c) => {
+            for (const c of colors) {
               const mat = (matrices && matrices[c]) || (c === item.color ? (item.sizeMatrix || {}) : {});
               const qty = Object.values(mat || {}).reduce((s, q) => s + (q || 0), 0);
               if (qty > 0) { activeColors.push(c); totalQtyForItem += qty; }
-            });
+            }
             if (activeColors.length === 0) return;
             const areaMethod = {};
             (item.selectedPrintAreas || []).forEach((sel) => {
@@ -144,14 +149,31 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
               else if (sel.areaKey) areaMethod[sel.areaKey] = sel.method || 'print';
             });
             const designs = item.uploadedDesigns || {};
-            Object.keys(designs).forEach((areaKey) => {
+            for (const areaKey of Object.keys(designs)) {
               const d = designs[areaKey];
-              if (!d || !d.url) return;
+              if (!d || !d.url) continue;
               const method = areaMethod[areaKey] || 'print';
               const fileName = d.name || `${areaKey}.png`;
-              list.push({ areaKey, method, product, colors: activeColors, qty: totalQtyForItem, dataUrl: d.url, fileName });
-            });
-          });
+              // original design upload
+              pushUpload({ areaKey, method, product, colors: activeColors, qty: totalQtyForItem, dataUrl: d.url, fileName });
+              // mockup composite
+              try {
+                const side = areaKey.startsWith('back') ? 'back' : 'front';
+                const baseImage = `/schematics/${side}.png`;
+                const mockupDataUrl = await composeMockupImage({ areaKey, baseImage, designUrl: d.url });
+                if (mockupDataUrl) {
+                  pushUpload({ areaKey, method: 'mockup', product, colors: activeColors, qty: totalQtyForItem, dataUrl: mockupDataUrl, fileName: `${areaKey}-mockup.png` });
+                }
+              } catch (_) {}
+            }
+            // After pushing uploads per area, create a worksheet for this item
+            try {
+              const worksheetPng = await composeWorksheetImage({ item, language, dropboxLink: (payload?.financial?.dropbox_shared_link || ''), idempotencyKey: idempotencyKeyRef.current });
+              if (worksheetPng) {
+                pushUpload({ areaKey: 'worksheet', method: 'worksheet', product, colors: activeColors, qty: totalQtyForItem, dataUrl: worksheetPng, fileName: `worksheet-${product}.png` });
+              }
+            } catch (_) {}
+          }
           return list;
         } catch (e) { return []; }
       })();
@@ -200,7 +222,8 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
             };
           }),
         },
-        cartUploads: uploads,
+        // cartUploads can now be a promise from async builder; await it before sending
+        cartUploads: await uploads,
       };
 
       try {

@@ -115,8 +115,8 @@ const ProductConfigurator = () => {
       else set.add(color);
       const next = Array.from(set);
 
-      // After state updates, if we're on mobile and the color was just added, scroll to its size matrix
-      if (isMobile && next.includes(color)) {
+      // After state updates, if the color was just added, scroll to its size matrix (all viewports)
+      if (next.includes(color)) {
         // wait a tick for DOM to update
         setTimeout(() => {
           try {

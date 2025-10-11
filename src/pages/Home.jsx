@@ -88,7 +88,7 @@ const Home = () => {
 
             {/* Carousel column */}
             <div className="rounded-xl overflow-hidden shadow-sm bg-[#f6f7f9]">
-              <HeroImage bg="#f6f7f9" />
+              <HeroImage bg="#f6f7f9" primaryIndex={23} />
             </div>
           </div>
         </section>
