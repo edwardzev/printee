@@ -374,6 +374,10 @@ export default async function handler(req, res) {
               total: Number(financial.total || 0),
               payment_method: String(financial.payment_method || financial.paymentMethod || ''),
             };
+            // Include dropbox shared link in the finance JSON so it's persisted
+            if (financial.dropbox_shared_link) {
+              financePayload.dropbox_shared_link = String(financial.dropbox_shared_link);
+            }
             if (financial.invrec && typeof financial.invrec === 'object') {
               if (financial.invrec.docnum != null) financePayload.invrec_num = String(financial.invrec.docnum);
               if (financial.invrec.link != null) financePayload.invrec_link = String(financial.invrec.link);
