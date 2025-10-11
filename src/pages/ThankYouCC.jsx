@@ -35,6 +35,12 @@ export default function ThankYouCC() {
       if (link) invrec.link = link;
       const payload = { idempotency_key: idem, financial: { paid: true } };
       if (Object.keys(invrec).length > 0) payload.financial.invrec = invrec;
+      // If we previously saved a dropbox shared link into the persistent payload, include it here
+      try {
+        const saved = JSON.parse(localStorage.getItem('order_payload') || '{}');
+        const link = saved?.financial?.dropbox_shared_link;
+        if (link) payload.financial.dropbox_shared_link = link;
+      } catch (e) {}
       fetch('/api/airtable/order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
