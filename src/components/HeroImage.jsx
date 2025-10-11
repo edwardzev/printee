@@ -229,6 +229,7 @@ export default function HeroImage({
             className={i === idx ? "hero-img active" : "hero-img"}
             loading={i === 0 ? "eager" : "lazy"}
             decoding="async"
+            fetchPriority={i === 0 ? 'high' : undefined}
           />
         ))}
       </div>

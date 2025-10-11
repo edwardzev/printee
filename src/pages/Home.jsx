@@ -31,40 +31,10 @@ const Home = () => {
   return (
     <>
       <Helmet>
-  <title>{t('heroTitle')} - Printem</title>
+        <title>{t('heroTitle')} - Print Market</title>
         <meta name="description" content={t('heroSubtitle')} />
-        {/* Open Graph / Social */}
-        <meta property="og:type" content="website" />
-  <meta property="og:title" content={`${t('heroTitle')} - Printem`} />
-        <meta property="og:description" content={t('heroSubtitle')} />
-        <meta property="og:url" content={typeof window !== 'undefined' ? window.location.origin + '/' : '/'} />
-        <meta property="og:image" content="/public/hero_images/hero_1.jpg" />
-        <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content={`${t('heroTitle')} - Printem`} />
-        <meta name="twitter:description" content={t('heroSubtitle')} />
-        <meta name="twitter:image" content="/public/hero_images/hero_1.jpg" />
-        <link rel="canonical" href={typeof window !== 'undefined' ? window.location.origin + '/' : '/'} />
-        {/* Organization structured data */}
-        <script type="application/ld+json">{`
-          {
-            "@context": "https://schema.org",
-            "@type": "Organization",
-            "name": "Printem",
-            "url": "https://printeam.co.il",
-            "logo": "https://printeam.co.il/logo_printee.png",
-            "sameAs": [
-              "https://www.facebook.com/printem",
-              "https://www.instagram.com/printem"
-            ],
-            "contactPoint": [{
-              "@type": "ContactPoint",
-              "telephone": "+972-3-000-0000",
-              "contactType": "customer service",
-              "areaServed": "IL",
-              "availableLanguage": ["Hebrew","English"]
-            }]
-          }
-        `}</script>
+        {/* Preload the expected primary hero image to reduce time-to-first-hero */}
+        <link rel="preload" as="image" href="/hero_images/hero_1.jpg" />
       </Helmet>
 
       <div className="min-h-screen">
@@ -201,7 +171,7 @@ const Home = () => {
               transition={{ duration: 0.6 }}
             >
               <h2 className="text-3xl lg:text-4xl font-bold mb-6">
-                מוכנים ליצור ביגוד ממו מותאמים אישית?
+                מוכנים ליצור ביגוד ממותג מותאם אישית?
               </h2>
               
               <Link to="/catalog">
