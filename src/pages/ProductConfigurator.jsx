@@ -9,6 +9,7 @@ import { products, printAreas, pricingRules, colorLabelsHe } from '@/data/produc
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import SizeMatrix from '@/components/SizeMatrix';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import PrintAreaSelector from '@/components/PrintAreaSelector';
 import MockupCanvas from '@/components/MockupCanvas';
 import PricePanel from '@/components/PricePanel';
@@ -25,6 +26,7 @@ const ProductConfigurator = () => {
   
   // support multiple selected colors: array of color keys
   const [selectedColors, setSelectedColors] = useState([]);
+  const isMobile = useMediaQuery('(max-width: 768px)');
   // sizeMatrices maps color -> { size: qty }
   const [sizeMatrices, setSizeMatrices] = useState({});
   // selectedPrintAreas is an array of { areaKey, method } where method is 'print' or 'embo'
@@ -103,6 +105,31 @@ const ProductConfigurator = () => {
     if (!maybeArrayOrString) return fallback || '';
     if (Array.isArray(maybeArrayOrString)) return maybeArrayOrString[0] || fallback || '';
     return maybeArrayOrString;
+  };
+
+  // Toggle color selection; on mobile, scroll to the relevant size matrix after selection
+  const handleToggleColor = (color) => {
+    setSelectedColors(prev => {
+      const set = new Set(prev || []);
+      if (set.has(color)) set.delete(color);
+      else set.add(color);
+      const next = Array.from(set);
+
+      // After state updates, if we're on mobile and the color was just added, scroll to its size matrix
+      if (isMobile && next.includes(color)) {
+        // wait a tick for DOM to update
+        setTimeout(() => {
+          try {
+            const el = document.getElementById(`size-matrix-${color}`);
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          } catch {}
+        }, 180);
+      }
+
+      return next;
+    });
   };
 
   if (!product) {
@@ -387,14 +414,7 @@ const ProductConfigurator = () => {
                   {product.colors.map((color) => (
                     <button
                       key={color}
-                      onClick={() => {
-                        setSelectedColors(prev => {
-                          const set = new Set(prev || []);
-                          if (set.has(color)) set.delete(color);
-                          else set.add(color);
-                          return Array.from(set);
-                        });
-                      }}
+                      onClick={() => handleToggleColor(color)}
                       className={`relative aspect-square rounded-lg border-4 transition-all ${
                         (selectedColors || []).includes(color)
                           ? 'border-blue-500 ring-2 ring-blue-200'
@@ -463,6 +483,7 @@ const ProductConfigurator = () => {
                       {language === 'he' ? 'בחרו צבע כדי להציג ולהגדיר את טבלת המידות.' : 'Select a color to view and set the size matrix.'}
                     </div>
                   ) : selectedColors.map((color) => {
+                    const handleId = `size-matrix-${color}`;
                     const matrix = sizeMatrices[color] || {};
                     const setMatrixForColor = (updater) => {
                       setSizeMatrices(prev => {
@@ -496,7 +517,7 @@ const ProductConfigurator = () => {
                     };
 
                     return (
-                      <div key={color} className="bg-gray-50 rounded-md p-3 flex items-start gap-4">
+                      <div id={handleId} key={color} className="bg-gray-50 rounded-md p-3 flex items-start gap-4">
                         <div className="shrink-0">
                           <button
                             type="button"

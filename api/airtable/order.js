@@ -95,6 +95,25 @@ async function dropboxCreateFolder({ accessToken, namespaceId, folderPath }) {
   throw new Error(`dropbox_create_folder ${resp.status}: ${errText}`);
 }
 
+async function dropboxCreateSharedLink({ accessToken, namespaceId, path }) {
+  const headers = {
+    'Authorization': `Bearer ${accessToken}`,
+    'Content-Type': 'application/json',
+  };
+  if (namespaceId) {
+    headers['Dropbox-API-Path-Root'] = JSON.stringify({ '.tag': 'namespace_id', namespace_id: namespaceId });
+  }
+  const url = `${DROPBOX_API_URL}/sharing/create_shared_link_with_settings`;
+  const resp = await fetch(url, { method: 'POST', headers, body: JSON.stringify({ path }) });
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => '');
+    throw new Error(`dropbox_create_shared_link ${resp.status}: ${text}`);
+  }
+  const data = await resp.json();
+  // Return only the URL string per request
+  return data && data.url ? data.url : null;
+}
+
 async function dropboxUploadFile({ accessToken, namespaceId, path, content, mode = { '.tag': 'add' }, autorename = false, mute = false }) {
   const headers = {
     'Authorization': `Bearer ${accessToken}`,
@@ -284,6 +303,14 @@ export default async function handler(req, res) {
         const result = await dropboxCreateFolder({ accessToken, namespaceId: dbxNamespaceId, folderPath: subPath });
         dropbox = { path: subPath, created: !result?.conflict, existed: !!result?.conflict };
         try { console.log('[airtable/order] dropbox folder', dropbox); } catch {}
+
+        // Create a public shared link for this folder and attach only the URL
+        try {
+          const sharedUrl = await dropboxCreateSharedLink({ accessToken, namespaceId: dbxNamespaceId, path: subPath });
+          if (sharedUrl) dropbox.shared_link = sharedUrl;
+        } catch (e) {
+          try { console.warn('[airtable/order] dropbox shared link failed', e?.message || String(e)); } catch {}
+        }
 
         // If uploads were provided, upload them now
         let uploadedCount = 0;

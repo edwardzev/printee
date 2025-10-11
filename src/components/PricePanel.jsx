@@ -6,11 +6,13 @@ import { Link } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { printAreas } from '@/data/products';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/use-toast';
 import { useMediaQuery } from '@/hooks/use-media-query';
 
 const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
   const { t, language } = useLanguage();
   const isMobile = useMediaQuery("(max-width: 768px)");
+  const { toast } = useToast();
   // Desktop sidebar expanded (always true by default on desktop)
   const [isDesktopExpanded, setIsDesktopExpanded] = useState(true);
   // Mobile bottom-sheet open state (default closed)
@@ -315,21 +317,55 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
               </div>
             </div>
 
-            {/* Right: actions */}
-            <div className="basis-full grid grid-cols-2 gap-2">
-              <Button
-                size="lg"
-                disabled={!canAddToCart}
-                onClick={() => { onAddToCart(); setAddedOnce(true); }}
-                className="rounded-full w-full"
-              >
-                {t('addToCart')}
-              </Button>
-              <Link to="/cart" onClick={closeSheet} className="w-full">
-                <Button size="lg" variant="default" className="rounded-full w-full">
-                  {language === 'he' ? 'לעגלה' : 'Cart'}
-                </Button>
-              </Link>
+            {/* Right: actions - before add: two buttons in a row; after add: three buttons in a row */}
+            <div className="basis-full w-full">
+              {!addedOnce ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    size="lg"
+                    disabled={!canAddToCart}
+                    onClick={() => {
+                      try { onAddToCart(); } catch {}
+                      setAddedOnce(true);
+                      try { toast({ title: t('addedToCart'), description: t('addToCartCount')(pricing.totalQty) }); } catch {}
+                    }}
+                    className="rounded-full w-full"
+                  >
+                    {t('addToCart')}
+                  </Button>
+                  <Link to="/cart" onClick={closeSheet} className="w-full">
+                    <Button size="lg" variant="default" className="rounded-full w-full">
+                      {language === 'he' ? 'לעגלה' : 'Cart'}
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    size="lg"
+                    disabled={!canAddToCart}
+                    onClick={() => {
+                      try { onAddToCart(); } catch {}
+                      try { toast({ title: t('addedToCart'), description: t('addToCartCount')(pricing.totalQty) }); } catch {}
+                    }}
+                    className="rounded-full w-full"
+                  >
+                    {t('addToCart')}
+                  </Button>
+
+                  <Link to="/catalog" onClick={closeSheet} className="w-full">
+                    <Button size="lg" variant="outline" className="rounded-full w-full">
+                      {language === 'he' ? 'בחר מוצר נוסף' : 'Choose another product'}
+                    </Button>
+                  </Link>
+
+                  <Link to="/cart" onClick={closeSheet} className="w-full">
+                    <Button size="lg" variant="default" className="rounded-full w-full">
+                      {language === 'he' ? 'לעגלה' : 'Cart'}
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         </div>

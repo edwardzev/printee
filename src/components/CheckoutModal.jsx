@@ -203,11 +203,20 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
         cartUploads: uploads,
       };
 
-      fetch('/api/airtable/order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(enriched),
-      }).catch(() => {});
+      try {
+        const resp = await fetch('/api/airtable/order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(enriched),
+        });
+        try {
+          const j = await resp.json().catch(() => null);
+          const link = j && j.dropbox && j.dropbox.shared_link;
+          if (link) {
+            try { mergePayload({ financial: { ...(payload?.financial || {}), dropbox_shared_link: link } }); } catch (e) {}
+          }
+        } catch (_) {}
+      } catch (_) {}
     } catch (_) {}
 
 

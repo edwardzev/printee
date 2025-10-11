@@ -129,28 +129,67 @@ export default function Header({ dir = "rtl" }) {
           />
         </Link>
 
-        {/* Burger button for mobile - render only when viewport is mobile to avoid showing on desktop */}
+        {/* Burger button for mobile + cart badge - render only when viewport is mobile */}
         {isMobile && (
-          <button
-            aria-label="Toggle menu"
-            aria-expanded={open}
-            onClick={() => setOpen((v) => !v)}
-            style={{
-              marginInlineStart: "auto",
-              display: "flex",
-              flexDirection: "column",
-              gap: 4,
-              background: "transparent",
-              border: 0,
-              padding: 8,
-              cursor: "pointer",
-            }}
-            ref={burgerRef}
-          >
-            <span style={{ display: "block", width: 24, height: 2, background: "#fff" }} />
-            <span style={{ display: "block", width: 24, height: 2, background: "#fff" }} />
-            <span style={{ display: "block", width: 24, height: 2, background: "#fff" }} />
-          </button>
+          <div style={{ marginInlineStart: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button
+              aria-label="Toggle menu"
+              aria-expanded={open}
+              onClick={() => setOpen((v) => !v)}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4,
+                background: 'transparent',
+                border: 0,
+                padding: 8,
+                cursor: 'pointer',
+              }}
+              ref={burgerRef}
+            >
+              <span style={{ display: 'block', width: 24, height: 2, background: '#fff' }} />
+              <span style={{ display: 'block', width: 24, height: 2, background: '#fff' }} />
+              <span style={{ display: 'block', width: 24, height: 2, background: '#fff' }} />
+            </button>
+
+            {/* Cart icon with mobile badge placed to the right of the burger */}
+            <Link
+              to="/cart"
+              aria-label={`Cart - ${getTotalItems()} items`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                textDecoration: 'none',
+                color: '#fff',
+                position: 'relative',
+                padding: '8px'
+              }}
+            >
+              <div style={{ position: 'relative', display: 'inline-flex' }}>
+                <ShoppingCart size={20} />
+                {getTotalItems() > 0 && (
+                  <span style={{
+                    position: 'absolute',
+                    top: -8,
+                    right: -8,
+                    background: '#ff3b30',
+                    color: '#fff',
+                    borderRadius: 999,
+                    padding: '2px 6px',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    lineHeight: 1,
+                    minWidth: 18,
+                    height: 18,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '2px solid #000'
+                  }}>{getTotalItems()}</span>
+                )}
+              </div>
+            </Link>
+          </div>
         )}
 
         {/* Nav (hidden on small screens, burger used instead) */}
