@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet';
@@ -8,6 +8,20 @@ import { Button } from '@/components/ui/button';
 
 const Catalog = () => {
   const { t, language } = useLanguage();
+
+  // Preload first row images for faster first paint on catalog
+  useEffect(() => {
+    try {
+      const toPreload = [...products].slice(0, 6);
+      toPreload.forEach((p) => {
+        const src = pick(p.images?.base1, `/product_images/${p.sku}/base_1.webp`);
+        const img = new Image();
+        img.src = src;
+      });
+    } catch (e) {
+      // ignore
+    }
+  }, []);
 
   const formatILS = (v) =>
     new Intl.NumberFormat('he-IL', {
@@ -119,7 +133,18 @@ const Catalog = () => {
 
                   {/* color swatches removed per request; keep the color counter above */}
 
-                  <Link to={`/product/${product.sku}`}>
+                  <Link
+                    to={`/product/${product.sku}`}
+                    onMouseEnter={() => {
+                      // Prefetch product image and product page bundle on hover
+                      try {
+                        const img = new Image();
+                        img.src = pick(product.images?.base1, `/product_images/${product.sku}/base_1.webp`);
+                      } catch (e) {}
+                      // Dynamic import to warm the product page JS bundle (best-effort)
+                      try { import(/* webpackPrefetch: true */ '@/pages/ProductConfigurator'); } catch (e) {}
+                    }}
+                  >
                     <Button className="w-full">
                       {language === 'he' ? 'בחר מוצר' : t('startDesigning')}
                     </Button>

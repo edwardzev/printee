@@ -243,7 +243,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
     const itemName = firstItem ? (firstItem.productName || firstItem.productSku || 'Product') : 'Product';
     // Use getTotalItems() (CartContext) to compute total quantity so it's accurate and consistent
     const totalQty = typeof getTotalItems === 'function' ? Number(getTotalItems() || 0) : (Array.isArray(cartItems) ? cartItems.length : 0);
-    const pretty = `${itemName} ${totalQty} incl מיתוג`;
+    const pretty = `${itemName} ${totalQty} כולל מיתוג`;
     u.searchParams.set('cd', pretty);
   } catch {}
   // Do not force currency here — let the iCount page configuration determine displayed currency (it may be EUR)

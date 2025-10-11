@@ -54,32 +54,75 @@ export default function HeroImage({
   // Preload all candidates and keep successful ones
   useEffect(() => {
     let cancelled = false;
+
+    // Helper: for an index, attempt candidates and return first available or null
+    const findFirstForIndex = async (i) => {
+      const baseCandidates = [];
+      const exts = ['webp','jpg','png','jpeg'];
+      for (const ext of exts) {
+        baseCandidates.push(`/hero_images/hero_${i}_sm.${ext}`);
+        baseCandidates.push(`/hero_images/hero_${i}_lg.${ext}`);
+        baseCandidates.push(`/hero_images/hero_${i}.${ext}`);
+        baseCandidates.push(`/hero_images/hero-${i}.${ext}`);
+      }
+      for (const c of baseCandidates) {
+        // eslint-disable-next-line no-await-in-loop
+        const ok = await tryLoad(c);
+        if (ok) return ok;
+        if (cancelled) return null;
+      }
+      return null;
+    };
+
     (async () => {
-      const found = [];
-      // For each numeric index, try to find small/large variants or single file
-      for (let i = 1; i <= 50; i++) {
-        const baseCandidates = [];
+      // 1) Try to find a primary image (index 1) quickly in parallel and show it asap
+      let primary = null;
+      try {
+        const primaryCandidates = [];
         const exts = ['webp','jpg','png','jpeg'];
         for (const ext of exts) {
-          baseCandidates.push(`/hero_images/hero_${i}_sm.${ext}`);
-          baseCandidates.push(`/hero_images/hero_${i}_lg.${ext}`);
-          baseCandidates.push(`/hero_images/hero_${i}.${ext}`);
-          baseCandidates.push(`/hero_images/hero-${i}.${ext}`);
+          primaryCandidates.push(`/hero_images/hero_1_sm.${ext}`);
+          primaryCandidates.push(`/hero_images/hero_1_lg.${ext}`);
+          primaryCandidates.push(`/hero_images/hero_1.${ext}`);
+          primaryCandidates.push(`/hero_images/hero-1.${ext}`);
         }
-        // Try to load the first available candidate per index
-        const res = await (async () => {
-          for (const c of baseCandidates) {
-            // eslint-disable-next-line no-await-in-loop
-            const ok = await tryLoad(c);
-            if (ok) return ok;
-          }
-          return null;
-        })();
-        if (res) found.push(res);
-      }
+        // try all primary candidates in parallel and pick first success
+        const primaryPromises = primaryCandidates.map((c) => tryLoad(c));
+        const primaryResults = await Promise.all(primaryPromises);
+        primary = primaryResults.find(Boolean) || null;
+      } catch (e) { primary = null; }
+
       if (cancelled) return;
-      setImages(shuffle(found));
+      if (primary) setImages([primary]);
+
+      // 2) Preload the rest concurrently with a modest concurrency limit
+      const maxIndex = 50;
+      const concurrency = 6;
+      const results = [];
+      let current = 1;
+
+      const worker = async () => {
+        while (!cancelled) {
+          const i = current++;
+          if (i > maxIndex) break;
+          try {
+            const found = await findFirstForIndex(i);
+            if (found) results.push(found);
+          } catch (_) { /* ignore individual errors */ }
+        }
+      };
+
+      // start workers
+      const workers = new Array(concurrency).fill(null).map(() => worker());
+      await Promise.all(workers);
+      if (cancelled) return;
+
+      // If we had a primary, ensure it's first and avoid duplicates
+      const uniq = Array.from(new Set(results.filter(Boolean)));
+      const final = primary ? [primary, ...uniq.filter((u) => u !== primary)] : uniq;
+      setImages(shuffle(final));
     })();
+
     return () => {
       cancelled = true;
       if (timerRef.current) clearInterval(timerRef.current);

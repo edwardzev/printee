@@ -292,8 +292,30 @@ const ProductConfigurator = () => {
   return (
     <>
       <Helmet>
-        <title>{language === 'he' ? product.nameHe : product.name} – Printee</title>
+  <title>{language === 'he' ? product.nameHe : product.name} – Printem</title>
         <meta name="description" content={`Customize your ${product.name} with our design tool`} />
+        {/* Product structured data for SEO */}
+        <script type="application/ld+json">{`
+          {
+            "@context": "https://schema.org",
+            "@type": "Product",
+            "name": "${language === 'he' ? product.nameHe : product.name}",
+            "description": "${(product.description || '').replace(/"/g, '\\"')}",
+            "sku": "${product.sku}",
+            "image": "${Array.isArray(product.images.base1) ? product.images.base1[0] : product.images.base1}",
+            "brand": {
+              "@type": "Brand",
+              "name": "Printem"
+            },
+            "offers": {
+              "@type": "Offer",
+              "priceCurrency": "ILS",
+              "price": "${product.basePrice || 0}",
+              "availability": "https://schema.org/InStock",
+              "url": "${typeof window !== 'undefined' ? window.location.href : ''}"
+            }
+          }
+        `}</script>
       </Helmet>
 
       <div className="min-h-screen py-4">

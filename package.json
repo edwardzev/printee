@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "dev:test:order-api": "node scripts/dev-order-api-test.mjs"
+    "dev:test:order-api": "node scripts/dev-order-api-test.mjs",
+    "generate-sitemap": "node scripts/generate-sitemap.mjs"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.0.5",
