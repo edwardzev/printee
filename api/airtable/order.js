@@ -105,13 +105,25 @@ async function dropboxCreateSharedLink({ accessToken, namespaceId, path }) {
   }
   const url = `${DROPBOX_API_URL}/sharing/create_shared_link_with_settings`;
   const resp = await fetch(url, { method: 'POST', headers, body: JSON.stringify({ path }) });
-  if (!resp.ok) {
-    const text = await resp.text().catch(() => '');
-    throw new Error(`dropbox_create_shared_link ${resp.status}: ${text}`);
+  if (resp.ok) {
+    const data = await resp.json().catch(() => null);
+    const urlOnly = data && data.url ? data.url : null;
+    try { console.log('[airtable/order] dropbox created shared link', urlOnly); } catch {}
+    return urlOnly;
   }
-  const data = await resp.json();
-  // Return only the URL string per request
-  return data && data.url ? data.url : null;
+  // Try to parse error body; Dropbox may return 409 when a shared link already exists and include metadata
+  const errText = await resp.text().catch(() => '');
+  try {
+    const errJson = JSON.parse(errText || '{}');
+    const existing = errJson?.error?.shared_link_already_exists?.metadata?.url || errJson?.shared_link_already_exists?.metadata?.url;
+    if (existing) {
+      try { console.log('[airtable/order] dropbox shared link already existed', existing); } catch {}
+      return existing;
+    }
+  } catch (e) {
+    // fallthrough to throw below
+  }
+  throw new Error(`dropbox_create_shared_link ${resp.status}: ${errText}`);
 }
 
 async function dropboxUploadFile({ accessToken, namespaceId, path, content, mode = { '.tag': 'add' }, autorename = false, mute = false }) {
