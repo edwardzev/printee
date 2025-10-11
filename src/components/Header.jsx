@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { ShoppingCart } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { List, Info, HelpCircle, ShoppingCart as CartIcon, DollarSign } from 'lucide-react';
+import { Home, List, Info, HelpCircle, ShoppingCart as CartIcon, DollarSign } from 'lucide-react';
 import { useMediaQuery } from '@/hooks/use-media-query';
 
 export default function Header({ dir = "rtl" }) {
@@ -29,8 +29,10 @@ export default function Header({ dir = "rtl" }) {
       setActive(id);
     };
 
+    // If we're not on the home page, navigate there first then scroll
     if (location.pathname !== '/') {
       navigate('/');
+      // Small delay to allow Home to mount and render its sections, then scroll
       setTimeout(doScroll, 160);
       return;
     }
@@ -85,6 +87,7 @@ export default function Header({ dir = "rtl" }) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = prev || '';
+      // return focus to burger
       if (burgerRef.current) burgerRef.current.focus();
     }
     return () => { document.body.style.overflow = prev || ''; };
@@ -98,6 +101,7 @@ export default function Header({ dir = "rtl" }) {
         top: 0,
         zIndex: 50,
         background: "#000",
+        // removed thin bottom border to avoid stray line in header
         backdropFilter: "saturate(180%) blur(8px)",
       }}
     >
@@ -113,7 +117,7 @@ export default function Header({ dir = "rtl" }) {
       >
         <Link
           to="/"
-          aria-label="Printem – Print your apparel"
+          aria-label="Printee – Print your apparel"
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -123,17 +127,18 @@ export default function Header({ dir = "rtl" }) {
         >
           <img
             src="/logo_printee.png"
-            alt="PRINTEM"
+            alt="PRINTEE"
             style={{
-              height: 64,
+              height: 84, // keep layout height small so header doesn't grow
               width: "auto",
               display: "block",
-              transform: 'scale(1.5)',
+              transform: 'scale(2.2)', // visually enlarge the logo
               transformOrigin: 'left center',
             }}
           />
         </Link>
 
+        {/* Burger button for mobile - render only when viewport is mobile to avoid showing on desktop */}
         {isMobile && (
           <button
             aria-label="Toggle menu"
@@ -155,6 +160,7 @@ export default function Header({ dir = "rtl" }) {
           </button>
         )}
 
+        {/* Nav (hidden on small screens, burger used instead) */}
         <nav
           style={{
             marginInlineStart: "auto",
@@ -176,6 +182,8 @@ export default function Header({ dir = "rtl" }) {
               color: '#fff',
               padding: cta ? "10px 18px" : "8px 10px",
               borderRadius: cta ? 999 : 10,
+              // Use the brand gradient for CTA to match primary buttons; keep
+              // a subtle hover-friendly contrast for active/non-cta links.
               background: cta
                 ? "linear-gradient(90deg,#7a00ff 0%,#fe00ff 100%)"
                 : active === id
@@ -189,6 +197,7 @@ export default function Header({ dir = "rtl" }) {
               justifyContent: 'center',
             };
 
+            // Render a routed Link for the FAQ item so it navigates to /faq
             if (id === 'faq') {
               return (
                 <Link key={id} to="/faq" style={baseStyle}>
@@ -197,6 +206,7 @@ export default function Header({ dir = "rtl" }) {
               );
             }
 
+            // Catalog, Pricing and CTA -> go to /catalog route
             if (id === 'catalog' || id === 'contact' || id === 'pricing') {
               return (
                 <Link key={id} to="/catalog" style={baseStyle} onClick={() => setOpen(false)}>
@@ -211,8 +221,8 @@ export default function Header({ dir = "rtl" }) {
               </a>
             );
           })}
-
-          <Link
+          {/* Cart icon */}
+            <Link
             to="/cart"
             aria-label="Cart"
             style={{
@@ -235,7 +245,7 @@ export default function Header({ dir = "rtl" }) {
             }}>{getTotalItems()}</span>
           </Link>
         </nav>
-
+        {/* Mobile menu overlay - only render on mobile viewports */}
         {isMobile && open && (
           <div
             className="fixed inset-0 z-50 bg-white/98 flex flex-col p-6"
@@ -248,12 +258,13 @@ export default function Header({ dir = "rtl" }) {
           >
             <div className="flex items-center justify-between mb-6">
               <Link to="/" onClick={() => setOpen(false)}>
-                <img src="/logo_printee.png" alt="printem" style={{ height: 32, transform: 'scale(1.25)', transformOrigin: 'left center' }} />
+                <img src="/logo_printee.png" alt="printee" style={{ height: 32, transform: 'scale(1.25)', transformOrigin: 'left center' }} />
               </Link>
               <button onClick={() => setOpen(false)} aria-label="Close menu" style={{ border: 0, background: 'transparent', fontSize: 22 }}>✕</button>
             </div>
             <div className="flex flex-col gap-4" ref={menuListRef}>
-              {dir === 'rtl' ? (
+              {/* language-aware ordering: put primary CTA first for LTR, last for RTL */}
+                  {dir === 'rtl' ? (
                 <>
                   <Link to="/catalog" onClick={() => setOpen(false)} className="text-lg font-medium inline-flex items-center gap-3"><List className="h-5 w-5" /> קטלוג</Link>
                   <Link to="/catalog" onClick={() => setOpen(false)} className="text-lg font-medium inline-flex items-center gap-3"><DollarSign className="h-5 w-5" /> מחירים</Link>
