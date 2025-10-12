@@ -213,7 +213,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
               const qty = Object.values(mat || {}).reduce((s, q) => s + (q || 0), 0);
               if (qty > 0) { activeColors.push(c); totalQtyForItem += qty; }
             }
-            if (activeColors.length === 0) return;
+            if (activeColors.length === 0) continue;
             const areaMethod = {};
             (item.selectedPrintAreas || []).forEach((sel) => {
               if (!sel) return;
