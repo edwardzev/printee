@@ -178,7 +178,6 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
           // helper to push an upload record
           const pushUpload = (u) => { if (u) list.push(u); };
 
-          let worksheetDone = false;
           for (const item of (cartItems || [])) {
             const product = item.productSku || item.product || 'product';
             const matrices = item.sizeMatrices || {};
@@ -217,8 +216,8 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
                 }
               } catch (_) {}
             }
-            // Create a single worksheet per order from the first item (avoids multiple versions)
-            if (!worksheetDone) try {
+            // Create a worksheet per product (per item)
+            try {
               const worksheetPng = await composeWorksheetImage({
                 item,
                 language: 'en',
@@ -247,7 +246,6 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
               if (worksheetPng) {
                 // Do not force a client-side filename; server will name it WS<orderId>.png and create a shared link
                 pushUpload({ areaKey: 'worksheet', method: 'worksheet', product, colors: activeColors, qty: totalQtyForItem, dataUrl: worksheetPng });
-                worksheetDone = true;
               }
             } catch (_) {}
           }

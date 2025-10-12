@@ -37,6 +37,22 @@ function getEnv() {
   };
 }
 
+function normalizeDropboxDirect(link) {
+  try {
+    if (!link) return link;
+    const u = new URL(String(link));
+    u.searchParams.set('dl', '1');
+    return u.toString();
+  } catch {
+    try {
+      const s = String(link);
+      if (s.includes('?dl=0')) return s.replace('?dl=0', '?dl=1');
+      if (s.includes('&dl=0')) return s.replace('&dl=0', '&dl=1');
+      return s + (s.includes('?') ? '&dl=1' : '?dl=1');
+    } catch { return link; }
+  }
+}
+
 async function airtableFetchRecord(baseId, table, recordId, token) {
   const url = `${API_URL}/${encodeURIComponent(baseId)}/${encodeURIComponent(table)}/${encodeURIComponent(recordId)}`;
   const resp = await fetch(url, {
@@ -327,7 +343,7 @@ export default async function handler(req, res) {
         // If uploads were provided, upload them now
         let uploadedCount = 0;
         let failed = [];
-        let worksheetLink = null;
+        const worksheetLinks = {}; // { productSku: url }
         if (Array.isArray(uploads) && uploads.length) {
           for (const u of uploads) {
             try {
@@ -344,16 +360,16 @@ export default async function handler(req, res) {
               // Force PNG for worksheet to standardize
               const extRaw = isWorksheet ? 'png' : (getExtFromName(name) || getExtFromMime(mime) || 'bin');
               const filename = isWorksheet
-                ? `WS${orderId}.${extRaw}`
+                ? `WS-${orderId}-${sanitizeSegment(product)}.${extRaw}`
                 : composeUploadFilename({ orderId, areaKey, method, product, colors, qty, ext: extRaw });
               const filePath = `${subPath}/${filename}`.replace(/\/+/, '/');
               await dropboxUploadFile({ accessToken, namespaceId: dbxNamespaceId, path: filePath, content: buffer, mode: isWorksheet ? { '.tag': 'overwrite' } : { '.tag': 'add' }, autorename: false, mute: true });
               uploadedCount += 1;
               // For the worksheet, also create/get a shared link to the file itself for Airtable
-              if (isWorksheet && !worksheetLink) {
+              if (isWorksheet && !worksheetLinks[product]) {
                 try {
                   const link = await dropboxCreateSharedLink({ accessToken, namespaceId: dbxNamespaceId, path: filePath });
-                  if (link) worksheetLink = link;
+                  if (link) worksheetLinks[product] = link;
                 } catch (_) {}
               }
             } catch (e) {
@@ -363,7 +379,7 @@ export default async function handler(req, res) {
         }
         if (uploadedCount || (failed && failed.length)) {
           dropbox.uploads = { uploaded: uploadedCount, failedCount: (failed && failed.length) || 0, failed };
-          if (worksheetLink) dropbox.worksheet_link = worksheetLink;
+          if (Object.keys(worksheetLinks).length) dropbox.worksheet_links = worksheetLinks;
           try { console.log('[airtable/order] dropbox uploads', dropbox.uploads); } catch {}
         }
 
@@ -389,18 +405,30 @@ export default async function handler(req, res) {
             };
             // Include dropbox shared link in the finance JSON so it's persisted
             if (financial.dropbox_shared_link) {
-              financePayload.dropbox_shared_link = String(financial.dropbox_shared_link);
+              financePayload.dropbox_shared_link = normalizeDropboxDirect(String(financial.dropbox_shared_link));
             }
             // If client didn't send it but server just created/fetched it, include it now (write-through)
             if (!financePayload.dropbox_shared_link && dropbox && dropbox.shared_link) {
-              financePayload.dropbox_shared_link = String(dropbox.shared_link);
+              financePayload.dropbox_shared_link = normalizeDropboxDirect(String(dropbox.shared_link));
             }
-            // Include worksheet link if available (client or server)
+            // Include worksheet link(s) if available (client or server)
             if (financial.dropbox_worksheet_link) {
-              financePayload.dropbox_worksheet_link = String(financial.dropbox_worksheet_link);
+              financePayload.dropbox_worksheet_link = normalizeDropboxDirect(String(financial.dropbox_worksheet_link));
             }
-            if (!financePayload.dropbox_worksheet_link && dropbox && dropbox.worksheet_link) {
-              financePayload.dropbox_worksheet_link = String(dropbox.worksheet_link);
+            if (financial.dropbox_worksheet_links && typeof financial.dropbox_worksheet_links === 'object') {
+              const norm = {};
+              for (const [k, v] of Object.entries(financial.dropbox_worksheet_links)) norm[k] = normalizeDropboxDirect(String(v));
+              financePayload.dropbox_worksheet_links = norm;
+            }
+            if (!financePayload.dropbox_worksheet_links && dropbox && dropbox.worksheet_links) {
+              const norm = {};
+              for (const [k, v] of Object.entries(dropbox.worksheet_links)) norm[k] = normalizeDropboxDirect(String(v));
+              financePayload.dropbox_worksheet_links = norm;
+            }
+            if (!financePayload.dropbox_worksheet_link && financePayload.dropbox_worksheet_links) {
+              // For compatibility, set a single link if there is exactly one
+              const keys = Object.keys(financePayload.dropbox_worksheet_links);
+              if (keys.length === 1) financePayload.dropbox_worksheet_link = financePayload.dropbox_worksheet_links[keys[0]];
             }
             if (financial.invrec && typeof financial.invrec === 'object') {
               if (financial.invrec.docnum != null) financePayload.invrec_num = String(financial.invrec.docnum);
@@ -429,7 +457,7 @@ export default async function handler(req, res) {
                 const qty = Number.isFinite(u.qty) ? u.qty : parseInt(u.qty, 10) || 0;
                 const isWorksheet = (method === 'worksheet' || areaKey === 'worksheet');
                 const ext = isWorksheet ? 'png' : (getExtFromName(u.fileName || '') || 'png');
-                const fileName = isWorksheet ? `WS${orderId}.${ext}` : composeUploadFilename({ orderId, areaKey, method, product, colors, qty, ext });
+                const fileName = isWorksheet ? `WS-${orderId}-${sanitizeSegment(product)}.${ext}` : composeUploadFilename({ orderId, areaKey, method, product, colors, qty, ext });
                 const path = `${subPath}/${fileName}`.replace(/\/+/, '/');
                 return { areaKey, method, product, colors, qty, fileName, path };
               });
