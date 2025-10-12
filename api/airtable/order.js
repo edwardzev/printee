@@ -59,13 +59,21 @@ function normalizeDropboxFileRaw(link) {
   // Prefer raw=1 for direct file content (avoids zip packaging behavior)
   try {
     if (!link) return link;
-    const u = new URL(String(link));
-    u.searchParams.delete('dl');
-    u.searchParams.set('raw', '1');
-    return u.toString();
+    const s = String(link);
+    // If it's already a temporary/direct link (dropboxusercontent or contains raw=1), return as-is
+    if (s.includes('dropboxusercontent.com') || s.includes('raw=1') || s.includes('dl=0') || s.includes('raw=1')) return s;
+    try {
+      const u = new URL(s);
+      u.searchParams.delete('dl');
+      u.searchParams.set('raw', '1');
+      return u.toString();
+    } catch {
+      return s;
+    }
   } catch {
     try {
       const s = String(link);
+      if (s.includes('dropboxusercontent.com') || s.includes('raw=1')) return s;
       const noDl = s.replace('?dl=1', '').replace('?dl=0', '').replace('&dl=1', '').replace('&dl=0', '');
       return noDl + (noDl.includes('?') ? '&raw=1' : '?raw=1');
     } catch { return link; }
@@ -159,6 +167,29 @@ async function dropboxCreateSharedLink({ accessToken, namespaceId, path }) {
     // fallthrough to throw below
   }
   throw new Error(`dropbox_create_shared_link ${resp.status}: ${errText}`);
+}
+
+async function dropboxGetTemporaryLink({ accessToken, namespaceId, path }) {
+  // Returns a direct content URL for a file (best for serving PDFs)
+  const headers = {
+    'Authorization': `Bearer ${accessToken}`,
+    'Content-Type': 'application/json',
+  };
+  if (namespaceId) headers['Dropbox-API-Path-Root'] = JSON.stringify({ '.tag': 'namespace_id', namespace_id: namespaceId });
+  const url = `${DROPBOX_API_URL}/files/get_temporary_link`;
+  try {
+    const resp = await fetch(url, { method: 'POST', headers, body: JSON.stringify({ path }) });
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '');
+      throw new Error(`dropbox_get_temp_link ${resp.status}: ${text}`);
+    }
+    const data = await resp.json().catch(() => null);
+    // data.link should be a direct link to the file contents
+    return data && data.link ? data.link : null;
+  } catch (e) {
+    try { console.warn('[airtable/order] dropbox get_temporary_link failed', e?.message || String(e)); } catch {}
+    return null;
+  }
 }
 
 async function dropboxUploadFile({ accessToken, namespaceId, path, content, mode = { '.tag': 'add' }, autorename = false, mute = false }) {
@@ -388,7 +419,9 @@ export default async function handler(req, res) {
               // For the worksheet, also create/get a shared link to the file itself for Airtable
               if (isWorksheet && !worksheetLinks[product]) {
                 try {
-                  const link = await dropboxCreateSharedLink({ accessToken, namespaceId: dbxNamespaceId, path: filePath });
+                  // Prefer temporary link (direct file content). Fall back to shared link.
+                  let link = await dropboxGetTemporaryLink({ accessToken, namespaceId: dbxNamespaceId, path: filePath });
+                  if (!link) link = await dropboxCreateSharedLink({ accessToken, namespaceId: dbxNamespaceId, path: filePath });
                   if (link) worksheetLinks[product] = link;
                 } catch (_) {}
               }
