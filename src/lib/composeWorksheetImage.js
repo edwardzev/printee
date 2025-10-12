@@ -1,6 +1,30 @@
 import { composeMockupImage } from '@/lib/composeMockupImage';
 import { printAreas, products } from '@/data/products';
 
+// Centralized typography theme for worksheet
+const THEME = {
+  family: 'system-ui, -apple-system, Segoe UI, Roboto',
+  sizes: {
+    title: 38,          // Main title "Worksheet"
+    order: 38,          // Order number / ID at top-right
+    product: 38,        // Product name + Qty line
+    section: 26,        // Section headers: Customer, Finance
+    text: 24,           // Main body text in sections
+    deliveryTitle: 26,  // Delivery header
+    deliveryText: 20,   // Delivery body and footer notes
+    tableHeader: 30,    // Table headers (size labels)
+    tableCell: 24,      // Table values
+    hint: 22,           // Small hints (e.g., link, mockup/design captions)
+    areaLabel: 30,      // Area label above mockup row
+  },
+};
+
+function font(sizeKey, weight = 'normal') {
+  const sz = THEME.sizes[sizeKey] || THEME.sizes.text;
+  const w = weight === 'bold' ? 'bold ' : '';
+  return `${w}${sz}px ${THEME.family}`;
+}
+
 function loadImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -12,9 +36,9 @@ function loadImage(src) {
 }
 
 function drawText(ctx, text, x, y, opts = {}) {
-  const { font = '16px system-ui, -apple-system, Segoe UI, Roboto', color = '#111', align = 'left' } = opts;
+  const { font: f = font('text'), color = '#111', align = 'left' } = opts;
   ctx.save();
-  ctx.font = font;
+  ctx.font = f;
   ctx.fillStyle = color;
   ctx.textAlign = align;
   ctx.textBaseline = 'top';
@@ -54,6 +78,10 @@ export async function composeWorksheetImage({
   customer = {},
   financial = {},
   delivery = {},
+  // when true, returns { dataUrl, consumed } with counts for pagination
+  returnMeta = false,
+  startColorIndex = 0,
+  startAreaIndex = 0,
 }) {
   try {
     // A4-ish at ~150dpi
@@ -70,11 +98,11 @@ export async function composeWorksheetImage({
     ctx.fillRect(0, 0, W, H);
 
   // Header
-  drawText(ctx, 'Worksheet', P, P, { font: 'bold 28px system-ui', color: '#111' });
+  drawText(ctx, 'Worksheet', P, P, { font: font('title', 'bold'), color: '#111' });
   const orderText = orderNumber ? `Order #${orderNumber}` : (idempotencyKey ? `ID: ${idempotencyKey}` : '');
-  if (orderText) drawText(ctx, orderText, W - P, P, { font: 'bold 18px system-ui', color: '#111', align: 'right' });
+  if (orderText) drawText(ctx, orderText, W - P, P, { font: font('order', 'bold'), color: '#111', align: 'right' });
   const headerY2 = P + 34;
-  const lineY = headerY2 + 10;
+  const lineY = headerY2 + 20;
     drawLine(ctx, P, lineY, W - P, lineY, '#e5e7eb', 2);
 
     const productName = item.productName || item.productSku || 'Product';
@@ -84,75 +112,94 @@ export async function composeWorksheetImage({
     })();
 
   // Subheader line with product and link
-  drawText(ctx, `${productName} • Qty: ${qtyTotal}`, P, lineY + 12, { font: 'bold 18px system-ui' });
+  drawText(ctx, `${productName} • Qty: ${qtyTotal}`, P, lineY + 12, { font: font('product', 'bold') });
   let y = lineY + 12;
-  if (idempotencyKey) { drawText(ctx, `IDEM: ${idempotencyKey}`, W - P, y, { font: '14px system-ui', align: 'right', color: '#6b7280' }); y += 22; } else { y += 22; }
-  if (dropboxLink) { drawText(ctx, dropboxLink, W - P, y, { font: '12px system-ui', align: 'right', color: '#2563eb' }); y += 26; }
-  y += 12;
+  const gapSmall = Math.round(THEME.sizes.deliveryText * 1.2);
+  const gapHint = Math.round(THEME.sizes.hint * 1.2);
+  if (idempotencyKey) { drawText(ctx, `IDEM: ${idempotencyKey}`, W - P, y, { font: font('deliveryText'), align: 'right', color: '#6b7280' }); y += gapSmall; } else { y += gapSmall; }
+  if (dropboxLink) { drawText(ctx, dropboxLink, W - P, y, { font: font('hint'), align: 'right', color: '#2563eb' }); y += gapHint; }
+  y += gapSmall;
 
   // Customer and Finance blocks
   const colW = Math.floor((W - P*2 - 20) / 2);
   const boxH = 116;
+  const gapText = Math.round(THEME.sizes.text * 1.4);
   // Customer
-  drawText(ctx, 'Customer', P, y, { font: 'bold 16px system-ui' });
+  drawText(ctx, 'Customer', P, y, { font: font('section', 'bold') });
   drawLine(ctx, P, y + 22, P + colW, y + 22);
-  drawText(ctx, `Name: ${customer?.name || ''}`, P, y + 30, { font: '14px system-ui' });
-  drawText(ctx, `Phone: ${customer?.phone || ''}`, P, y + 50, { font: '14px system-ui' });
-  drawText(ctx, `Email: ${customer?.email || ''}`, P, y + 70, { font: '14px system-ui' });
-  drawText(ctx, `Address: ${(customer?.address_street || '')} ${(customer?.address_city || '')}`.trim(), P, y + 90, { font: '14px system-ui' });
+  let cy = y + 30;
+  drawText(ctx, `Name: ${customer?.name || ''}`, P, cy, { font: font('text') });
+  cy += gapText;
+  drawText(ctx, `Phone: ${customer?.phone || ''}`, P, cy, { font: font('text') });
+  cy += gapText;
+  drawText(ctx, `Email: ${customer?.email || ''}`, P, cy, { font: font('text') });
+  cy += gapText;
+  drawText(ctx, `Address: ${(customer?.address_street || '')} ${(customer?.address_city || '')}`.trim(), P, cy, { font: font('text') });
   // Finance
   const fx = P + colW + 20;
-  drawText(ctx, 'Finance', fx, y, { font: 'bold 16px system-ui' });
+  drawText(ctx, 'Finance', fx, y, { font: font('section', 'bold') });
   drawLine(ctx, fx, y + 22, fx + colW, y + 22);
-  drawText(ctx, `Subtotal: ${Number(financial?.subtotal || 0)}`, fx, y + 30, { font: '14px system-ui' });
-  drawText(ctx, `Delivery: ${Number(financial?.delivery || 0)}`, fx, y + 50, { font: '14px system-ui' });
-  drawText(ctx, `VAT: ${Number(financial?.vat || 0)}`, fx, y + 70, { font: '14px system-ui' });
-  drawText(ctx, `Total: ${Number(financial?.total || 0)} (${financial?.payment_method || ''})`, fx, y + 90, { font: 'bold 14px system-ui' });
+  let fy = y + 30;
+  drawText(ctx, `Subtotal: ${Number(financial?.subtotal || 0)}`, fx, fy, { font: font('text') });
+  fy += gapText;
+  drawText(ctx, `Delivery: ${Number(financial?.delivery || 0)}`, fx, fy, { font: font('text') });
+  fy += gapText;
+  drawText(ctx, `VAT: ${Number(financial?.vat || 0)}`, fx, fy, { font: font('text') });
+  fy += gapText;
+  drawText(ctx, `Total: ${Number(financial?.total || 0)} (${financial?.payment_method || ''})`, fx, fy, { font: font('text', 'bold') });
 
-  y += boxH + 24;
+  // Advance by the max of actual used height and a minimum box height
+  const custBottom = cy + THEME.sizes.text;
+  const finBottom = fy + THEME.sizes.text;
+  const usedH = Math.max(custBottom, finBottom) - y;
+  y += Math.max(usedH, boxH) + 24;
 
   // Delivery block
-  drawText(ctx, 'Delivery', P, y, { font: 'bold 16px system-ui' });
+  drawText(ctx, 'Delivery', P, y, { font: font('deliveryTitle', 'bold') });
   drawLine(ctx, P, y + 22, W - P, y + 22);
-  drawText(ctx, `${delivery?.method || 'Standard'} — ${(delivery?.notes || '').trim()}`, P, y + 30, { font: '14px system-ui' });
+  drawText(ctx, `${delivery?.method || 'Standard'} — ${(delivery?.notes || '').trim()}`, P, y + 30, { font: font('deliveryText') });
   y += 64;
 
     // Size matrices per color as tables
   const matrices = item.sizeMatrices || {};
   const colors = Object.keys(matrices);
+  let colorsRendered = 0;
   // derive size range from product catalog (uppercased), union with observed sizes
   const product = (products || []).find(p => p.sku === item.productSku);
   const canonical = (product?.sizeRange || []).map(s => String(s || '').toUpperCase());
   const observed = sortedSizesFromMatrices(matrices).map(s => String(s || '').toUpperCase());
   const sizes = Array.from(new Set([...canonical, ...observed]));
 
-    const tableColW = Math.max(80, Math.floor((W - P*2) / (sizes.length + 1)));
-    const rowH = 28;
+  const tableColW = Math.max(80, Math.floor((W - P*2) / (sizes.length + 1)));
+  const rowH = Math.max(24, Math.round(THEME.sizes.tableCell * 1.6));
 
-    for (const color of colors) {
+    for (let ci = startColorIndex; ci < colors.length; ci++) {
+      const color = colors[ci];
       // Color header
-      drawText(ctx, (language === 'he' ? 'צבע: ' : 'Color: ') + color, P, y, { font: 'bold 16px system-ui' });
+      drawText(ctx, (language === 'he' ? 'צבע: ' : 'Color: ') + color, P, y, { font: font('deliveryTitle', 'bold') });
       y += rowH;
       // Header row
       drawLine(ctx, P, y - 6, W - P, y - 6);
-      drawText(ctx, language === 'he' ? 'מידה' : 'Size', P + 6, y, { font: 'bold 14px system-ui', color: '#374151' });
+      drawText(ctx, language === 'he' ? 'מידה' : 'Size', P + 6, y, { font: font('tableHeader', 'bold'), color: '#374151' });
       sizes.forEach((s, i) => {
-        drawText(ctx, s, P + (i+1)*tableColW + 6, y, { font: 'bold 14px system-ui', color: '#374151' });
+        drawText(ctx, s, P + (i+1)*tableColW + 6, y, { font: font('tableHeader', 'bold'), color: '#374151' });
       });
       y += rowH;
       // Values row
-      drawText(ctx, '-', P + 6, y, { font: '14px system-ui', color: '#111' });
+      drawText(ctx, '-', P + 6, y, { font: font('tableCell'), color: '#111' });
       sizes.forEach((s, i) => {
         const val = matrices[color]?.[s] ?? matrices[color]?.[String(s).toLowerCase()] ?? matrices[color]?.[String(s).toUpperCase()] ?? 0;
         const show = val ? String(val) : '';
-        drawText(ctx, show, P + (i+1)*tableColW + 6, y, { font: '14px system-ui', color: '#111' });
+        drawText(ctx, show, P + (i+1)*tableColW + 6, y, { font: font('tableCell'), color: '#111' });
       });
       y += rowH + 10;
 
       if (y > H - 680) {
         // Avoid overlapping with mockups area; simple stop if too long
+        colorsRendered += 1;
         break;
       }
+      colorsRendered += 1;
     }
 
   // Separator before areas, close to whatever height the matrices consumed
@@ -166,53 +213,60 @@ export async function composeWorksheetImage({
   const innerGap = 24;
   const cellW = Math.floor((pairW - innerGap) / 2);
   const cellH = 360;
-  const rowGap = 40;
+  const rowGap = Math.round(THEME.sizes.areaLabel * 1.8);
+  const labelH = THEME.sizes.areaLabel;
+  const hintH = THEME.sizes.hint;
+  const titleBlockH = Math.round(labelH + hintH + 10);
 
     const areas = (item.selectedPrintAreas || [])
       .map((sel) => (typeof sel === 'string' ? { areaKey: sel, method: 'print' } : sel))
       .filter(Boolean);
+    let areasRendered = 0;
 
-    for (let i = 0; i < areas.length; i++) {
+    for (let i = startAreaIndex; i < areas.length; i++) {
       const { areaKey, method } = areas[i];
       const d = (item.uploadedDesigns || {})[areaKey];
       if (!d || !d.url) continue;
       const side = areaKey.startsWith('back') ? 'back' : 'front';
       const baseImage = `/schematics/${side}.png`;
-      // Use existing mockup composer at a smaller size
-      const mockup = await composeMockupImage({ areaKey, baseImage, designUrl: d.url, width: cellW, height: cellH });
+    // Use existing mockup composer at a smaller size
+  const mockup = await composeMockupImage({ areaKey, baseImage, designUrl: d.url, width: cellW, height: cellH });
 
   // If we're beyond the printable area, stop
-  if ((H - P) - my < 120) break;
-  // Fit the block height into the remaining space to avoid cutting bottom
-  const remaining = (H - P) - my;
-  const effH = Math.min(cellH, remaining);
+  const infoLineH = Math.round(THEME.sizes.deliveryText * 1.5);
+  if ((i > startAreaIndex) && my !== areasStart) my += rowGap; // add row gap between items
+  // Ensure there's enough space for titles + a minimal frame height
+  if ((H - P) - my < titleBlockH + 120) break;
+  // Fit the block height into the remaining space to avoid cutting bottom, reserving space for title and info lines
+  const frameTop = my + titleBlockH;
+  const remaining = (H - P) - frameTop;
+  const effH = Math.min(cellH, Math.max(0, remaining - infoLineH));
   const xPair = mx;
-  if (i > 0 && my !== areasStart) my += rowGap; // add row gap between items
 
-      // Titles
-      const label = (language === 'he' ? (printAreas[areaKey]?.labelHe || areaKey) : (printAreas[areaKey]?.label || areaKey)) + (method === 'embo' ? ' • Embo' : '');
-  drawText(ctx, label, xPair, my - 18, { font: 'bold 14px system-ui', color: '#111' });
-  drawText(ctx, 'Mockup', xPair + 6, my - 2, { font: '12px system-ui', color: '#6b7280' });
-  drawText(ctx, 'Design', xPair + cellW + innerGap, my - 2, { font: '12px system-ui', color: '#6b7280' });
+    // Titles (above frames)
+    const label = (language === 'he' ? (printAreas[areaKey]?.labelHe || areaKey) : (printAreas[areaKey]?.label || areaKey)) + (method === 'embo' ? ' • Embo' : '');
+  drawText(ctx, label, xPair, my, { font: font('areaLabel', 'bold'), color: '#111' });
+  drawText(ctx, language === 'he' ? 'מוקאפ' : 'Mockup', xPair + 6, my + labelH + 4, { font: font('hint'), color: '#6b7280' });
+  drawText(ctx, language === 'he' ? 'עיצוב' : 'Design', xPair + cellW + innerGap, my + labelH + 4, { font: font('hint'), color: '#6b7280' });
 
-      // Frames: mockup (left) and design with gray bg (right)
+    // Frames: mockup (left) and design with gray bg (right)
   const xMock = xPair;
   const xDesign = xPair + cellW + innerGap;
       ctx.save();
       ctx.fillStyle = '#f9fafb';
       ctx.strokeStyle = '#e5e7eb';
       ctx.lineWidth = 1;
-  ctx.fillRect(xMock, my, cellW, effH);
-  ctx.strokeRect(xMock, my, cellW, effH);
+  ctx.fillRect(xMock, frameTop, cellW, effH);
+  ctx.strokeRect(xMock, frameTop, cellW, effH);
       // Design panel with gray background
   ctx.fillStyle = '#e5e7eb';
-  ctx.fillRect(xDesign, my, cellW, effH);
-  ctx.strokeRect(xDesign, my, cellW, effH);
+  ctx.fillRect(xDesign, frameTop, cellW, effH);
+  ctx.strokeRect(xDesign, frameTop, cellW, effH);
       ctx.restore();
 
       if (mockup) {
         const img = await loadImage(mockup);
-        ctx.drawImage(img, xMock, my, cellW, effH);
+        ctx.drawImage(img, xMock, frameTop, cellW, effH);
       }
       try {
         const di = await loadImage(d.url);
@@ -221,20 +275,32 @@ export async function composeWorksheetImage({
         const dw2 = Math.round(di.width * scale);
         const dh2 = Math.round(di.height * scale);
         const dx = xDesign + Math.round((cellW - dw2) / 2);
-        const dy = my + Math.round((effH - dh2) / 2);
+        const dy = frameTop + Math.round((effH - dh2) / 2);
         ctx.drawImage(di, dx, dy, dw2, dh2);
       } catch {}
 
-      // Advance by effective height for next row
-      my += effH;
+  // Info line: print color and designer notes
+  const sel = areas[i];
+  const pColor = sel?.printColor ? String(sel.printColor) : '';
+  const notes = sel?.designerComments ? String(sel.designerComments) : '';
+  const infoText = language === 'he'
+    ? `צבע הדפסה: ${pColor || '-'}  ·  הערות למעצב: ${notes || '-'}`
+    : `Print color: ${pColor || '-'}  ·  Notes: ${notes || '-'}`;
+  drawText(ctx, infoText, xPair, frameTop + effH + 4, { font: font('deliveryText'), color: '#374151' });
+
+  // Advance by effective height + info line for next row
+  my += titleBlockH + effH + infoLineH;
+  areasRendered += 1;
     }
 
     // Footer
-    drawLine(ctx, P, H - 40, W - P, H - 40, '#e5e7eb', 1);
-    drawText(ctx, 'Notes: ', P, H - 32, { font: '14px system-ui', color: '#374151' });
+  drawLine(ctx, P, H - 40, W - P, H - 40, '#e5e7eb', 1);
+  drawText(ctx, 'Notes: ', P, H - 32, { font: font('deliveryText'), color: '#374151' });
 
-    return canvas.toDataURL('image/png');
+    const url = canvas.toDataURL('image/png');
+    if (returnMeta) return { dataUrl: url, consumed: { colors: colorsRendered, areas: areasRendered } };
+    return url;
   } catch (e) {
-    return null;
+    return returnMeta ? { dataUrl: null, consumed: { colors: 0, areas: 0 } } : null;
   }
 }

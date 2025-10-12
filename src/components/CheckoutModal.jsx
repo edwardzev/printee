@@ -8,6 +8,28 @@ import { CreditCard, Smartphone, Banknote, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { composeMockupImage } from '@/lib/composeMockupImage';
 import { composeWorksheetImage } from '@/lib/composeWorksheetImage';
+// Lazy import for PDF generation to avoid bundle bloat when not needed
+let pdfLibPromise = null;
+async function ensurePdfLib() {
+  if (!pdfLibPromise) {
+    pdfLibPromise = import('pdf-lib');
+  }
+  return pdfLibPromise;
+}
+async function pngsToPdf(pngDataUrls, opts = {}) {
+  const { widthPx = 1240, heightPx = 1754 } = opts;
+  const { PDFDocument, StandardFonts } = await ensurePdfLib();
+  const pdfDoc = await PDFDocument.create();
+  for (const dataUrl of pngDataUrls) {
+    if (!dataUrl) continue;
+    const pngBytes = await (await fetch(dataUrl)).arrayBuffer();
+    const image = await pdfDoc.embedPng(pngBytes);
+    const page = pdfDoc.addPage([widthPx, heightPx]);
+    page.drawImage(image, { x: 0, y: 0, width: widthPx, height: heightPx });
+  }
+  const bytes = await pdfDoc.save();
+  return `data:application/pdf;base64,${btoa(String.fromCharCode(...new Uint8Array(bytes)))}`;
+}
 
 export default function CheckoutModal({ open, onClose, cartSummary, prefillContact }) {
   const { t, language } = useLanguage();
@@ -216,36 +238,43 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
                 }
               } catch (_) {}
             }
-            // Create a worksheet per product (per item)
+            // Create a worksheet PDF per product with auto-pagination
             try {
-              const worksheetPng = await composeWorksheetImage({
-                item,
-                language: 'en',
-                dropboxLink: dropboxSharedLink || (payload?.financial?.dropbox_shared_link || ''),
-                idempotencyKey: idempotencyKeyRef.current,
-                orderNumber: (orderIdFromAirtable || payload?.airtable_order_id || ''),
-                customer: {
-                  name,
-                  phone,
-                  email,
-                  address_street: payload?.contact?.street || payload?.contact?.address_street || '',
-                  address_city: payload?.contact?.city || payload?.contact?.address_city || '',
-                },
-                financial: {
-                  subtotal: subtotal0,
-                  delivery: delivery0,
-                  vat: vat0,
-                  total: total0,
-                  payment_method: method,
-                },
-                delivery: {
-                  method: payload?.withDelivery ? 'Delivery' : 'Pickup',
-                  notes: payload?.deliveryNotes || '',
-                },
-              });
-              if (worksheetPng) {
-                // Do not force a client-side filename; server will name it WS<orderId>.png and create a shared link
-                pushUpload({ areaKey: 'worksheet', method: 'worksheet', product, colors: activeColors, qty: totalQtyForItem, dataUrl: worksheetPng });
+              const pagePngs = [];
+              let startColorIndex = 0;
+              let startAreaIndex = 0;
+              let guard = 0;
+              while (guard++ < 10) { // hard safety upper-bound to avoid infinite loops
+                const result = await composeWorksheetImage({
+                  item,
+                  language: 'en',
+                  dropboxLink: dropboxSharedLink || (payload?.financial?.dropbox_shared_link || ''),
+                  idempotencyKey: idempotencyKeyRef.current,
+                  orderNumber: (orderIdFromAirtable || payload?.airtable_order_id || ''),
+                  customer: { name, phone, email, address_street: payload?.contact?.street || payload?.contact?.address_street || '', address_city: payload?.contact?.city || payload?.contact?.address_city || '' },
+                  financial: { subtotal: subtotal0, delivery: delivery0, vat: vat0, total: total0, payment_method: method },
+                  delivery: { method: payload?.withDelivery ? 'Delivery' : 'Pickup', notes: payload?.deliveryNotes || '' },
+                  returnMeta: true,
+                  startColorIndex,
+                  startAreaIndex,
+                });
+                if (!result || !result.dataUrl) break;
+                pagePngs.push(result.dataUrl);
+                const consumedColors = (result.consumed && result.consumed.colors) || 0;
+                const consumedAreas = (result.consumed && result.consumed.areas) || 0;
+                if (consumedColors === 0 && consumedAreas === 0) break; // nothing consumed; stop
+                startColorIndex += consumedColors;
+                startAreaIndex += consumedAreas;
+                // If everything consumed (all colors and areas rendered), stop
+                const totalColors = Object.keys(item.sizeMatrices || {}).length;
+                const totalAreas = (item.selectedPrintAreas || []).length;
+                if (startColorIndex >= totalColors && startAreaIndex >= totalAreas) break;
+              }
+              if (pagePngs.length > 0) {
+                const pdfDataUrl = await pngsToPdf(pagePngs, { widthPx: 1240, heightPx: 1754 });
+                if (pdfDataUrl) {
+                  pushUpload({ areaKey: 'worksheet', method: 'worksheet', product, colors: activeColors, qty: totalQtyForItem, dataUrl: pdfDataUrl, fileName: 'worksheet.pdf' });
+                }
               }
             } catch (_) {}
           }

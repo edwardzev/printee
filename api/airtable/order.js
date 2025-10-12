@@ -37,18 +37,37 @@ function getEnv() {
   };
 }
 
-function normalizeDropboxDirect(link) {
+function normalizeDropboxFolderView(link) {
+  // Keep folder link as view (dl=0) to avoid auto-zipping
   try {
     if (!link) return link;
     const u = new URL(String(link));
-    u.searchParams.set('dl', '1');
+    // Ensure it's a folder-style path; regardless, set dl=0
+    u.searchParams.set('dl', '0');
     return u.toString();
   } catch {
     try {
       const s = String(link);
-      if (s.includes('?dl=0')) return s.replace('?dl=0', '?dl=1');
-      if (s.includes('&dl=0')) return s.replace('&dl=0', '&dl=1');
-      return s + (s.includes('?') ? '&dl=1' : '?dl=1');
+      if (s.includes('?dl=1')) return s.replace('?dl=1', '?dl=0');
+      if (s.includes('&dl=1')) return s.replace('&dl=1', '&dl=0');
+      return s + (s.includes('?') ? '&dl=0' : '?dl=0');
+    } catch { return link; }
+  }
+}
+
+function normalizeDropboxFileRaw(link) {
+  // Prefer raw=1 for direct file content (avoids zip packaging behavior)
+  try {
+    if (!link) return link;
+    const u = new URL(String(link));
+    u.searchParams.delete('dl');
+    u.searchParams.set('raw', '1');
+    return u.toString();
+  } catch {
+    try {
+      const s = String(link);
+      const noDl = s.replace('?dl=1', '').replace('?dl=0', '').replace('&dl=1', '').replace('&dl=0', '');
+      return noDl + (noDl.includes('?') ? '&raw=1' : '?raw=1');
     } catch { return link; }
   }
 }
@@ -357,8 +376,9 @@ export default async function handler(req, res) {
               const { mime, buffer } = parseDataUrl(dataUrl);
               if (!buffer || !buffer.length) throw new Error('invalid_data_url');
               const isWorksheet = (method === 'worksheet' || areaKey === 'worksheet');
-              // Force PNG for worksheet to standardize
-              const extRaw = isWorksheet ? 'png' : (getExtFromName(name) || getExtFromMime(mime) || 'bin');
+              // Allow PDF for worksheet, else fall back to PNG
+              const extFromMime = getExtFromMime(mime);
+              const extRaw = isWorksheet ? (extFromMime === 'pdf' ? 'pdf' : 'png') : (getExtFromName(name) || extFromMime || 'bin');
               const filename = isWorksheet
                 ? `WS-${orderId}-${sanitizeSegment(product)}.${extRaw}`
                 : composeUploadFilename({ orderId, areaKey, method, product, colors, qty, ext: extRaw });
@@ -405,24 +425,24 @@ export default async function handler(req, res) {
             };
             // Include dropbox shared link in the finance JSON so it's persisted
             if (financial.dropbox_shared_link) {
-              financePayload.dropbox_shared_link = normalizeDropboxDirect(String(financial.dropbox_shared_link));
+              financePayload.dropbox_shared_link = normalizeDropboxFolderView(String(financial.dropbox_shared_link));
             }
             // If client didn't send it but server just created/fetched it, include it now (write-through)
             if (!financePayload.dropbox_shared_link && dropbox && dropbox.shared_link) {
-              financePayload.dropbox_shared_link = normalizeDropboxDirect(String(dropbox.shared_link));
+              financePayload.dropbox_shared_link = normalizeDropboxFolderView(String(dropbox.shared_link));
             }
             // Include worksheet link(s) if available (client or server)
             if (financial.dropbox_worksheet_link) {
-              financePayload.dropbox_worksheet_link = normalizeDropboxDirect(String(financial.dropbox_worksheet_link));
+              financePayload.dropbox_worksheet_link = normalizeDropboxFileRaw(String(financial.dropbox_worksheet_link));
             }
             if (financial.dropbox_worksheet_links && typeof financial.dropbox_worksheet_links === 'object') {
               const norm = {};
-              for (const [k, v] of Object.entries(financial.dropbox_worksheet_links)) norm[k] = normalizeDropboxDirect(String(v));
+              for (const [k, v] of Object.entries(financial.dropbox_worksheet_links)) norm[k] = normalizeDropboxFileRaw(String(v));
               financePayload.dropbox_worksheet_links = norm;
             }
             if (!financePayload.dropbox_worksheet_links && dropbox && dropbox.worksheet_links) {
               const norm = {};
-              for (const [k, v] of Object.entries(dropbox.worksheet_links)) norm[k] = normalizeDropboxDirect(String(v));
+              for (const [k, v] of Object.entries(dropbox.worksheet_links)) norm[k] = normalizeDropboxFileRaw(String(v));
               financePayload.dropbox_worksheet_links = norm;
             }
             if (!financePayload.dropbox_worksheet_link && financePayload.dropbox_worksheet_links) {
@@ -456,7 +476,7 @@ export default async function handler(req, res) {
                 const colors = Array.isArray(u.colors) ? u.colors : (u.color ? [u.color] : []);
                 const qty = Number.isFinite(u.qty) ? u.qty : parseInt(u.qty, 10) || 0;
                 const isWorksheet = (method === 'worksheet' || areaKey === 'worksheet');
-                const ext = isWorksheet ? 'png' : (getExtFromName(u.fileName || '') || 'png');
+                const ext = isWorksheet ? 'pdf' : (getExtFromName(u.fileName || '') || 'png');
                 const fileName = isWorksheet ? `WS-${orderId}-${sanitizeSegment(product)}.${ext}` : composeUploadFilename({ orderId, areaKey, method, product, colors, qty, ext });
                 const path = `${subPath}/${fileName}`.replace(/\/+/, '/');
                 return { areaKey, method, product, colors, qty, fileName, path };
