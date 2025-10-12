@@ -121,6 +121,56 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
 
     // Enrich Airtable record with Customer + Financial + Cart and attach file paths.
     try {
+      // First: upsert order in Airtable to get orderId and (optionally) a Dropbox link
+      let orderIdFromAirtable = payload?.airtable_order_id || '';
+      let dropboxSharedLink = payload?.financial?.dropbox_shared_link || '';
+
+      const subtotal0 = Number(cartSummary?.total || 0);
+      const delivery0 = payload?.withDelivery ? Math.ceil(Number(getTotalItems?.() || 0) / 50) * 50 : 0;
+      const vat0 = Math.round((subtotal0 + delivery0) * 0.17);
+      const total0 = Math.round((subtotal0 + delivery0) * 1.17);
+
+      try {
+        const prelim = await fetch('/api/airtable/order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            idempotency_key: idempotencyKeyRef.current,
+            customer: {
+              name,
+              phone,
+              email,
+              address_street: payload?.contact?.street || payload?.contact?.address_street || '',
+              address_city: payload?.contact?.city || payload?.contact?.address_city || '',
+            },
+            financial: { subtotal: subtotal0, delivery: delivery0, vat: vat0, total: total0, payment_method: method },
+            cart: {
+              items: (cartItems || []).map((i) => ({
+                productSku: i.productSku,
+                productName: i.productName,
+                sizeMatrices: (i.sizeMatrices && typeof i.sizeMatrices === 'object') ? i.sizeMatrices : (i.color ? { [i.color]: (i.sizeMatrix || {}) } : {}),
+                selectedPrintAreas: (i.selectedPrintAreas || []).map((sel) => typeof sel === 'string' ? { areaKey: sel, method: 'print' } : sel).filter(Boolean),
+              })),
+            },
+            uploads: [],
+            cartUploads: [],
+          }),
+        });
+        const prelimJson = await prelim.json().catch(() => null);
+        if (prelimJson && prelimJson.orderId) {
+          orderIdFromAirtable = prelimJson.orderId;
+        }
+        if (prelimJson && prelimJson.dropbox && prelimJson.dropbox.shared_link) {
+          dropboxSharedLink = prelimJson.dropbox.shared_link;
+        }
+        if (orderIdFromAirtable) {
+          try { mergePayload({ airtable_order_id: orderIdFromAirtable }); } catch {}
+        }
+        if (dropboxSharedLink) {
+          try { mergePayload({ financial: { ...(payload?.financial || {}), dropbox_shared_link: dropboxSharedLink } }); } catch {}
+        }
+      } catch {}
+
       // Recreate the same uploads we generated in Cart for naming consistency
       const uploads = (async () => {
         try {
@@ -128,6 +178,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
           // helper to push an upload record
           const pushUpload = (u) => { if (u) list.push(u); };
 
+          let worksheetDone = false;
           for (const item of (cartItems || [])) {
             const product = item.productSku || item.product || 'product';
             const matrices = item.sizeMatrices || {};
@@ -166,11 +217,37 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
                 }
               } catch (_) {}
             }
-            // After pushing uploads per area, create a worksheet for this item
-            try {
-              const worksheetPng = await composeWorksheetImage({ item, language, dropboxLink: (payload?.financial?.dropbox_shared_link || ''), idempotencyKey: idempotencyKeyRef.current });
+            // Create a single worksheet per order from the first item (avoids multiple versions)
+            if (!worksheetDone) try {
+              const worksheetPng = await composeWorksheetImage({
+                item,
+                language: 'en',
+                dropboxLink: dropboxSharedLink || (payload?.financial?.dropbox_shared_link || ''),
+                idempotencyKey: idempotencyKeyRef.current,
+                orderNumber: (orderIdFromAirtable || payload?.airtable_order_id || ''),
+                customer: {
+                  name,
+                  phone,
+                  email,
+                  address_street: payload?.contact?.street || payload?.contact?.address_street || '',
+                  address_city: payload?.contact?.city || payload?.contact?.address_city || '',
+                },
+                financial: {
+                  subtotal: subtotal0,
+                  delivery: delivery0,
+                  vat: vat0,
+                  total: total0,
+                  payment_method: method,
+                },
+                delivery: {
+                  method: payload?.withDelivery ? 'Delivery' : 'Pickup',
+                  notes: payload?.deliveryNotes || '',
+                },
+              });
               if (worksheetPng) {
-                pushUpload({ areaKey: 'worksheet', method: 'worksheet', product, colors: activeColors, qty: totalQtyForItem, dataUrl: worksheetPng, fileName: `worksheet-${product}.png` });
+                // Do not force a client-side filename; server will name it WS<orderId>.png and create a shared link
+                pushUpload({ areaKey: 'worksheet', method: 'worksheet', product, colors: activeColors, qty: totalQtyForItem, dataUrl: worksheetPng });
+                worksheetDone = true;
               }
             } catch (_) {}
           }
@@ -184,6 +261,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       const total = Math.round((subtotal + delivery) * 1.17);
       const financialBlock = { subtotal, delivery, vat, total, payment_method: method };
 
+      const builtUploads = await uploads;
       const enriched = {
         idempotency_key: idempotencyKeyRef.current,
         customer: {
@@ -222,8 +300,17 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
             };
           }),
         },
-        // cartUploads can now be a promise from async builder; await it before sending
-        cartUploads: await uploads,
+        // Actual files to upload server-side
+        uploads: builtUploads,
+        // Lightweight metadata for Airtable payload (avoid duplicating dataUrl)
+        cartUploads: (builtUploads || []).map((u) => ({
+          areaKey: u.areaKey,
+          method: u.method,
+          product: u.product,
+          colors: u.colors,
+          qty: u.qty,
+          fileName: u.fileName,
+        })),
       };
 
       try {

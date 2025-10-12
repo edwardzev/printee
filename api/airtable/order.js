@@ -327,6 +327,7 @@ export default async function handler(req, res) {
         // If uploads were provided, upload them now
         let uploadedCount = 0;
         let failed = [];
+        let worksheetLink = null;
         if (Array.isArray(uploads) && uploads.length) {
           for (const u of uploads) {
             try {
@@ -339,11 +340,22 @@ export default async function handler(req, res) {
               const name = String(u.fileName || u.name || '');
               const { mime, buffer } = parseDataUrl(dataUrl);
               if (!buffer || !buffer.length) throw new Error('invalid_data_url');
-              const extRaw = getExtFromName(name) || getExtFromMime(mime) || 'bin';
-              const filename = composeUploadFilename({ orderId, areaKey, method, product, colors, qty, ext: extRaw });
+              const isWorksheet = (method === 'worksheet' || areaKey === 'worksheet');
+              // Force PNG for worksheet to standardize
+              const extRaw = isWorksheet ? 'png' : (getExtFromName(name) || getExtFromMime(mime) || 'bin');
+              const filename = isWorksheet
+                ? `WS${orderId}.${extRaw}`
+                : composeUploadFilename({ orderId, areaKey, method, product, colors, qty, ext: extRaw });
               const filePath = `${subPath}/${filename}`.replace(/\/+/, '/');
-              await dropboxUploadFile({ accessToken, namespaceId: dbxNamespaceId, path: filePath, content: buffer, mode: { '.tag': 'add' }, autorename: false, mute: true });
+              await dropboxUploadFile({ accessToken, namespaceId: dbxNamespaceId, path: filePath, content: buffer, mode: isWorksheet ? { '.tag': 'overwrite' } : { '.tag': 'add' }, autorename: false, mute: true });
               uploadedCount += 1;
+              // For the worksheet, also create/get a shared link to the file itself for Airtable
+              if (isWorksheet && !worksheetLink) {
+                try {
+                  const link = await dropboxCreateSharedLink({ accessToken, namespaceId: dbxNamespaceId, path: filePath });
+                  if (link) worksheetLink = link;
+                } catch (_) {}
+              }
             } catch (e) {
               try { failed.push({ name: u?.fileName || u?.name || null, error: e?.message || String(e) }); } catch {}
             }
@@ -351,6 +363,7 @@ export default async function handler(req, res) {
         }
         if (uploadedCount || (failed && failed.length)) {
           dropbox.uploads = { uploaded: uploadedCount, failedCount: (failed && failed.length) || 0, failed };
+          if (worksheetLink) dropbox.worksheet_link = worksheetLink;
           try { console.log('[airtable/order] dropbox uploads', dropbox.uploads); } catch {}
         }
 
@@ -382,6 +395,13 @@ export default async function handler(req, res) {
             if (!financePayload.dropbox_shared_link && dropbox && dropbox.shared_link) {
               financePayload.dropbox_shared_link = String(dropbox.shared_link);
             }
+            // Include worksheet link if available (client or server)
+            if (financial.dropbox_worksheet_link) {
+              financePayload.dropbox_worksheet_link = String(financial.dropbox_worksheet_link);
+            }
+            if (!financePayload.dropbox_worksheet_link && dropbox && dropbox.worksheet_link) {
+              financePayload.dropbox_worksheet_link = String(dropbox.worksheet_link);
+            }
             if (financial.invrec && typeof financial.invrec === 'object') {
               if (financial.invrec.docnum != null) financePayload.invrec_num = String(financial.invrec.docnum);
               if (financial.invrec.link != null) financePayload.invrec_link = String(financial.invrec.link);
@@ -407,8 +427,9 @@ export default async function handler(req, res) {
                 const product = String(u.product || u.productSku || 'product');
                 const colors = Array.isArray(u.colors) ? u.colors : (u.color ? [u.color] : []);
                 const qty = Number.isFinite(u.qty) ? u.qty : parseInt(u.qty, 10) || 0;
-                const ext = getExtFromName(u.fileName || '') || 'png';
-                const fileName = composeUploadFilename({ orderId, areaKey, method, product, colors, qty, ext });
+                const isWorksheet = (method === 'worksheet' || areaKey === 'worksheet');
+                const ext = isWorksheet ? 'png' : (getExtFromName(u.fileName || '') || 'png');
+                const fileName = isWorksheet ? `WS${orderId}.${ext}` : composeUploadFilename({ orderId, areaKey, method, product, colors, qty, ext });
                 const path = `${subPath}/${fileName}`.replace(/\/+/, '/');
                 return { areaKey, method, product, colors, qty, fileName, path };
               });

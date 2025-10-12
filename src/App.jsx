@@ -23,6 +23,7 @@ import FAQ from '@/pages/FAQ';
 import PrintQuality from '@/pages/PrintQuality';
 import GarmentsQuality from '@/pages/GarmentsQuality';
 import ServiceQuality from '@/pages/ServiceQuality';
+import DevComposer from '@/pages/DevComposer';
 
 function ScrollToTop() {
   const { pathname, search } = useLocation();
@@ -69,6 +70,9 @@ function App() {
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/returns" element={<Returns />} />
+                {process.env.NODE_ENV !== 'production' && (
+                  <Route path="/dev/composer" element={<DevComposer />} />
+                )}
               </Routes>
             </main>
             <Footer />
