@@ -248,9 +248,9 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
               </Button>
 
               {addedOnce && (
-                <div className="mt-3">
+                <div className="mt-2">
                   <Link to="/catalog" className="w-full inline-block">
-                    <button className="w-full bg-white border border-gray-200 rounded px-4 py-3 text-sm text-gray-700">
+                    <button className="w-full bg-white border border-gray-200 rounded px-3 py-2 text-sm text-gray-700 leading-tight">
                       {language === 'he' ? 'בחר מוצר נוסף' : 'Choose another product'}
                     </button>
                   </Link>
@@ -354,7 +354,7 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
                   </Button>
 
                   <Link to="/catalog" onClick={closeSheet} className="w-full">
-                    <Button size="lg" variant="outline" className="rounded-full w-full">
+                    <Button size="lg" variant="outline" className="rounded-full w-full py-2">
                       {language === 'he' ? 'בחר מוצר נוסף' : 'Choose another product'}
                     </Button>
                   </Link>

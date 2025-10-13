@@ -51,6 +51,36 @@ export default function ThankYouCC() {
     } catch {}
   }, [marked, clearPayload]);
 
+  // Fire Google Ads conversion event (AW) once per order
+  useEffect(() => {
+    try {
+      const totals = safeGet(payload, 'order.totals') || safeGet(payload, 'cartSummary') || {};
+      let value = Number(totals?.total || totals?.grandTotal || totals?.amount || 0) || 0;
+      let currency = String(totals?.currency || 'ILS');
+      let tx = String(orderId || payload?.idempotency_key || '');
+      if ((!tx || !value) && typeof window !== 'undefined') {
+        try {
+          const s = JSON.parse(localStorage.getItem('order_payload_for_gtag') || '{}');
+          if (s && s.transaction_id) tx = tx || String(s.transaction_id || '');
+          if (!value && s && s.value) value = Number(s.value || 0);
+          if (s && s.currency) currency = s.currency || currency;
+        } catch (e) {}
+      }
+      if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
+        const key = `gtag_purchase_${tx}`;
+        if (tx && localStorage.getItem(key)) return; // already fired
+        window.gtag('event', 'conversion', {
+          send_to: 'AW-17646508237/0c12CLWH8asbEM2xwd5B',
+          value: value,
+          currency: currency,
+          transaction_id: tx,
+        });
+        if (tx) localStorage.setItem(key, '1');
+        try { localStorage.removeItem('order_payload_for_gtag'); } catch (e) {}
+      }
+    } catch (e) {}
+  }, [orderId, payload]);
+
   return (
     <>
       <Helmet>

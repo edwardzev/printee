@@ -106,7 +106,7 @@ const PrintAreaSelector = ({ availableAreas, selectedAreas, onChange }) => {
             role="button"
             tabIndex={disabledByConflict ? -1 : 0}
             aria-disabled={disabledByConflict}
-            className={`print-area-card p-4 border-2 rounded-lg transition-all ${
+            className={`print-area-card p-4 border-2 rounded-lg transition-all overflow-hidden h-full ${
               disabledByConflict
                 ? 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
                 : isSelected
@@ -170,7 +170,7 @@ const PrintAreaSelector = ({ availableAreas, selectedAreas, onChange }) => {
                       />
                       <span className="text-sm">{language === 'he' ? 'הדפסה' : 'Print'}</span>
                     </div>
-                    <span className="text-sm text-gray-500 whitespace-nowrap">{language === 'he' ? `₪${area.fee} ליח׳` : `₪${area.fee}/unit`}</span>
+                    <span className="text-sm text-gray-500 truncate max-w-[5.5rem] text-right">{language === 'he' ? `₪${area.fee} ליח׳` : `₪${area.fee}/unit`}</span>
                   </label>
 
                   {area.emboAllowed && (
@@ -198,7 +198,7 @@ const PrintAreaSelector = ({ availableAreas, selectedAreas, onChange }) => {
                         />
                         <span className="text-sm">{language === 'he' ? 'רקמה' : 'Embo'}</span>
                       </div>
-                      <span className="text-sm text-gray-500 whitespace-nowrap">{language === 'he' ? '₪10 ליח׳' : '₪10/unit'}</span>
+                      <span className="text-sm text-gray-500 truncate max-w-[5.5rem] text-right">{language === 'he' ? '₪10 ליח׳' : '₪10/unit'}</span>
                     </label>
                   )}
                 </div>

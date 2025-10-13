@@ -249,55 +249,62 @@ const MockupCanvas = ({ areaKey, baseImage, onFileUpload, uploadedDesign, templa
         </div>
 
         {/* Single action: Change file and color choice */}
-        <div className="flex flex-col sm:flex-row items-stretch justify-between gap-3">
+        <div className="flex flex-col gap-3">
           {effectiveDesign ? (
-            <div className="flex items-center gap-2">
-              <label htmlFor={`print-color-${areaKey}`} className="text-sm text-gray-700 whitespace-nowrap">
-                צבע הדפסה:
-              </label>
-              <select
-                id={`print-color-${areaKey}`}
-                className="rounded-full border border-gray-300 px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={printColor}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setPrintColor(v);
-                  if (typeof onColorChoice === 'function') {
-                    try { onColorChoice(areaKey, v); } catch {}
-                  }
-                }}
-              >
-                <option value="as-is">כמו שזה</option>
-                <option value="color">צבעוני</option>
-                <option value="black">שחור</option>
-                <option value="white">לבן</option>
-                <option value="red">אדום</option>
-                <option value="blue">כחול</option>
-                <option value="green">ירוק</option>
-                <option value="yellow">צהוב</option>
-                <option value="other">אחר</option>
-              </select>
-            <div className="ml-4 max-w-full sm:max-w-none">
-              <label htmlFor={`designer-notes-${areaKey}`} className="text-sm text-gray-700 block mb-1">
-                הערות לגרפיקאי
-              </label>
-              <textarea
-                id={`designer-notes-${areaKey}`}
-                className="rounded-md border border-gray-300 px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-0 w-full sm:w-auto sm:min-w-[220px]"
-                rows={2}
-                maxLength={200}
-                placeholder="עד 200 תווים…"
-                value={designerNotes}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setDesignerNotes(v);
-                  if (typeof onDesignerNotesChange === 'function') {
-                    try { onDesignerNotesChange(areaKey, v); } catch {}
-                  }
-                }}
-              />
-              <div className="text-[11px] text-gray-400 mt-1 text-right">{designerNotes.length}/200</div>
-            </div>
+            <div className="w-full">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
+                {/* Color selector - label moved above the select so it doesn't crowd the comments */}
+                <div className="flex flex-col">
+                  <label htmlFor={`print-color-${areaKey}`} className="text-sm text-gray-700 mb-1">
+                    צבע הדפסה
+                  </label>
+                  <select
+                    id={`print-color-${areaKey}`}
+                    className="rounded-full border border-gray-300 px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={printColor}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setPrintColor(v);
+                      if (typeof onColorChoice === 'function') {
+                        try { onColorChoice(areaKey, v); } catch {}
+                      }
+                    }}
+                  >
+                    <option value="as-is">כמו שזה</option>
+                    <option value="color">צבעוני</option>
+                    <option value="black">שחור</option>
+                    <option value="white">לבן</option>
+                    <option value="red">אדום</option>
+                    <option value="blue">כחול</option>
+                    <option value="green">ירוק</option>
+                    <option value="yellow">צהוב</option>
+                    <option value="other">אחר</option>
+                  </select>
+                </div>
+
+                {/* Designer notes span the remaining columns on small screens and get more room on larger screens */}
+                <div className="sm:col-span-2">
+                  <label htmlFor={`designer-notes-${areaKey}`} className="text-sm text-gray-700 block mb-1">
+                    הערות לגרפיקאי
+                  </label>
+                  <textarea
+                    id={`designer-notes-${areaKey}`}
+                    className="rounded-md border border-gray-300 px-3 py-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                    rows={2}
+                    maxLength={200}
+                    placeholder="עד 200 תווים…"
+                    value={designerNotes}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setDesignerNotes(v);
+                      if (typeof onDesignerNotesChange === 'function') {
+                        try { onDesignerNotesChange(areaKey, v); } catch {}
+                      }
+                    }}
+                  />
+                  <div className="text-[11px] text-gray-400 mt-1 text-right">{designerNotes.length}/200</div>
+                </div>
+              </div>
             </div>
           ) : <div />}
           <div className="flex justify-end gap-3 w-full">

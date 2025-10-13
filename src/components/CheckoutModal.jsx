@@ -411,6 +411,15 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
 
         setProcessing(false);
         onClose();
+        // Persist minimal order info so returning from external payment can still fire gtag
+        try {
+          const stored = {
+            transaction_id: orderIdFromAirtable || idempotencyKeyRef.current || '',
+            value: Number(totalToCharge) || 0,
+            currency: 'ILS'
+          };
+          try { localStorage.setItem('order_payload_for_gtag', JSON.stringify(stored)); } catch (e) {}
+        } catch (e) {}
         window.location.assign(u.toString());
         return;
       } catch (e) {
