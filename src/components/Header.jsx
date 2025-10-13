@@ -202,9 +202,11 @@ export default function Header({ dir = "rtl" }) {
           className="hidden md:flex"
         >
           {[
-            { id: "how", label: "איך זה עובד" },
-            { id: "catalog", label: "קטלוג" },
+            // RTL order requested: Prices, Catalog, How it works, Methods of branding, QA
             { id: "pricing", label: "מחירים" },
+            { id: "catalog", label: "קטלוג" },
+            { id: "how", label: "איך זה עובד" },
+            { id: "methods", label: "שיטות מיתוג" },
             { id: "faq", label: "שאלות נפוצות" },
             { id: "contact", label: "התחל בהזמנה", cta: true },
           ].map(({ id, label, cta }) => {
@@ -228,29 +230,14 @@ export default function Header({ dir = "rtl" }) {
               justifyContent: 'center',
             };
 
-            // Render a routed Link for the FAQ item so it navigates to /faq
-            if (id === 'faq') {
-              return (
-                <Link key={id} to="/faq" style={baseStyle}>
-                  {label}
-                </Link>
-              );
-            }
-
-            // Catalog, Pricing and CTA -> go to /catalog route
+            // Special routed items
+            if (id === 'faq') return (<Link key={id} to="/faq" style={baseStyle}>{label}</Link>);
+            if (id === 'methods') return (<Link key={id} to="/methods-of-branding" style={baseStyle} onClick={() => setOpen(false)}>{label}</Link>);
             if (id === 'catalog' || id === 'contact' || id === 'pricing') {
-              return (
-                <Link key={id} to="/catalog" style={baseStyle} onClick={() => setOpen(false)}>
-                  {label}
-                </Link>
-              );
+              // Pricing currently navigates to catalog (pricing anchor handled on Home)
+              return (<Link key={id} to="/catalog" style={baseStyle} onClick={() => setOpen(false)}>{label}</Link>);
             }
-
-            return (
-              <a key={id} href={`#${id}`} onClick={goTo(id)} style={baseStyle}>
-                {label}
-              </a>
-            );
+            return (<a key={id} href={`#${id}`} onClick={goTo(id)} style={baseStyle}>{label}</a>);
           })}
           {/* Cart icon with badge */}
           <Link
@@ -322,10 +309,10 @@ export default function Header({ dir = "rtl" }) {
               {dir === 'rtl' ? (
                 <>
                   <Link to="/catalog" onClick={() => setOpen(false)} className="text-xl font-semibold text-gray-900 py-3 border-b border-gray-200 inline-flex items-center gap-3">
-                    <List className="h-6 w-6" /> קטלוג
+                    <DollarSign className="h-6 w-6" /> מחירים
                   </Link>
                   <Link to="/catalog" onClick={() => setOpen(false)} className="text-xl font-semibold text-gray-900 py-3 border-b border-gray-200 inline-flex items-center gap-3">
-                    <DollarSign className="h-6 w-6" /> מחירים
+                    <List className="h-6 w-6" /> קטלוג
                   </Link>
                 </>
               ) : (
@@ -338,6 +325,9 @@ export default function Header({ dir = "rtl" }) {
               <a href="#how" onClick={goTo('how')} className="text-xl font-semibold text-gray-900 py-3 border-b border-gray-200 inline-flex items-center gap-3">
                 <Info className="h-6 w-6" /> איך זה עובד
               </a>
+              <Link to="/methods-of-branding" onClick={() => setOpen(false)} className="text-xl font-semibold text-gray-900 py-3 border-b border-gray-200 inline-flex items-center gap-3">
+                <Info className="h-6 w-6" /> שיטות מיתוג
+              </Link>
               <Link to="/faq" onClick={() => setOpen(false)} className="text-xl font-semibold text-gray-900 py-3 border-b border-gray-200 inline-flex items-center gap-3">
                 <HelpCircle className="h-6 w-6" /> שאלות נפוצות
               </Link>

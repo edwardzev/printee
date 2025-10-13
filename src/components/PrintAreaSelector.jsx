@@ -150,7 +150,7 @@ const PrintAreaSelector = ({ availableAreas, selectedAreas, onChange }) => {
               <div className="flex flex-col items-center gap-2 w-full">
                 <div className="flex flex-col items-stretch gap-2 w-full">
                   <label className="w-full flex justify-between items-center text-sm">
-                    <div className="flex items-center">
+                    <div className={`flex items-center ${language === 'he' ? 'flex-row-reverse sm:flex-row' : ''}`}>
                       <input
                         type="radio"
                         name={`method-${areaKey}`}
@@ -166,7 +166,7 @@ const PrintAreaSelector = ({ availableAreas, selectedAreas, onChange }) => {
                           onChange(next);
                         }}
                         disabled={disabled}
-                        className="mr-3"
+                        className={`${language === 'he' ? 'ml-3 sm:mr-3' : 'mr-3'}`}
                       />
                       <span className="text-sm">{language === 'he' ? 'הדפסה' : 'Print'}</span>
                     </div>
@@ -175,7 +175,7 @@ const PrintAreaSelector = ({ availableAreas, selectedAreas, onChange }) => {
 
                   {area.emboAllowed && (
                     <label className="w-full flex justify-between items-center text-sm">
-                      <div className="flex items-center">
+                      <div className={`flex items-center ${language === 'he' ? 'flex-row-reverse sm:flex-row' : ''}`}>
                         <input
                           type="radio"
                           name={`method-${areaKey}`}
@@ -194,7 +194,7 @@ const PrintAreaSelector = ({ availableAreas, selectedAreas, onChange }) => {
                             onChange(next);
                           }}
                           disabled={disabled}
-                          className="mr-3"
+                          className={`${language === 'he' ? 'ml-3 sm:mr-3' : 'mr-3'}`}
                         />
                         <span className="text-sm">{language === 'he' ? 'רקמה' : 'Embo'}</span>
                       </div>
