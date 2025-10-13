@@ -353,15 +353,15 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
                     {t('addToCart')}
                   </Button>
 
-                  <Link to="/catalog" onClick={closeSheet} className="w-full">
-                    <Button size="lg" variant="outline" className="rounded-full w-full py-2">
-                      {language === 'he' ? 'בחר מוצר נוסף' : 'Choose another product'}
-                    </Button>
-                  </Link>
-
                   <Link to="/cart" onClick={closeSheet} className="w-full">
                     <Button size="lg" variant="default" className="rounded-full w-full">
                       {language === 'he' ? 'לעגלה' : 'Cart'}
+                    </Button>
+                  </Link>
+
+                  <Link to="/catalog" onClick={closeSheet} className="w-full">
+                    <Button size="lg" variant="outline" className="rounded-full w-full py-2 text-xs leading-tight">
+                      {language === 'he' ? 'בחר מוצר נוסף' : 'Choose another product'}
                     </Button>
                   </Link>
                 </div>
@@ -436,7 +436,7 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
                         </Button>
                       </Link>
                       <Link to="/catalog" onClick={closeSheet}>
-                        <Button className="w-full mt-2" size="lg" variant="outline">
+                        <Button className="w-full mt-2 text-xs leading-tight" size="lg" variant="outline">
                           {language === 'he' ? 'בחר מוצר נוסף' : 'Choose another product'}
                         </Button>
                       </Link>
