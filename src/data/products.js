@@ -776,7 +776,7 @@ export const pricingRules = {
   },
   polo: {
     tiers: [
-      { min: 1, max: 9, price: 55 },
+      { min: 1, max: 9, price: 1 },
       { min: 10, max: 19, price: 40 },
       { min: 20, max: 49, price: 25 },
       { min: 50, max: 99, price: 20 },

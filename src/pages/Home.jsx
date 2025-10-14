@@ -152,7 +152,7 @@ const Home = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="bg-white rounded-xl p-6 shadow-sm flex flex-col md:flex-row items-center gap-6">
               <div className="w-full md:w-1/3">
-                <img src="/hero_images/hero_1.jpg" alt="Methods of branding" className="w-full h-44 object-cover rounded-md" />
+                <img src="/hero_images/dtg.jpg" alt="Methods of branding" className="w-full h-44 object-cover rounded-md" />
               </div>
               <div className="w-full md:w-2/3 text-right">
                 <h3 className="text-2xl font-bold mb-2">השיטות שאנו מציעים למיתוג</h3>
