@@ -602,23 +602,85 @@ export const printAreas = {
 export const pricingRules = {
   tshirt: {
     tiers: [
-      { min: 1, max: 10, price: 50 },
-      { min: 11, max: 50, price: 30 },
-      { min: 51, max: Infinity, price: 20 }
+      { min: 1, max: 9, price: 50 },
+      { min: 10, max: 19, price: 30 },
+      { min: 20, max: 49, price: 20 },
+      { min: 50, max: 99, price: 15 },
+      { min: 100, max: Infinity, price: 10 }
     ]
   },
   hoodie: {
     tiers: [
-      { min: 1, max: 10, price: 100 },
-      { min: 11, max: 50, price: 70 },
-      { min: 51, max: Infinity, price: 50 }
+      { min: 1, max: 9, price: 70 },
+      { min: 10, max: 19, price: 50 },
+      { min: 20, max: 49, price: 40 },
+      { min: 50, max: 99, price: 35 },
+      { min: 100, max: Infinity, price: 30 }
+    ]
+  },
+  dryfit: {
+    tiers: [
+      { min: 1, max: 9, price: 50 },
+      { min: 10, max: 19, price: 30 },
+      { min: 20, max: 49, price: 20 },
+      { min: 50, max: 99, price: 15 },
+      { min: 100, max: Infinity, price: 10 }
     ]
   },
   sweatshirt: {
     tiers: [
-      { min: 1, max: 10, price: 80 },
-      { min: 11, max: 50, price: 60 },
-      { min: 51, max: Infinity, price: 40 }
+      { min: 1, max: 9, price: 65 },
+      { min: 10, max: 19, price: 45 },
+      { min: 20, max: 49, price: 35 },
+      { min: 50, max: 99, price: 30 },
+      { min: 100, max: Infinity, price: 25 }
+    ]
+  }
+  ,
+  fleece: {
+    tiers: [
+      { min: 1, max: 9, price: 105 },
+      { min: 10, max: 19, price: 85 },
+      { min: 20, max: 49, price: 75 },
+      { min: 50, max: 99, price: 65 },
+      { min: 100, max: Infinity, price: 60 }
+    ]
+  },
+  softshell: {
+    tiers: [
+      { min: 1, max: 9, price: 125 },
+      { min: 10, max: 19, price: 105 },
+      { min: 20, max: 49, price: 90 },
+      { min: 50, max: 99, price: 85 },
+      { min: 100, max: Infinity, price: 80 }
+    ]
+  },
+  longsleeve: {
+    tiers: [
+      { min: 1, max: 9, price: 55 },
+      { min: 10, max: 19, price: 40 },
+      { min: 20, max: 49, price: 25 },
+      { min: 50, max: 99, price: 20 },
+      { min: 100, max: Infinity, price: 15 }
+    ]
+  },
+  polo: {
+    tiers: [
+      { min: 1, max: 9, price: 55 },
+      { min: 10, max: 19, price: 40 },
+      { min: 20, max: 49, price: 25 },
+      { min: 50, max: 99, price: 20 },
+      { min: 100, max: Infinity, price: 15 }
+    ]
+  }
+  ,
+  zipped_hood: {
+    tiers: [
+      { min: 1, max: 9, price: 70 },
+      { min: 10, max: 19, price: 50 },
+      { min: 20, max: 49, price: 40 },
+      { min: 50, max: 99, price: 35 },
+      { min: 100, max: Infinity, price: 30 }
     ]
   }
 };

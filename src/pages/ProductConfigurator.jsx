@@ -254,13 +254,8 @@ const ProductConfigurator = () => {
       return;
     }
 
-    if (selectedPrintAreas.length === 0) {
-      toast({
-        title: t('selectPrintArea'),
-        variant: 'destructive'
-      });
-      return;
-    }
+    // NOTE: Blank products (no selected print areas) are allowed now.
+    // Users can order products without selecting any print area (e.g., plain garments).
 
     // Build a cart item that supports multiple colors. For backward compatibility, still
     // include `color` and `sizeMatrix` keys using the first selected color if only one.
@@ -314,7 +309,9 @@ const ProductConfigurator = () => {
   const desc = getProductDescription(product, language);
 
   const pricing = calculatePrice();
-  const canAddToCart = selectedPrintAreas.length > 0;
+  // Allow adding to cart when there's a positive quantity and at least one color chosen.
+  // We no longer require selecting print areas so users can order blank products.
+  const canAddToCart = pricing.totalQty > 0 && (selectedColors && selectedColors.length > 0);
 
   // Structured data: compute Product and Breadcrumb JSON-LD objects
   const productImagesAbs = React.useMemo(() => {

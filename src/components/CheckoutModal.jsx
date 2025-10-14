@@ -454,7 +454,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
   };
 
   const methodCards = [
-    { id: 'card', label: 'כרטיס אשראי (iCount)', icon: CreditCard },
+    { id: 'card', label: 'כרטיס אשראי (הנחה נוספת 3%)', icon: CreditCard },
     { id: 'bit', label: 'Bit / Paybox', icon: Smartphone },
     { id: 'wire', label: 'העברה בנקאית', icon: Banknote },
     { id: 'cheque', label: 'שיק', icon: FileText },

@@ -227,14 +227,7 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
                 )}
               </div>
 
-              {pricing.totalQty >= 10 && selectedAreas.length === 0 && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
-                  <div className="flex items-center text-yellow-700">
-                    <AlertCircle className="h-4 w-4 mr-2" />
-                    <span className="text-sm">{t('selectPrintArea')}</span>
-                  </div>
-                </div>
-              )}
+              {/* Blank products are allowed; do not force selecting a print area. */}
 
               <Button
                 className="w-full"
@@ -259,7 +252,7 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
 
               {!canAddToCart && (
                 <div className="mt-3 text-sm text-red-600 text-center">
-                  {pricing.totalQty === 0 ? null : t('selectPrintArea')}
+                  {pricing.totalQty === 0 ? null : t('chooseColor')}
                 </div>
               )}
 
