@@ -98,7 +98,7 @@ export default function ThankYou() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
             <CheckCircle className="h-24 w-24 text-green-500 mx-auto mb-4" />
             <h1 className="text-3xl font-bold text-gray-900 mb-4">תודה רבה!</h1>
-            <p className="text-lg text-gray-600 mb-6">ההזמנה נקלטה בהצלחה. נשלח אליך אישור במייל בקרוב והצוות שלנו ייצור איתך קשר במידה ונצטרך פרטים נוספים.</p>
+            <p className="text-lg text-gray-600 mb-6">ההזמנה נקלטה בהצלחה. נשלח אליך אישור במייל בקרוב והצוות שלנו ייצור איתך קשר להמשך התהליך.</p>
 
             {/* Summary removed per request */}
 

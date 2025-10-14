@@ -12,9 +12,8 @@ const Footer = () => {
           {/* Company info */}
           <div>
             <h3 className="text-xl font-bold mb-4">Printeam</h3>
-            <p className="text-gray-300 mb-4">
-              {t('company')}
-            </p>
+            
+          
             <p className="text-sm text-gray-400">
               © 2024 {t('allRightsReserved')}
             </p>
@@ -49,8 +48,8 @@ const Footer = () => {
           <div>
             <h4 className="text-lg font-semibold mb-4">צור קשר</h4>
             <div className="text-gray-300 space-y-2">
-              <p>info@printeam.co.il</p>
-              <p>+972-50-123-4567</p>
+              <p>info@printmarket.co.il</p>
+              
             </div>
           </div>
         </div>

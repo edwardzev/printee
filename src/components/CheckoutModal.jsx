@@ -71,7 +71,9 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
 
   if (!open) return null;
 
-  const totalWithVat = Math.round((cartSummary?.total || 0) * 1.17).toLocaleString();
+  const baseTotal = Math.round((cartSummary?.total || 0) * 1.17);
+  const discount = method === 'card' ? Math.round(baseTotal * 0.03) : 0;
+  const totalWithVat = (baseTotal - discount).toLocaleString();
 
   const requireContact = (m) => {
     // require contact for card, bit, wire, cheque per request
@@ -468,7 +470,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
         initial={{ opacity: 0, scale: 0.98, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.22 }}
-        className="absolute right-6 top-16 w-[480px] max-w-[95%] bg-white rounded-2xl p-6 shadow-2xl ring-1 ring-black/5"
+        className="absolute right-6 top-28 w-[480px] max-w-[95%] bg-white rounded-2xl p-6 shadow-2xl ring-1 ring-black/5"
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold">אמצעי תשלום</h2>
@@ -488,7 +490,14 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
                 <Icon size={18} />
               </div>
               <div className="text-right flex-1">
-                <div className="font-medium">{label}</div>
+                {id === 'card' ? (
+                  <>
+                    <div className="font-medium">כרטיס אשראי</div>
+                    <div className="text-xs text-green-600 font-medium">(הנחה נוספת 3%)</div>
+                  </>
+                ) : (
+                  <div className="font-medium">{label}</div>
+                )}
               </div>
             </motion.button>
           ))}
@@ -529,8 +538,14 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
           </label>
         </div>
 
+        {method === 'card' && discount > 0 && (
+          <div className="text-sm text-green-600 font-medium text-center mt-3">
+            חסכת ₪{discount} בבחירת תשלום בכרטיס אשראי
+          </div>
+        )}
+
         <div className="flex items-center justify-between gap-3 mt-4">
-          <Button onClick={handleConfirm} className="flex-1" disabled={processing || !(name.trim() && phone.trim() && email.trim())}>{method === 'card' ? 'המשך ל-iCount' : method === 'bit' ? 'השלם תשלום ב-Bit' : 'שלח פרטי יצירת קשר'}</Button>
+          <Button onClick={handleConfirm} className="flex-1" disabled={processing || !(name.trim() && phone.trim() && email.trim())}>{method === 'card' ? 'המשך לתשלום מאובטח בכרטיס אשראי' : method === 'bit' ? 'השלם תשלום ב-Bit' : 'שלח פרטי יצירת קשר'}</Button>
           <Button variant="outline" onClick={onClose}>ביטול</Button>
         </div>
       </motion.div>

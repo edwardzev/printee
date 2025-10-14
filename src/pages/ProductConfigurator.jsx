@@ -9,6 +9,7 @@ import { products, printAreas, pricingRules, colorLabelsHe } from '@/data/produc
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import SizeMatrix from '@/components/SizeMatrix';
+import PricingTiers from '@/components/PricingTiers';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import PrintAreaSelector from '@/components/PrintAreaSelector';
 import MockupCanvas from '@/components/MockupCanvas';
@@ -344,16 +345,44 @@ const ProductConfigurator = () => {
     };
   }, [product]);
 
-  const productLd = React.useMemo(() => ({
-    "@context": "https://schema.org",
-    "@type": "Product",
-    name: language === 'he' ? product.nameHe : product.name,
-    description: desc,
-    brand: "Printeam",
-    sku: product.sku,
-    image: productImagesAbs.slice(0, 10),
-    offers: productOffers
-  }), [language, product, desc, productImagesAbs, productOffers]);
+  const productLd = React.useMemo(() => {
+    const ld = {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      name: language === 'he' ? product.nameHe : product.name,
+      description: desc,
+      brand: "Printeam",
+      sku: product.sku,
+      image: productImagesAbs.slice(0, 10),
+      offers: productOffers
+    };
+
+    // Attach product specs as additionalProperty for better SEO (localized)
+    try {
+      const specs = product.specs || {};
+      const additionalProperty = [];
+      if (language === 'he') {
+        if (specs.materialHe || specs.material) {
+          additionalProperty.push({ "@type": "PropertyValue", name: 'הרכב הבד', value: specs.materialHe || specs.material });
+        }
+        if (specs.weightHe || specs.weight) {
+          additionalProperty.push({ "@type": "PropertyValue", name: 'משקל', value: specs.weightHe || specs.weight });
+        }
+        if (specs.careHe || specs.care) {
+          additionalProperty.push({ "@type": "PropertyValue", name: 'הוראות טיפול', value: specs.careHe || specs.care });
+        }
+      } else {
+        if (specs.material) additionalProperty.push({ "@type": "PropertyValue", name: 'Material', value: specs.material });
+        if (specs.weight) additionalProperty.push({ "@type": "PropertyValue", name: 'Weight', value: specs.weight });
+        if (specs.care) additionalProperty.push({ "@type": "PropertyValue", name: 'Care', value: specs.care });
+      }
+      if (additionalProperty.length) ld.additionalProperty = additionalProperty;
+    } catch (e) {
+      // defensive: don't break page rendering if specs malformed
+    }
+
+    return ld;
+  }, [language, product, desc, productImagesAbs, productOffers]);
 
   const breadcrumbLd = React.useMemo(() => ({
     "@context": "https://schema.org",
@@ -364,6 +393,58 @@ const ProductConfigurator = () => {
       { "@type": "ListItem", position: 3, name: (language === 'he' ? product.nameHe : product.name), item: `https://printeam.co.il/product/${sku}` }
     ]
   }), [language, product, sku]);
+
+  // Helper to render rich product description with headings, paragraphs, and bullets
+  const renderProductDescription = (desc, language) => {
+    if (!desc) return null;
+    const blocks = desc.split('\n\n');
+    return blocks.map((block, index) => {
+      const trimmed = block.trim();
+      if (!trimmed) return null;
+      const headingPatterns = [
+        'מאפייני המוצר:',
+        'היתרונות של החולצה:',
+        'יתרונות החולצה:',
+        'יתרונות המוצר:',
+        'יתרונות:',
+        'שימושים מומלצים:'
+      ];
+      const isListBlock = headingPatterns.some(h => trimmed.startsWith(h));
+      if (isListBlock) {
+        const lines = trimmed.split('\n');
+        const heading = lines[0];
+        const items = lines.slice(1).map(l => l.trim()).filter(l => l.length > 0);
+        return (
+          <div key={index} className="mt-4">
+            <h3 className="font-semibold text-gray-800">{heading}</h3>
+            {items.length > 0 && (
+              <ul className="list-disc list-inside mt-2 text-gray-600">
+                {items.map((line, i) => <li key={i}>{line}</li>)}
+              </ul>
+            )}
+          </div>
+        );
+      }
+      // Treat 'על המוצר' as a heading followed by paragraphs if appears as first line alone
+      if (trimmed.startsWith('על המוצר')) {
+        const lines = trimmed.split('\n');
+        const heading = lines[0];
+        const body = lines.slice(1).map(l => l.trim()).filter(Boolean);
+        return (
+          <div key={index} className="mt-4">
+            <h3 className="font-semibold text-gray-800">{heading}</h3>
+            {body.map((para, i) => <p key={i} className="text-gray-600 leading-relaxed mt-2">{para}</p>)}
+          </div>
+        );
+      }
+      const paragraphs = trimmed.split('\n').filter(p => p.trim());
+      return (
+        <div key={index} className="mt-2">
+          {paragraphs.map((para, i) => <p key={i} className="text-gray-600 leading-relaxed">{para}</p>)}
+        </div>
+      );
+    });
+  };
 
   return (
     <>
@@ -390,11 +471,7 @@ const ProductConfigurator = () => {
                   {language === 'he' ? product.nameHe : product.name}
                 </h1>
                 {/* Always render description if resolved */}
-                {desc ? (
-                  <p className="text-gray-600 leading-relaxed mt-1 whitespace-pre-line">
-                    {desc}
-                  </p>
-                ) : null}
+                {renderProductDescription(desc, language)}
                 {/* end description area */}
               </motion.div>
 
@@ -543,6 +620,15 @@ const ProductConfigurator = () => {
                   <span className="text-sm text-gray-600">
                     {t('totalQuantity')}: {pricing.totalQty}
                   </span>
+                </div>
+
+                {/* Show quantity->price tiers table for transparency */}
+                <div className="mt-2">
+                  <PricingTiers
+                    tiers={(pricingRules[product.sku] && pricingRules[product.sku].tiers) || []}
+                    currentQty={pricing.totalQty}
+                    basePrice={product.basePrice}
+                  />
                 </div>
               </motion.div>
 

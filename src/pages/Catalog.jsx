@@ -127,7 +127,9 @@ const Catalog = () => {
                       {(() => {
                         const tiers = pricingRules[product.sku]?.tiers || [];
                         const min = tiers.length ? Math.min(...tiers.map(t => t.price)) : product.basePrice;
-                        return `מ־${formatILS(min)}`;
+                        return language === 'he' 
+                          ? `מחיר המוצר מ-${formatILS(min)}`
+                          : `The price of the item is from ${formatILS(min)}`;
                       })()}
                     </span>
                   </div>

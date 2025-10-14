@@ -111,10 +111,13 @@ export default function Header({ dir = "rtl" }) {
           to="/"
           aria-label="Printeam – Custom apparel printing"
           style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 10,
+            display: "inline-block",
             textDecoration: "none",
+            lineHeight: 0,
+            padding: 0,
+            margin: 0,
+            border: 'none',
+            background: 'transparent',
           }}
         >
           <img
@@ -124,7 +127,9 @@ export default function Header({ dir = "rtl" }) {
               height: isMobile ? 110 : 210,
               width: "auto",
               display: "block",
-              objectFit: 'contain'
+              objectFit: 'contain',
+              cursor: 'pointer',
+              verticalAlign: 'top',
             }}
           />
         </Link>
