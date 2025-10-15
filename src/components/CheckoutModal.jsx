@@ -44,6 +44,73 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
   // Keep a reference to the single background forward promise so we can await it before navigating to iCount
   const forwardPromiseRef = useRef(null);
   const idempotencyKeyRef = useRef((payload && payload.idempotency_key) || `local-${Date.now()}-${Math.random().toString(36).slice(2,9)}`);
+  const dialogRef = useRef(null);
+  const previouslyFocused = useRef(null);
+
+  // Focus management: when modal opens, save previously focused element and move
+  // focus into the dialog. When it closes, restore focus.
+  useEffect(() => {
+    if (!open) return undefined;
+    previouslyFocused.current = document.activeElement;
+    // Move focus into the dialog container after render
+    const timer = setTimeout(() => {
+      try {
+        // Prefer the first focusable element inside the dialog
+        const root = dialogRef.current;
+        if (!root) return;
+        const focusable = root.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (focusable && focusable.length) {
+          (focusable[0]).focus();
+        } else {
+          root.focus();
+        }
+      } catch (e) { /* ignore */ }
+    }, 0);
+
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        try { onClose(); } catch (_) {}
+      }
+      // Simple focus trap: if Tab pressed, ensure focus remains inside dialog
+      if (e.key === 'Tab') {
+        const root = dialogRef.current;
+        if (!root) return;
+        const focusable = Array.from(root.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'))
+          .filter((el) => !el.hasAttribute('disabled') && el.offsetParent !== null);
+        if (focusable.length === 0) {
+          e.preventDefault();
+          return;
+        }
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        } else if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', onKey);
+    // mark background inert via aria-hidden on root app container if available
+    const appRoot = document.querySelector('#root') || document.body;
+    const prevAria = appRoot.getAttribute && appRoot.getAttribute('aria-hidden');
+    try { appRoot.setAttribute('aria-hidden', 'true'); } catch (e) {}
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('keydown', onKey);
+      try {
+        if (previouslyFocused.current && previouslyFocused.current.focus) previouslyFocused.current.focus();
+      } catch (e) {}
+      try {
+        if (prevAria === null) appRoot.removeAttribute('aria-hidden'); else appRoot.setAttribute('aria-hidden', prevAria);
+      } catch (e) {}
+    };
+  }, [open]);
 
   // Backend removed: no forwarding; only local state and client-side UX remain.
 
@@ -462,6 +529,27 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
     { id: 'cheque', label: 'שיק', icon: FileText },
   ];
 
+  // Refs for method buttons to support keyboard navigation
+  const methodRefs = useRef([]);
+
+  const onMethodKeyDown = (e) => {
+    const keys = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
+    if (!keys.includes(e.key)) return;
+    e.preventDefault();
+    const idx = methodCards.findIndex((m) => m.id === method);
+    if (idx === -1) return;
+    let next = idx;
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (idx - 1 + methodCards.length) % methodCards.length;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (idx + 1) % methodCards.length;
+    if (e.key === 'Home') next = 0;
+    if (e.key === 'End') next = methodCards.length - 1;
+    const nextId = methodCards[next].id;
+    setMethod(nextId);
+    // focus the new option
+    const node = methodRefs.current[next];
+    if (node && node.focus) node.focus();
+  };
+
   return (
     <div className="fixed inset-0 z-60">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
@@ -471,36 +559,55 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 0.22 }}
         className="absolute right-6 top-28 w-[480px] max-w-[95%] bg-white rounded-2xl p-6 shadow-2xl ring-1 ring-black/5"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="checkout-modal-title"
+        ref={dialogRef}
+        tabIndex={-1}
       >
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold">אמצעי תשלום</h2>
+          <h2 id="checkout-modal-title" className="text-lg font-bold">אמצעי תשלום</h2>
+          <button
+            aria-label="סגור" 
+            onClick={onClose}
+            className="ml-3 text-gray-500 hover:text-gray-700"
+            style={{ background: 'transparent', border: 0 }}
+          >
+            ✕
+          </button>
           <div className="text-sm text-gray-500">סה"כ: ₪{totalWithVat}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-3 mb-4">
-          {methodCards.map(({ id, label, icon: Icon }) => (
-            <motion.button
-              key={id}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setMethod(id)}
-              className={`flex items-center gap-3 p-3 rounded-lg border ${method === id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'} text-sm`}
-            >
-              <div className={`p-2 rounded-md ${method === id ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700'}`}>
-                <Icon size={18} />
-              </div>
-              <div className="text-right flex-1">
-                {id === 'card' ? (
-                  <>
-                    <div className="font-medium">כרטיס אשראי</div>
-                    <div className="text-xs text-green-600 font-medium">(הנחה נוספת 3%)</div>
-                  </>
-                ) : (
-                  <div className="font-medium">{label}</div>
-                )}
-              </div>
-            </motion.button>
-          ))}
+          <div role="radiogroup" aria-label="Payment methods" onKeyDown={onMethodKeyDown} className="col-span-2 grid grid-cols-2 gap-3">
+            {methodCards.map(({ id, label, icon: Icon }, i) => (
+              <motion.button
+                key={id}
+                ref={(el) => { methodRefs.current[i] = el; }}
+                role="radio"
+                aria-checked={method === id}
+                tabIndex={method === id ? 0 : -1}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setMethod(id)}
+                className={`flex items-center gap-3 p-3 rounded-lg border ${method === id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'} text-sm`}
+              >
+                <div className={`p-2 rounded-md ${method === id ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700'}`}>
+                  <Icon size={18} />
+                </div>
+                <div className="text-right flex-1">
+                  {id === 'card' ? (
+                    <>
+                      <div className="font-medium">כרטיס אשראי</div>
+                      <div className="text-xs text-green-600 font-medium">(הנחה נוספת 3%)</div>
+                    </>
+                  ) : (
+                    <div className="font-medium">{label}</div>
+                  )}
+                </div>
+              </motion.button>
+            ))}
+          </div>
         </div>
 
         <div className="space-y-3">

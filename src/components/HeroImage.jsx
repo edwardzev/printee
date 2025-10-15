@@ -222,13 +222,26 @@ export default function HeroImage({
           display: flex; gap: 6px;
           z-index: 10;
         }
+        /* Make the clickable/touch target at least 24x24 while keeping the
+           visible dot small (8x8). Use a pseudo-element for the visual dot so
+           layout doesn't change but the hit area meets accessibility guidelines. */
         .dot {
-          width: 8px; height: 8px; border-radius: 999px;
-          background: rgba(0,0,0,.18);
+          position: relative;
+          padding: 8px; /* ensures at least 24x24 overall hit area (8px*2 + 8px visible)
+                         visually keeps the small dot centered */
+          background: transparent;
           border: 0;
           cursor: pointer;
         }
-        .dot.active { background: rgba(0,0,0,.55); }
+        .dot::before {
+          content: '';
+          display: block;
+          width: 8px; height: 8px;
+          border-radius: 999px;
+          background: rgba(0,0,0,.18);
+          transform: translateZ(0);
+        }
+        .dot.active::before { background: rgba(0,0,0,.55); }
       `}</style>
 
       {/* Slides (image only) */}
@@ -253,7 +266,7 @@ export default function HeroImage({
             <button aria-label="Previous" onClick={() => go(-1)}>‹</button>
             <button aria-label="Next" onClick={() => go(+1)}>›</button>
           </div>
-          <div className="dots" aria-hidden="true">
+          <div className="dots">
             {images.map((_, i) => (
               <button
                 key={i}

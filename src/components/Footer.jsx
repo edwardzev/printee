@@ -41,6 +41,12 @@ const Footer = () => {
                   <p className="text-sm text-gray-400">תיאור קצר: תנאי החזרה, מתי ניתן להחזיר מוצרים ואופן יצירת קשר להחזרות והחלפות.</p>
                 </Link>
               </li>
+              <li>
+                <Link to="/accessibility" className="block hover:text-white transition-colors">
+                  <strong>הצהרת נגישות</strong>
+                  <p className="text-sm text-gray-400">תיאור קצר: הצהרת נגישות האתר וזמינות השירותים ללקוחות.</p>
+                </Link>
+              </li>
             </ul>
           </div>
 
