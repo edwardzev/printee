@@ -67,6 +67,8 @@ const Cart = () => {
             if (!d || !d.url) return;
             const method = areaMethod[areaKey] || 'print';
             const fileName = d.name || `${areaKey}.png`;
+            // Prefer originalUrl (PDF) if present; fallback to preview url
+            const dataUrl = (d.originalUrl && typeof d.originalUrl === 'string') ? d.originalUrl : d.url;
             // Single combined upload per area: include all active colors and the total qty
             list.push({
               areaKey,
@@ -74,7 +76,7 @@ const Cart = () => {
               product,
               colors: activeColors,
               qty: totalQtyForItem,
-              dataUrl: d.url,
+              dataUrl,
               fileName,
             });
           });

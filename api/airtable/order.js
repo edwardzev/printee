@@ -395,9 +395,10 @@ export default async function handler(req, res) {
       try { console.error('[airtable/order] payment patch exception', e?.message || String(e)); } catch {}
     }
 
-    // Dropbox folder creation if configured and we have an orderId
-    let dropbox = null;
-    if (dbxAppKey && dbxAppSecret && dbxRefreshToken && orderId) {
+  // Dropbox folder creation if configured. Prefer Order_id; fallback to idempotency_key so files still get uploaded.
+  let dropbox = null;
+  const folderKey = orderId || idempotency_key;
+  if (dbxAppKey && dbxAppSecret && dbxRefreshToken && folderKey) {
       try {
         const accessToken = await getDropboxAccessToken({ appKey: dbxAppKey, appSecret: dbxAppSecret, refreshToken: dbxRefreshToken });
         const base = (dbxBaseFolder || '').trim();
@@ -406,9 +407,9 @@ export default async function handler(req, res) {
         if (normalizedBase) {
           try { await dropboxCreateFolder({ accessToken, namespaceId: dbxNamespaceId, folderPath: normalizedBase }); } catch (e) {}
         }
-        const subPath = `${normalizedBase}/${String(orderId)}`.replace(/\/+/, '/');
+  const subPath = `${normalizedBase}/${String(folderKey)}`.replace(/\/+/, '/');
         const result = await dropboxCreateFolder({ accessToken, namespaceId: dbxNamespaceId, folderPath: subPath });
-        dropbox = { path: subPath, created: !result?.conflict, existed: !!result?.conflict };
+  dropbox = { path: subPath, created: !result?.conflict, existed: !!result?.conflict };
         try { console.log('[airtable/order] dropbox folder', dropbox); } catch {}
 
         // Create a public shared link for this folder and attach only the URL
@@ -438,10 +439,10 @@ export default async function handler(req, res) {
               const isWorksheet = (method === 'worksheet' || areaKey === 'worksheet');
               // Allow PDF for worksheet, else fall back to PNG
               const extFromMime = getExtFromMime(mime);
-              const extRaw = isWorksheet ? (extFromMime === 'pdf' ? 'pdf' : 'png') : (getExtFromName(name) || extFromMime || 'bin');
+              const extRaw = isWorksheet ? (extFromMime === 'pdf' ? 'pdf' : 'pdf') : (extFromMime || getExtFromName(name) || 'bin');
               const filename = isWorksheet
-                ? `WS-${orderId}-${sanitizeSegment(product)}.${extRaw}`
-                : composeUploadFilename({ orderId, areaKey, method, product, colors, qty, ext: extRaw });
+                ? `WS-${sanitizeSegment(folderKey)}-${sanitizeSegment(product)}.${extRaw}`
+                : composeUploadFilename({ orderId: folderKey, areaKey, method, product, colors, qty, ext: extRaw });
               const filePath = `${subPath}/${filename}`.replace(/\/+/, '/');
               await dropboxUploadFile({ accessToken, namespaceId: dbxNamespaceId, path: filePath, content: buffer, mode: isWorksheet ? { '.tag': 'overwrite' } : { '.tag': 'add' }, autorename: false, mute: true });
               uploadedCount += 1;

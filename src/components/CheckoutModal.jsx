@@ -18,17 +18,19 @@ async function ensurePdfLib() {
 }
 async function pngsToPdf(pngDataUrls, opts = {}) {
   const { widthPx = 1240, heightPx = 1754 } = opts;
-  const { PDFDocument, StandardFonts } = await ensurePdfLib();
+  const { PDFDocument } = await ensurePdfLib();
   const pdfDoc = await PDFDocument.create();
   for (const dataUrl of pngDataUrls) {
     if (!dataUrl) continue;
-    const pngBytes = await (await fetch(dataUrl)).arrayBuffer();
+    const res = await fetch(dataUrl);
+    const pngBytes = await res.arrayBuffer();
     const image = await pdfDoc.embedPng(pngBytes);
     const page = pdfDoc.addPage([widthPx, heightPx]);
     page.drawImage(image, { x: 0, y: 0, width: widthPx, height: heightPx });
   }
-  const bytes = await pdfDoc.save();
-  return `data:application/pdf;base64,${btoa(String.fromCharCode(...new Uint8Array(bytes)))}`;
+  // Use pdf-lib's helper to produce a proper data URI to avoid manual btoa issues with large payloads
+  const dataUri = await pdfDoc.saveAsBase64({ dataUri: true });
+  return dataUri;
 }
 
 export default function CheckoutModal({ open, onClose, cartSummary, prefillContact }) {
@@ -293,8 +295,9 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
               if (!d || !d.url) continue;
               const method = areaMethod[areaKey] || 'print';
               const fileName = d.name || `${areaKey}.png`;
-              // original design upload
-              pushUpload({ areaKey, method, product, colors: activeColors, qty: totalQtyForItem, dataUrl: d.url, fileName });
+              // original design upload: prefer originalUrl (for PDFs) if present
+              const originalOrPreview = (d.originalUrl && typeof d.originalUrl === 'string') ? d.originalUrl : d.url;
+              pushUpload({ areaKey, method, product, colors: activeColors, qty: totalQtyForItem, dataUrl: originalOrPreview, fileName });
               // mockup composite
               try {
                 const side = areaKey.startsWith('back') ? 'back' : 'front';

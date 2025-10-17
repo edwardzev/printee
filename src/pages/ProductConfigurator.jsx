@@ -96,6 +96,7 @@ const ProductConfigurator = () => {
         const { file, ...rest } = uploadedDesigns[k] || {};
         sanitized[k] = {};
         if (rest.url) sanitized[k].url = rest.url;
+        if (rest.originalUrl) sanitized[k].originalUrl = rest.originalUrl;
         if (rest.name) sanitized[k].name = rest.name;
       }
       mergePayload({ uploadedDesigns: sanitized });
@@ -224,7 +225,11 @@ const ProductConfigurator = () => {
       const resultUrl = e.target.result;
       (async () => {
         let previewUrl = resultUrl;
-        if (file.type === 'application/pdf' || (file.name && file.name.toLowerCase().endsWith('.pdf'))) {
+        let originalUrl = undefined;
+        const isPdf = file.type === 'application/pdf' || (file.name && file.name.toLowerCase().endsWith('.pdf'));
+        if (isPdf) {
+          // Preserve original file (PDF) as data URL for backend upload; use PNG preview for UI only
+          originalUrl = resultUrl;
           try {
             const img = await pdfToDataUrl(file, { width: 1200, height: 1200 });
             if (img) previewUrl = img;
@@ -235,6 +240,7 @@ const ProductConfigurator = () => {
           [areaKey]: {
             file,
             url: previewUrl,
+            ...(isPdf && originalUrl ? { originalUrl } : {}),
             name: file.name
           }
         }));
