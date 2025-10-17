@@ -15,7 +15,7 @@ function safeGet(obj, path, fallback = '') {
 }
 
 export default function ThankYouCC() {
-  const { payload, clearPayload } = useCart();
+  const { payload, clearCart } = useCart();
   const [showRaw, setShowRaw] = useState(false);
   const [marked, setMarked] = useState(false);
 
@@ -51,8 +51,8 @@ export default function ThankYouCC() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       }).catch(() => {});
-      setMarked(true);
-      try { clearPayload(); } catch {}
+  setMarked(true);
+  try { clearCart(); } catch {}
     } catch {}
   }, [marked, clearPayload]);
 
@@ -85,6 +85,11 @@ export default function ThankYouCC() {
       }
     } catch (e) {}
   }, [orderId, payload]);
+
+  // Ensure we clear the cart items when landing on the iCount thank-you page
+  useEffect(() => {
+    try { clearCart(); } catch (e) {}
+  }, [clearCart]);
 
   return (
     <>

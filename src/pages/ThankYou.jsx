@@ -15,7 +15,7 @@ function safeGet(obj, path, fallback = '') {
 }
 
 export default function ThankYou() {
-  const { payload, clearPayload } = useCart();
+  const { payload, clearCart } = useCart();
   const [showRaw, setShowRaw] = useState(false);
   const [marked, setMarked] = useState(false);
 
@@ -80,10 +80,15 @@ export default function ThankYou() {
         body: JSON.stringify(payload),
       }).catch(() => {});
       setMarked(true);
-      // optionally clear client payload now
-      try { clearPayload(); } catch {}
+  // clear only the cart items now (preserve other payload metadata)
+  try { clearCart(); } catch {}
     } catch {}
   }, [marked, clearPayload]);
+
+  // Ensure we clear the cart items when landing on the standard thank-you page
+  useEffect(() => {
+    try { clearCart(); } catch (e) {}
+  }, [clearCart]);
 
   return (
     <>
