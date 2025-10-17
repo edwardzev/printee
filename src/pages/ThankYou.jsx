@@ -84,7 +84,7 @@ export default function ThankYou() {
   // clear only the cart items now (preserve other payload metadata)
   try { clearCart(); } catch {}
     } catch {}
-  }, [marked, clearPayload]);
+  }, [marked, clearCart]);
 
   // Ensure we clear the cart items when landing on the standard thank-you page
   useEffect(() => {

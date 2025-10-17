@@ -54,7 +54,7 @@ export default function ThankYouCC() {
   setMarked(true);
   try { clearCart(); } catch {}
     } catch {}
-  }, [marked, clearPayload]);
+  }, [marked, clearCart]);
 
   // Fire Google Ads conversion event (AW) once per order
   useEffect(() => {
