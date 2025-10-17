@@ -29,9 +29,12 @@ export default function ThankYouCC() {
       const idem = params.get('idem');
       if (!idem || marked) return;
       const invrec = {};
-      // iCount returns docnum directly (not as a placeholder substitution)
-      const docnum = params.get('docnum') || params.get('doc') || null;
-      // iCount returns doc_url (invoice link) instead of 'invlink'
+      // iCount appends query params; sometimes the URL may contain both a placeholder (docnum={docnum})
+      // and a real value later (docnum=6967). Prefer the last numeric docnum.
+      const allDocnums = params.getAll('docnum');
+      const lastNumericDoc = [...allDocnums].reverse().find((v) => /^\d+$/.test(String(v || '')));
+      const docnum = lastNumericDoc || params.get('doc') || null;
+      // iCount returns doc_url (invoice link). Fall back to older names if ever present.
       const link = params.get('doc_url') || params.get('invlink') || params.get('link') || null;
       if (docnum) invrec.docnum = docnum;
       if (link) invrec.link = link;

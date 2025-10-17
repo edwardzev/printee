@@ -374,6 +374,7 @@ export default async function handler(req, res) {
         if (isPaymentConfirmation && fPaid) paidPatch[fPaid] = true;
         if (isPaymentConfirmation && financial.invrec && typeof financial.invrec === 'object') {
           if (fInvrecNum && financial.invrec.docnum != null) paidPatch[fInvrecNum] = String(financial.invrec.docnum);
+          if (fInvrecLink && financial.invrec.link) paidPatch[fInvrecLink] = String(financial.invrec.link);
         }
       }
       if (Object.keys(paidPatch).length > 0 && rec?.id) {
