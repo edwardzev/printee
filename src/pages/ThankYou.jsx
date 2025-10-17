@@ -18,6 +18,7 @@ export default function ThankYou() {
   const { payload, clearCart } = useCart();
   const [showRaw, setShowRaw] = useState(false);
   const [marked, setMarked] = useState(false);
+  // no-op: bump for redeploy cache-bust
 
   const orderId = safeGet(payload, 'order.id') || safeGet(payload, 'order_number') || safeGet(payload, 'id') || '';
   const customerName = safeGet(payload, 'customer.name') || safeGet(payload, 'contact.name') || safeGet(payload, 'contact?.name');
