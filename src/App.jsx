@@ -7,6 +7,7 @@ import { CartProvider } from '@/contexts/CartContext';
 import DevErrorBoundary from '@/components/DevErrorBoundary';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import WhatsAppWidget from '@/components/WhatsAppWidget';
 import Home from '@/pages/Home';
 import Catalog from '@/pages/Catalog';
 import ProductConfigurator from '@/pages/ProductConfigurator';
@@ -80,6 +81,7 @@ function App() {
               </Routes>
             </main>
             <Footer />
+            <WhatsAppWidget />
             <Toaster />
           </div>
           </Router>
