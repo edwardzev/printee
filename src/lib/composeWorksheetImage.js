@@ -230,7 +230,12 @@ export async function composeWorksheetImage({
       const side = areaKey.startsWith('back') ? 'back' : 'front';
       const baseImage = `/schematics/${side}.png`;
     // Use existing mockup composer at a smaller size
-  const mockup = await composeMockupImage({ areaKey, baseImage, designUrl: d.url, width: cellW, height: cellH });
+  let mockup = null;
+  try {
+    mockup = await composeMockupImage({ areaKey, baseImage, designUrl: d.url, width: cellW, height: cellH });
+  } catch (e) {
+    mockup = null;
+  }
 
   // If we're beyond the printable area, stop
   const infoLineH = Math.round(THEME.sizes.deliveryText * 1.5);
@@ -265,9 +270,12 @@ export async function composeWorksheetImage({
       ctx.restore();
 
       if (mockup) {
-        const img = await loadImage(mockup);
-        ctx.drawImage(img, xMock, frameTop, cellW, effH);
+        try {
+          const img = await loadImage(mockup);
+          ctx.drawImage(img, xMock, frameTop, cellW, effH);
+        } catch {}
       }
+      // Try to render the uploaded design; if it's a PDF or fails to load, draw a placeholder
       try {
         const di = await loadImage(d.url);
         // fit contain into design cell
@@ -277,7 +285,25 @@ export async function composeWorksheetImage({
         const dx = xDesign + Math.round((cellW - dw2) / 2);
         const dy = frameTop + Math.round((effH - dh2) / 2);
         ctx.drawImage(di, dx, dy, dw2, dh2);
-      } catch {}
+      } catch {
+        // Draw placeholder for unsupported design previews (e.g., PDFs)
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#d1d5db';
+        ctx.lineWidth = 1;
+        const pw = Math.floor(cellW * 0.9);
+        const ph = Math.floor(effH * 0.9);
+        const px = xDesign + Math.round((cellW - pw) / 2);
+        const py = frameTop + Math.round((effH - ph) / 2);
+        ctx.fillRect(px, py, pw, ph);
+        ctx.strokeRect(px, py, pw, ph);
+        ctx.fillStyle = '#374151';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = '14px system-ui, -apple-system, Segoe UI, Roboto';
+        ctx.fillText('PDF preview not available', px + pw / 2, py + ph / 2);
+        ctx.restore();
+      }
 
   // Info line: print color and designer notes
   const sel = areas[i];

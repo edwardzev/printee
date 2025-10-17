@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { composeMockupImage } from '@/lib/composeMockupImage';
 import { composeWorksheetImage } from '@/lib/composeWorksheetImage';
+import { pdfToDataUrl } from '@/lib/pdfToImage';
 
 function sampleItem() {
   // Minimal synthetic item matching Checkout builder shape
@@ -51,6 +52,23 @@ export default function DevComposer() {
       addLog('Compose error: ' + (e?.message || String(e)));
     }
     setLogs(newLogs);
+  }
+
+  async function loadSamplePdfPreview() {
+    try {
+      // try to fetch a sample PDF from public folder: /public/sample.pdf
+      const resp = await fetch('/sample.pdf');
+      if (!resp.ok) throw new Error('sample.pdf not found');
+      const arr = await resp.arrayBuffer();
+      const dataUrl = await pdfToDataUrl(arr, { width: 1200, height: 1200 });
+      if (dataUrl) {
+        item.uploadedDesigns.frontA4.url = dataUrl;
+        item.uploadedDesigns.backA4.url = dataUrl;
+        setLogs(prev => [...prev, 'Loaded sample.pdf into designs (preview)']);
+      }
+    } catch (e) {
+      setLogs(prev => [...prev, 'Sample PDF load failed: ' + (e?.message || String(e))]);
+    }
   }
 
   async function saveLocally() {

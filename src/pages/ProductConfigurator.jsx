@@ -7,6 +7,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useCart } from '@/contexts/CartContext';
 import { products, printAreas, pricingRules, colorLabelsHe } from '@/data/products';
 import { Button } from '@/components/ui/button';
+import { pdfToDataUrl } from '@/lib/pdfToImage';
 import { useToast } from '@/components/ui/use-toast';
 import SizeMatrix from '@/components/SizeMatrix';
 import PricingTiers from '@/components/PricingTiers';
@@ -219,14 +220,25 @@ const ProductConfigurator = () => {
 
     const reader = new FileReader();
     reader.onload = (e) => {
-      setUploadedDesigns(prev => ({
-        ...prev,
-        [areaKey]: {
-          file,
-          url: e.target.result,
-          name: file.name
+      // If it's a PDF, attempt to rasterize the first page to a dataURL for preview
+      const resultUrl = e.target.result;
+      (async () => {
+        let previewUrl = resultUrl;
+        if (file.type === 'application/pdf' || (file.name && file.name.toLowerCase().endsWith('.pdf'))) {
+          try {
+            const img = await pdfToDataUrl(file, { width: 1200, height: 1200 });
+            if (img) previewUrl = img;
+          } catch (err) {}
         }
-      }));
+        setUploadedDesigns(prev => ({
+          ...prev,
+          [areaKey]: {
+            file,
+            url: previewUrl,
+            name: file.name
+          }
+        }));
+      })();
       // upload success toast removed per UX request — preview is visible so no toast needed
     };
     reader.readAsDataURL(file);

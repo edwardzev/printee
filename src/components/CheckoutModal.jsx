@@ -136,8 +136,6 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
     }
   }, [open]);
 
-  if (!open) return null;
-
   const baseTotal = Math.round((cartSummary?.total || 0) * 1.17);
   const discount = method === 'card' ? Math.round(baseTotal * 0.03) : 0;
   const totalWithVat = (baseTotal - discount).toLocaleString();
@@ -531,6 +529,8 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
 
   // Refs for method buttons to support keyboard navigation
   const methodRefs = useRef([]);
+
+  if (!open) return null;
 
   const onMethodKeyDown = (e) => {
     const keys = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];

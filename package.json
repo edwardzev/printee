@@ -35,6 +35,7 @@
     "lucide-react": "^0.285.0",
     "node-fetch": "^3.3.2",
     "pdf-lib": "^1.17.1",
+  "pdfjs-dist": "^3.9.179",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-helmet": "^6.1.0",
