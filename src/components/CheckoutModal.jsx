@@ -471,9 +471,9 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
   if (phone && phone.trim()) u.searchParams.set(phoneParam, phone.trim());
         try {
           const idem = encodeURIComponent(idempotencyKeyRef.current);
-          // We append 'docnum' and 'invlink' in the success URL template; iCount will replace these placeholders.
-          // Also include our idem so the app can mark the Airtable record as paid on return.
-          u.searchParams.set(successParam, `${window.location.origin}/thank-you-cc?idem=${idem}&docnum={docnum}&invlink={link}`);
+          // iCount will append their own params (docnum, doc_url, etc.) to whatever success URL we provide.
+          // We only need to include our idem for matching the order on return.
+          u.searchParams.set(successParam, `${window.location.origin}/thank-you-cc?idem=${idem}`);
           u.searchParams.set(failureParam, `${window.location.origin}/cart?status=failed`);
           u.searchParams.set(cancelParam, `${window.location.origin}/cart`);
         } catch {}

@@ -366,6 +366,35 @@ export default async function handler(req, res) {
       }
     }
 
+    // Always apply payment confirmation fields (paid, invrec_num) regardless of Dropbox configuration
+    try {
+      const paidPatch = {};
+      if (financial) {
+        const isPaymentConfirmation = (financial.paid === true || financial.paid === 'true' || financial.paid === 1);
+        if (isPaymentConfirmation && fPaid) paidPatch[fPaid] = true;
+        if (isPaymentConfirmation && financial.invrec && typeof financial.invrec === 'object') {
+          if (fInvrecNum && financial.invrec.docnum != null) paidPatch[fInvrecNum] = String(financial.invrec.docnum);
+          if (fInvrecLink && financial.invrec.link) paidPatch[fInvrecLink] = String(financial.invrec.link);
+        }
+      }
+      if (Object.keys(paidPatch).length > 0 && rec?.id) {
+        const patchUrl = `${API_URL}/${encodeURIComponent(baseId)}/${encodeURIComponent(table)}/${encodeURIComponent(rec.id)}`;
+        const patchResp = await fetch(patchUrl, {
+          method: 'PATCH',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fields: paidPatch, typecast: true }),
+        });
+        if (!patchResp.ok) {
+          const tx = await patchResp.text().catch(() => '');
+          try { console.error('[airtable/order] payment patch error', patchResp.status, String(tx).slice(0, 200)); } catch {}
+        } else {
+          try { console.log('[airtable/order] patched payment fields', Object.keys(paidPatch)); } catch {}
+        }
+      }
+    } catch (e) {
+      try { console.error('[airtable/order] payment patch exception', e?.message || String(e)); } catch {}
+    }
+
     // Dropbox folder creation if configured and we have an orderId
     let dropbox = null;
     if (dbxAppKey && dbxAppSecret && dbxRefreshToken && orderId) {
@@ -448,52 +477,49 @@ export default async function handler(req, res) {
               address_city: customer.address_city || customer.adres_city || '',
             });
           }
-          if (fFinanceText && financial) {
-            const financePayload = {
-              subtotal: Number(financial.subtotal || 0),
-              delivery: Number(financial.delivery || 0),
-              vat: Number(financial.vat || 0),
-              total: Number(financial.total || 0),
-              payment_method: String(financial.payment_method || financial.paymentMethod || ''),
-            };
-            // Include dropbox shared link in the finance JSON so it's persisted
-            if (financial.dropbox_shared_link) {
-              financePayload.dropbox_shared_link = normalizeDropboxFolderView(String(financial.dropbox_shared_link));
-            }
-            // If client didn't send it but server just created/fetched it, include it now (write-through)
-            if (!financePayload.dropbox_shared_link && dropbox && dropbox.shared_link) {
-              financePayload.dropbox_shared_link = normalizeDropboxFolderView(String(dropbox.shared_link));
-            }
-            // Include worksheet link(s) if available (client or server)
-            if (financial.dropbox_worksheet_link) {
-              financePayload.dropbox_worksheet_link = normalizeDropboxFileRaw(String(financial.dropbox_worksheet_link));
-            }
-            if (financial.dropbox_worksheet_links && typeof financial.dropbox_worksheet_links === 'object') {
-              const norm = {};
-              for (const [k, v] of Object.entries(financial.dropbox_worksheet_links)) norm[k] = normalizeDropboxFileRaw(String(v));
-              financePayload.dropbox_worksheet_links = norm;
-            }
-            if (!financePayload.dropbox_worksheet_links && dropbox && dropbox.worksheet_links) {
-              const norm = {};
-              for (const [k, v] of Object.entries(dropbox.worksheet_links)) norm[k] = normalizeDropboxFileRaw(String(v));
-              financePayload.dropbox_worksheet_links = norm;
-            }
-            if (!financePayload.dropbox_worksheet_link && financePayload.dropbox_worksheet_links) {
-              // For compatibility, set a single link if there is exactly one
-              const keys = Object.keys(financePayload.dropbox_worksheet_links);
-              if (keys.length === 1) financePayload.dropbox_worksheet_link = financePayload.dropbox_worksheet_links[keys[0]];
-            }
-            if (financial.invrec && typeof financial.invrec === 'object') {
-              if (financial.invrec.docnum != null) financePayload.invrec_num = String(financial.invrec.docnum);
-              if (financial.invrec.link != null) financePayload.invrec_link = String(financial.invrec.link);
-            }
-            patchFields[fFinanceText] = JSON.stringify(financePayload);
-            if (fPaid && (financial.paid === true || financial.paid === 'true' || financial.paid === 1)) {
-              patchFields[fPaid] = true;
-            }
-            if (financial.invrec && typeof financial.invrec === 'object') {
-              if (fInvrecNum && financial.invrec.docnum != null) patchFields[fInvrecNum] = String(financial.invrec.docnum);
-              if (fInvrecLink && financial.invrec.link != null) patchFields[fInvrecLink] = String(financial.invrec.link);
+          if (financial) {
+            const isPaymentConfirmation = (financial.paid === true || financial.paid === 'true' || financial.paid === 1);
+            if (isPaymentConfirmation) {
+              // Payment confirmation: only set paid and invrec_num. Do NOT touch finance_text or invrec_link.
+              if (fPaid) patchFields[fPaid] = true;
+              if (financial.invrec && typeof financial.invrec === 'object') {
+                if (fInvrecNum && financial.invrec.docnum != null) patchFields[fInvrecNum] = String(financial.invrec.docnum);
+                // Intentionally ignore invrec.link and do not set fInvrecLink
+              }
+            } else if (fFinanceText) {
+              // Initial pre-payment post: write finance_text (totals/method/links) as before
+              const financePayload = {
+                subtotal: Number(financial.subtotal || 0),
+                delivery: Number(financial.delivery || 0),
+                vat: Number(financial.vat || 0),
+                total: Number(financial.total || 0),
+                payment_method: String(financial.payment_method || financial.paymentMethod || ''),
+              };
+              if (financial.dropbox_shared_link) {
+                financePayload.dropbox_shared_link = normalizeDropboxFolderView(String(financial.dropbox_shared_link));
+              }
+              if (!financePayload.dropbox_shared_link && dropbox && dropbox.shared_link) {
+                financePayload.dropbox_shared_link = normalizeDropboxFolderView(String(dropbox.shared_link));
+              }
+              if (financial.dropbox_worksheet_link) {
+                financePayload.dropbox_worksheet_link = normalizeDropboxFileRaw(String(financial.dropbox_worksheet_link));
+              }
+              if (financial.dropbox_worksheet_links && typeof financial.dropbox_worksheet_links === 'object') {
+                const norm = {};
+                for (const [k, v] of Object.entries(financial.dropbox_worksheet_links)) norm[k] = normalizeDropboxFileRaw(String(v));
+                financePayload.dropbox_worksheet_links = norm;
+              }
+              if (!financePayload.dropbox_worksheet_links && dropbox && dropbox.worksheet_links) {
+                const norm = {};
+                for (const [k, v] of Object.entries(dropbox.worksheet_links)) norm[k] = normalizeDropboxFileRaw(String(v));
+                financePayload.dropbox_worksheet_links = norm;
+              }
+              if (!financePayload.dropbox_worksheet_link && financePayload.dropbox_worksheet_links) {
+                const keys = Object.keys(financePayload.dropbox_worksheet_links);
+                if (keys.length === 1) financePayload.dropbox_worksheet_link = financePayload.dropbox_worksheet_links[keys[0]];
+              }
+              // Ignore invrec in pre-payment stage; it isn't present yet
+              patchFields[fFinanceText] = JSON.stringify(financePayload);
             }
           }
           if (fCartText && (cart || (Array.isArray(cartUploads) && cartUploads.length))) {

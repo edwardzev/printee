@@ -16,3 +16,4 @@ Thumbs.db
 coverage/
 .vercel
 data/
+lighthouse-*.json
