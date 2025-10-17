@@ -3,6 +3,7 @@ import { ShoppingCart } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Home, List, Info, HelpCircle, ShoppingCart as CartIcon, DollarSign } from 'lucide-react';
+import WhatsAppWidget from '@/components/WhatsAppWidget';
 import { useMediaQuery } from '@/hooks/use-media-query';
 
 export default function Header({ dir = "rtl" }) {
@@ -194,6 +195,11 @@ export default function Header({ dir = "rtl" }) {
                 )}
               </div>
             </Link>
+
+            {/* Mini WhatsApp inline placed to the right of the cart icon (mobile) */}
+            <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+              <WhatsAppWidget inline size={34} className="ml-1" />
+            </div>
           </div>
         )}
 
@@ -245,42 +251,45 @@ export default function Header({ dir = "rtl" }) {
             return (<a key={id} href={`#${id}`} onClick={goTo(id)} style={baseStyle}>{label}</a>);
           })}
           {/* Cart icon with badge */}
-          <Link
-            to="/cart"
-            aria-label={`Cart - ${getTotalItems()} items`}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              textDecoration: 'none',
-              color: '#fff',
-              position: 'relative',
-              padding: '8px'
-            }}
-          >
-            <div style={{ position: 'relative', display: 'inline-flex' }}>
-              <ShoppingCart size={20} />
-              {getTotalItems() > 0 && (
-                <span style={{
-                  position: 'absolute',
-                  top: -8,
-                  right: -8,
-                  background: '#ff3b30',
-                  color: '#fff',
-                  borderRadius: 999,
-                  padding: '2px 6px',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  lineHeight: 1,
-                  minWidth: 18,
-                  height: 18,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: '2px solid #000'
-                }}>{getTotalItems()}</span>
-              )}
-            </div>
-          </Link>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <Link
+              to="/cart"
+              aria-label={`Cart - ${getTotalItems()} items`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                textDecoration: 'none',
+                color: '#fff',
+                position: 'relative',
+                padding: '8px'
+              }}
+            >
+              <div style={{ position: 'relative', display: 'inline-flex' }}>
+                <ShoppingCart size={20} />
+                {getTotalItems() > 0 && (
+                  <span style={{
+                    position: 'absolute',
+                    top: -8,
+                    right: -8,
+                    background: '#ff3b30',
+                    color: '#fff',
+                    borderRadius: 999,
+                    padding: '2px 6px',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    lineHeight: 1,
+                    minWidth: 18,
+                    height: 18,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '2px solid #000'
+                  }}>{getTotalItems()}</span>
+                )}
+              </div>
+            </Link>
+            <WhatsAppWidget inline size={34} className="ml-1 hidden sm:inline-flex" />
+          </div>
         </nav>
         {/* Mobile menu overlay - only render on mobile viewports */}
         {isMobile && open && (

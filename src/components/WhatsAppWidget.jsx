@@ -1,26 +1,23 @@
 import React, { useMemo } from 'react';
 
-// Small floating WhatsApp button that opens a chat to the business number.
-// Phone can be provided via VITE_WHATSAPP_NUMBER (e.g., 972546969974);
-// we'll also accept local formats like 054-696-9974 and normalize.
+// WhatsAppWidget supports two modes:
+// - floating (default): fixed bottom-right circular button
+// - inline/compact: small inline button suitable for header placement
 export default function WhatsAppWidget({
   phone: phoneProp,
   message = 'שלום, יש לי שאלה לגבי הזמנה/מחירון',
   className = '',
+  inline = false,
+  size = 40,
 }) {
   const rawEnv = (import.meta?.env?.VITE_WHATSAPP_NUMBER || '').toString();
-  const phone = phoneProp || rawEnv || '972546969974'; // default: +972 54-696-9974
+  const phone = phoneProp || rawEnv || '972546969974'; // default
 
   const normalized = useMemo(() => {
     try {
-      // Strip non-digits
       const digits = String(phone).replace(/\D+/g, '');
       if (!digits) return '';
-      // If starts with 0 and length >= 9, convert to 972 prefix (Israel)
-      if (digits.startsWith('0')) {
-        return '972' + digits.slice(1);
-      }
-      // Otherwise assume already in international form (without plus)
+      if (digits.startsWith('0')) return '972' + digits.slice(1);
       return digits;
     } catch {
       return '';
@@ -31,6 +28,27 @@ export default function WhatsAppWidget({
 
   const href = `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`;
 
+  if (inline) {
+    // Compact inline variant for header
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="WhatsApp chat"
+        title="WhatsApp"
+        className={`inline-flex items-center justify-center rounded-full bg-[#25D366] text-white hover:brightness-95 transition ${className}`}
+        style={{ width: size, height: size }}
+      >
+        <svg viewBox="0 0 24 24" width={size * 0.55} height={size * 0.55} fill="none" aria-hidden>
+          <path d="M20.52 3.48A11.94 11.94 0 0012 0C5.373 0 .02 5.373.02 12c0 2.116.557 4.184 1.616 6.03L0 24l6.197-1.586A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12 0-1.9-.42-3.7-1.48-5.24z" fill="currentColor" opacity="0.08" />
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.472-.148-.672.149-.199.297-.768.966-.941 1.164-.173.199-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.885-.788-1.48-1.761-1.654-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.173.199-.298.298-.497.099-.199.05-.372-.025-.521-.074-.149-.672-1.612-.922-2.206-.243-.579-.49-.5-.672-.51-.172-.007-.371-.009-.57-.009-.199 0-.52.074-.792.372-.273.297-1.04 1.016-1.04 2.479 0 1.462.963 2.877 1.098 3.079.134.199 1.895 2.963 4.6 4.154 1.62.7 2.466.934 3.33 1.005.627.05 1.22.043 1.683.026.514-.018 1.758-.717 2.007-1.41.25-.693.25-1.287.175-1.41-.074-.124-.272-.199-.57-.348z" fill="currentColor" />
+        </svg>
+      </a>
+    );
+  }
+
+  // Floating default
   return (
     <a
       href={href}
@@ -39,14 +57,12 @@ export default function WhatsAppWidget({
       aria-label="צ׳אט ב-WhatsApp"
       title="דברו איתנו ב-WhatsApp"
       className={`fixed z-50 right-4 bottom-4 sm:right-5 sm:bottom-5 rounded-full shadow-lg hover:shadow-xl transition transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-400 ${className}`}
+      style={{ width: 56, height: 56 }}
     >
-      <span
-        className="flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#25D366] text-white"
-      >
-        {/* WhatsApp logo (SVG) */}
-        <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-          <path fill="currentColor" d="M19.11 17.18c-.26-.13-1.53-.76-1.77-.84c-.24-.09-.42-.13-.6.13c-.18.26-.69.84-.85 1.01c-.16.18-.31.2-.57.07c-.26-.13-1.08-.4-2.06-1.28c-.76-.68-1.28-1.52-1.43-1.78c-.15-.26-.02-.4.11-.53c.11-.11.26-.29.38-.44c.13-.15.17-.26.26-.44c.09-.18.04-.33-.02-.46c-.06-.13-.6-1.44-.82-1.97c-.22-.53-.44-.46-.6-.46c-.15 0-.33-.02-.51-.02s-.46.07-.7.33c-.24.26-.92.9-.92 2.2c0 1.3.94 2.55 1.07 2.72c.13.18 1.84 2.81 4.46 3.93c.62.27 1.11.43 1.49.55c.63.2 1.2.17 1.65.11c.5-.08 1.53-.63 1.75-1.25c.22-.62.22-1.15.15-1.25c-.06-.1-.24-.16-.5-.29z"/>
-          <path fill="currentColor" d="M27.91 4.1C25.11 1.3 21.65 0 18 0C8.07 0 .02 8.05.02 18c0 3.15.83 6.23 2.42 8.94L0 32l5.2-2.38C7.84 31.22 10.88 32 14 32c9.94 0 18-8.06 18-18c0-3.65-1.3-7.11-4.09-9.9zM14 29.09c-2.79 0-5.52-.75-7.89-2.17l-.57-.34l-3.08 1.41l.66-3.01l-.37-.62C1.41 21.8.91 19.91.91 18C.91 9.02 8.02 1.91 17 1.91c4.27 0 8.28 1.66 11.29 4.68c3.02 3.01 4.68 7.03 4.68 11.29c0 8.98-7.11 16.19-16.19 16.19z"/>
+      <span className="flex items-center justify-center w-full h-full rounded-full bg-[#25D366] text-white">
+        <svg viewBox="0 0 24 24" width={28} height={28} fill="none" aria-hidden>
+          <path d="M20.52 3.48A11.94 11.94 0 0012 0C5.373 0 .02 5.373.02 12c0 2.116.557 4.184 1.616 6.03L0 24l6.197-1.586A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12 0-1.9-.42-3.7-1.48-5.24z" fill="currentColor" opacity="0.08" />
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.472-.148-.672.149-.199.297-.768.966-.941 1.164-.173.199-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.885-.788-1.48-1.761-1.654-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.173.199-.298.298-.497.099-.199.05-.372-.025-.521-.074-.149-.672-1.612-.922-2.206-.243-.579-.49-.5-.672-.51-.172-.007-.371-.009-.57-.009-.199 0-.52.074-.792.372-.273.297-1.04 1.016-1.04 2.479 0 1.462.963 2.877 1.098 3.079.134.199 1.895 2.963 4.6 4.154 1.62.7 2.466.934 3.33 1.005.627.05 1.22.043 1.683.026.514-.018 1.758-.717 2.007-1.41.25-.693.25-1.287.175-1.41-.074-.124-.272-.199-.57-.348z" fill="currentColor" />
         </svg>
       </span>
     </a>

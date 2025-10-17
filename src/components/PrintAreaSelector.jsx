@@ -149,56 +149,109 @@ const PrintAreaSelector = ({ availableAreas, selectedAreas, onChange }) => {
               </p>
               <div className="flex flex-col items-center gap-2 w-full">
                 <div className="flex flex-col items-stretch gap-2 w-full">
-                  <label className="w-full flex justify-between items-center text-sm">
-                    <div className={`flex items-center ${language === 'he' ? 'flex-row-reverse sm:flex-row' : ''}`}>
-                      <input
-                        type="radio"
-                        name={`method-${areaKey}`}
-                        checked={!!selObj && selObj.method === 'print'}
-                        onChange={() => {
-                          // selecting print should also ensure the area is selected
-                          if (!isSelected) {
-                            // select respecting exclusivity
-                            toggleArea(areaKey, disabled);
-                            return;
-                          }
-                          const next = selected.map(s => s.areaKey === areaKey ? { ...s, method: 'print' } : s);
-                          onChange(next);
-                        }}
-                        disabled={disabled}
-                        className={`${language === 'he' ? 'ml-3 sm:mr-3' : 'mr-3'}`}
-                      />
-                      <span className="text-sm">{language === 'he' ? 'הדפסה' : 'Print'}</span>
+                  <label className="w-full flex flex-col sm:flex-row justify-between items-center text-sm">
+                    <div className={`flex items-center gap-2 ${language === 'he' ? 'flex-row-reverse' : ''}`}>
+                      {language === 'he' ? (
+                        <>
+                          <span className="text-sm">{language === 'he' ? 'הדפסה' : 'Print'}</span>
+                          <input
+                            type="radio"
+                            name={`method-${areaKey}`}
+                            checked={!!selObj && selObj.method === 'print'}
+                            onChange={() => {
+                              // selecting print should also ensure the area is selected
+                              if (!isSelected) {
+                                // select respecting exclusivity
+                                toggleArea(areaKey, disabled);
+                                return;
+                              }
+                              const next = selected.map(s => s.areaKey === areaKey ? { ...s, method: 'print' } : s);
+                              onChange(next);
+                            }}
+                            disabled={disabled}
+                            className="flex-shrink-0"
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <input
+                            type="radio"
+                            name={`method-${areaKey}`}
+                            checked={!!selObj && selObj.method === 'print'}
+                            onChange={() => {
+                              // selecting print should also ensure the area is selected
+                              if (!isSelected) {
+                                // select respecting exclusivity
+                                toggleArea(areaKey, disabled);
+                                return;
+                              }
+                              const next = selected.map(s => s.areaKey === areaKey ? { ...s, method: 'print' } : s);
+                              onChange(next);
+                            }}
+                            disabled={disabled}
+                            className="flex-shrink-0"
+                          />
+                          <span className="text-sm">{language === 'he' ? 'הדפסה' : 'Print'}</span>
+                        </>
+                      )}
                     </div>
-                    <span className="text-sm text-gray-500 truncate max-w-[5.5rem] text-right">{language === 'he' ? `₪${area.fee} ליח׳` : `₪${area.fee}/unit`}</span>
+                    <span className="text-sm text-gray-500 sm:truncate max-w-[7rem] text-right mt-2 sm:mt-0">{language === 'he' ? `₪${area.fee} ליח׳` : `₪${area.fee}/unit`}</span>
                   </label>
 
                   {area.emboAllowed && (
-                    <label className="w-full flex justify-between items-center text-sm">
-                      <div className={`flex items-center ${language === 'he' ? 'flex-row-reverse sm:flex-row' : ''}`}>
-                        <input
-                          type="radio"
-                          name={`method-${areaKey}`}
-                          checked={!!selObj && selObj.method === 'embo'}
-                          onChange={() => {
-                            if (!isSelected) {
-                              // select with embo method while respecting exclusivity: create next manually
-                              const group = groupByArea[areaKey] || [];
-                              let next = selected.filter(a => !group.includes(a.areaKey));
-                              next = next.filter(a => !conflictsWith(areaKey, a.areaKey));
-                              next.push({ areaKey, method: 'embo' });
-                              onChange(next);
-                              return;
-                            }
-                            const next = selected.map(s => s.areaKey === areaKey ? { ...s, method: 'embo' } : s);
-                            onChange(next);
-                          }}
-                          disabled={disabled}
-                          className={`${language === 'he' ? 'ml-3 sm:mr-3' : 'mr-3'}`}
-                        />
-                        <span className="text-sm">{language === 'he' ? 'רקמה' : 'Embo'}</span>
+                    <label className="w-full flex flex-col sm:flex-row justify-between items-center text-sm">
+                      <div className={`flex items-center gap-2 ${language === 'he' ? 'flex-row-reverse' : ''}`}>
+                        {language === 'he' ? (
+                          <>
+                            <span className="text-sm">{language === 'he' ? 'רקמה' : 'Embo'}</span>
+                            <input
+                              type="radio"
+                              name={`method-${areaKey}`}
+                              checked={!!selObj && selObj.method === 'embo'}
+                              onChange={() => {
+                                if (!isSelected) {
+                                  // select with embo method while respecting exclusivity: create next manually
+                                  const group = groupByArea[areaKey] || [];
+                                  let next = selected.filter(a => !group.includes(a.areaKey));
+                                  next = next.filter(a => !conflictsWith(areaKey, a.areaKey));
+                                  next.push({ areaKey, method: 'embo' });
+                                  onChange(next);
+                                  return;
+                                }
+                                const next = selected.map(s => s.areaKey === areaKey ? { ...s, method: 'embo' } : s);
+                                onChange(next);
+                              }}
+                              disabled={disabled}
+                              className="flex-shrink-0"
+                            />
+                          </>
+                        ) : (
+                          <>
+                            <input
+                              type="radio"
+                              name={`method-${areaKey}`}
+                              checked={!!selObj && selObj.method === 'embo'}
+                              onChange={() => {
+                                if (!isSelected) {
+                                  // select with embo method while respecting exclusivity: create next manually
+                                  const group = groupByArea[areaKey] || [];
+                                  let next = selected.filter(a => !group.includes(a.areaKey));
+                                  next = next.filter(a => !conflictsWith(areaKey, a.areaKey));
+                                  next.push({ areaKey, method: 'embo' });
+                                  onChange(next);
+                                  return;
+                                }
+                                const next = selected.map(s => s.areaKey === areaKey ? { ...s, method: 'embo' } : s);
+                                onChange(next);
+                              }}
+                              disabled={disabled}
+                              className="flex-shrink-0"
+                            />
+                            <span className="text-sm">{language === 'he' ? 'רקמה' : 'Embo'}</span>
+                          </>
+                        )}
                       </div>
-                      <span className="text-sm text-gray-500 truncate max-w-[5.5rem] text-right">{language === 'he' ? '₪10 ליח׳' : '₪10/unit'}</span>
+                      <span className="text-sm text-gray-500 sm:truncate max-w-[7rem] text-right mt-2 sm:mt-0">{language === 'he' ? '₪10 ליח׳' : '₪10/unit'}</span>
                     </label>
                   )}
                 </div>
