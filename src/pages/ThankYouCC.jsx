@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet';
@@ -18,6 +18,7 @@ export default function ThankYouCC() {
   const { payload, clearCart } = useCart();
   const [showRaw, setShowRaw] = useState(false);
   const [marked, setMarked] = useState(false);
+  const sentRef = useRef(false);
 
   const orderId = safeGet(payload, 'order.id') || safeGet(payload, 'order_number') || safeGet(payload, 'id') || '';
   const customerName = safeGet(payload, 'customer.name') || safeGet(payload, 'contact.name') || safeGet(payload, 'contact?.name');
@@ -71,41 +72,45 @@ export default function ThankYouCC() {
           if (s && s.currency) currency = s.currency || currency;
         } catch (e) {}
       }
-      if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
-        const key = `gtag_purchase_${tx}`;
-        if (tx && localStorage.getItem(key)) return; // already fired
-        window.gtag('event', 'conversion', {
-          send_to: 'AW-17646508237/Oc12CLWH8asbEM2xwd5B',
-          value: value,
-          currency: currency,
-          transaction_id: tx,
-        });
-        // GA4 purchase event (explicit)
-        try {
-          window.gtag('event', 'purchase', {
-            transaction_id: tx,
-            value: value,
-            currency: currency,
-            payment_type: 'cc',
-            items: [
-              {
-                item_id: 'order',
-                item_name: 'Custom apparel order',
-                quantity: 1,
-              },
-            ],
-          });
-        } catch {}
-        if (tx) localStorage.setItem(key, '1');
-        try { localStorage.removeItem('order_payload_for_gtag'); } catch (e) {}
+      if (typeof window !== 'undefined' && typeof window.gtag === 'function' && !sentRef.current) {
+        if (!tx) tx = String(payload?.idempotency_key || `tmp_${Date.now()}`);
+        const key = tx ? `gtag_purchase_${tx}` : '';
+        if (tx && key && localStorage.getItem(key)) return; // already fired
+        const fire = () => {
+          if (sentRef.current) return;
+          try {
+            console.info('[gtag] purchase firing', { tx, value, currency, page: 'thank-you-cc' });
+            window.gtag('event', 'conversion', {
+              send_to: 'AW-17646508237/Oc12CLWH8asbEM2xwd5B',
+              value: value,
+              currency: currency,
+              transaction_id: tx,
+            });
+            window.gtag('event', 'purchase', {
+              transaction_id: tx,
+              value: value,
+              currency: currency,
+              payment_type: 'cc',
+              items: [
+                {
+                  item_id: 'order',
+                  item_name: 'Custom apparel order',
+                  quantity: 1,
+                },
+              ],
+            });
+            if (tx && key) localStorage.setItem(key, '1');
+            try { localStorage.removeItem('order_payload_for_gtag'); } catch (e) {}
+            try { clearCart(); } catch (e) {}
+            sentRef.current = true;
+          } catch (e) {}
+        };
+        setTimeout(fire, 300);
       }
     } catch (e) {}
-  }, [orderId, payload]);
+  }, [orderId, payload, clearCart]);
 
-  // Ensure we clear the cart items when landing on the iCount thank-you page
-  useEffect(() => {
-    try { clearCart(); } catch (e) {}
-  }, [clearCart]);
+  // Cart clearing moved to fire callback above to avoid racing with analytics
 
   return (
     <>
