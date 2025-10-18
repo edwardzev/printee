@@ -80,6 +80,15 @@ export default function ThankYouCC() {
           currency: currency,
           transaction_id: tx,
         });
+        // GA4 purchase event (explicit)
+        try {
+          window.gtag('event', 'purchase', {
+            transaction_id: tx,
+            value: value,
+            currency: currency,
+            payment_type: 'cc',
+          });
+        } catch {}
         if (tx) localStorage.setItem(key, '1');
         try { localStorage.removeItem('order_payload_for_gtag'); } catch (e) {}
       }

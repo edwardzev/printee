@@ -40,7 +40,7 @@ function ScrollToTop() {
   return null;
 }
 
-// Send Google Ads page_view on SPA route changes
+// Send Google Ads and GA4 page_view on SPA route changes
 function AdsRouteTracker() {
   const { pathname, search } = useLocation();
   useEffect(() => {
@@ -53,6 +53,7 @@ function AdsRouteTracker() {
         if (last === path) return;
         if (last !== undefined) {
           window.gtag('config', 'AW-17646508237', { page_path: path });
+          window.gtag('config', 'G-43KTYPJPNM', { page_path: path });
         }
         window[KEY] = path;
       }
