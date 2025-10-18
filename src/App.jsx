@@ -40,6 +40,27 @@ function ScrollToTop() {
   return null;
 }
 
+// Send Google Ads page_view on SPA route changes
+function AdsRouteTracker() {
+  const { pathname, search } = useLocation();
+  useEffect(() => {
+    try {
+      const path = `${pathname}${search || ''}`;
+      if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
+        const KEY = '__aw_last_path';
+        const last = window[KEY];
+        // Avoid double-firing on initial load (index.html already called gtag config)
+        if (last === path) return;
+        if (last !== undefined) {
+          window.gtag('config', 'AW-17646508237', { page_path: path });
+        }
+        window[KEY] = path;
+      }
+    } catch {}
+  }, [pathname, search]);
+  return null;
+}
+
 function App() {
   return (
     <LanguageProvider>
@@ -53,6 +74,7 @@ function App() {
             </Helmet>
             <Header />
             <ScrollToTop />
+            <AdsRouteTracker />
             <main className="min-h-screen">
               <Routes>
                 <Route path="/" element={<Home />} />

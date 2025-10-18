@@ -252,6 +252,12 @@ const MockupCanvas = ({ areaKey, baseImage, onFileUpload, uploadedDesign, templa
         <div className="flex flex-col gap-3">
           {effectiveDesign ? (
             <div className="w-full">
+              {/* Soothing reassurance message (HE only), slightly larger font and asterisk prefix */}
+              <div className="mb-2 rounded-md bg-blue-50 text-blue-900 border border-blue-200 px-3 py-2 text-[13px] leading-snug">
+                <p dir="rtl">
+                  * לפעמים הקובץ בהדמיה אינו מוצג בצורה טובה. לא לדאוג, המעצב בכל מקרה בודק כל קובץ ויוצר קשר במידה ומשהו לא תקין.
+                </p>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
                 {/* Color selector - label moved above the select so it doesn't crowd the comments */}
                 <div className="flex flex-col">

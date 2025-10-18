@@ -75,7 +75,7 @@ export default function ThankYouCC() {
         const key = `gtag_purchase_${tx}`;
         if (tx && localStorage.getItem(key)) return; // already fired
         window.gtag('event', 'conversion', {
-          send_to: 'AW-17646508237/0c12CLWH8asbEM2xwd5B',
+          send_to: 'AW-17646508237/Oc12CLWH8asbEM2xwd5B',
           value: value,
           currency: currency,
           transaction_id: tx,
