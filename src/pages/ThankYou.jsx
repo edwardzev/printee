@@ -45,7 +45,8 @@ export default function ThankYou() {
         // Generate a resilient fallback transaction id to avoid empty IDs
         if (!tx) tx = String(payload?.idempotency_key || `tmp_${Date.now()}`);
         const key = tx ? `gtag_purchase_${tx}` : '';
-        if (tx && key && localStorage.getItem(key)) return; // already fired for this tx
+        const debugBypass = String(new URLSearchParams(window.location.search).get('debug_gtag') || '').toLowerCase() === '1';
+        if (!debugBypass && tx && key && localStorage.getItem(key)) { console.info('[gtag] suppressed duplicate for tx', tx); return; }
         const fire = () => {
           if (sentRef.current) return;
           try {
@@ -61,6 +62,7 @@ export default function ThankYou() {
               value: value,
               currency: currency,
               payment_type: 'standard',
+              debug_mode: debugBypass || undefined,
               items: [
                 {
                   item_id: 'order',
@@ -107,8 +109,6 @@ export default function ThankYou() {
         body: JSON.stringify(payload),
       }).catch(() => {});
       setMarked(true);
-  // clear only the cart items now (preserve other payload metadata)
-  try { clearCart(); } catch {}
     } catch {}
   }, [marked, clearCart]);
 

@@ -53,7 +53,6 @@ export default function ThankYouCC() {
         body: JSON.stringify(payload),
       }).catch(() => {});
   setMarked(true);
-  try { clearCart(); } catch {}
     } catch {}
   }, [marked, clearCart]);
 
@@ -75,7 +74,8 @@ export default function ThankYouCC() {
       if (typeof window !== 'undefined' && typeof window.gtag === 'function' && !sentRef.current) {
         if (!tx) tx = String(payload?.idempotency_key || `tmp_${Date.now()}`);
         const key = tx ? `gtag_purchase_${tx}` : '';
-        if (tx && key && localStorage.getItem(key)) return; // already fired
+        const debugBypass = String(new URLSearchParams(window.location.search).get('debug_gtag') || '').toLowerCase() === '1';
+        if (!debugBypass && tx && key && localStorage.getItem(key)) { console.info('[gtag] suppressed duplicate for tx', tx); return; }
         const fire = () => {
           if (sentRef.current) return;
           try {
@@ -91,6 +91,7 @@ export default function ThankYouCC() {
               value: value,
               currency: currency,
               payment_type: 'cc',
+              debug_mode: debugBypass || undefined,
               items: [
                 {
                   item_id: 'order',
