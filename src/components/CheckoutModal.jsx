@@ -427,6 +427,26 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
     } catch (_) {}
 
 
+    // helper: compute total charge (incl. VAT and delivery)
+    const computeTotalCharge = () => {
+      const subtotal = Number(cartSummary?.total || 0);
+      const delivery = payload?.withDelivery ? Math.ceil(Number(getTotalItems?.() || 0) / 50) * 50 : 0;
+      const totalToCharge = Math.round((subtotal + delivery) * 1.17);
+      return { subtotal, delivery, totalToCharge };
+    };
+
+    const persistGtagPayload = (overrideValue) => {
+      try {
+        const { totalToCharge } = computeTotalCharge();
+        const stored = {
+          transaction_id: (payload?.airtable_order_id || idempotencyKeyRef.current || ''),
+          value: Number(overrideValue != null ? overrideValue : totalToCharge) || 0,
+          currency: 'ILS',
+        };
+        try { localStorage.setItem('order_payload_for_gtag', JSON.stringify(stored)); } catch (e) {}
+      } catch (e) {}
+    };
+
     if (method === 'card') {
       // Build iCount payment URL and redirect
       try {
@@ -444,9 +464,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
   const emailParam = (import.meta?.env?.VITE_ICOUNT_EMAIL_PARAM || 'contact_email');
   const phoneParam = (import.meta?.env?.VITE_ICOUNT_PHONE_PARAM || 'contact_phone');
 
-        const subtotal = Number(cartSummary?.total || 0);
-        const delivery = payload?.withDelivery ? Math.ceil(Number(getTotalItems?.() || 0) / 50) * 50 : 0;
-        const totalToCharge = Math.round((subtotal + delivery) * 1.17);
+  const { totalToCharge } = computeTotalCharge();
 
         const u = new URL(`${base}/${pageCode}`);
   u.searchParams.set(amountParam, String(totalToCharge));
@@ -482,19 +500,14 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
         setProcessing(false);
         onClose();
         // Persist minimal order info so returning from external payment can still fire gtag
-        try {
-          const stored = {
-            transaction_id: orderIdFromAirtable || idempotencyKeyRef.current || '',
-            value: Number(totalToCharge) || 0,
-            currency: 'ILS'
-          };
-          try { localStorage.setItem('order_payload_for_gtag', JSON.stringify(stored)); } catch (e) {}
-        } catch (e) {}
+        try { persistGtagPayload(totalToCharge); } catch (e) {}
         window.location.assign(u.toString());
         return;
       } catch (e) {
         // As a fallback, keep the original UX
         toast({ title: 'תודה', description: 'הזמנה התקבלה. ניצור קשר להמשך.', variant: 'default' });
+        // Persist for standard thank-you so purchase has value/tx
+        try { persistGtagPayload(); } catch (err) {}
         try { navigate('/thank-you'); } catch (err) {}
         setProcessing(false);
         onClose();
@@ -508,6 +521,8 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       toast({ title: 'Bit / Paybox', description: 'העבירו ל: 054-696-9974. שלחו צילום אישור תשלום ל-info@printmarket.co.il' });
       // Backend removed: no background forward
       // navigate to thank-you page so the user sees confirmation/next steps
+      // Persist for standard thank-you so purchase has value/tx
+      try { persistGtagPayload(); } catch (e) {}
       try { navigate('/thank-you'); } catch (e) { /* ignore */ }
       setProcessing(false);
       onClose();
@@ -518,6 +533,8 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
   toast({ title: 'תודה', description: 'נציגנו יצור איתך קשר בהקדם כדי להשלים את פרטי התשלום.' });
   // Fire-and-forget background forward as well
     // Backend removed: no background forward
+  // Persist for standard thank-you so purchase has value/tx
+  try { persistGtagPayload(); } catch (e) {}
   try { navigate('/thank-you'); } catch (e) { /* ignore */ }
   setProcessing(false);
   onClose();
