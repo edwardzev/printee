@@ -117,7 +117,11 @@ export async function composeWorksheetImage({
   const gapSmall = Math.round(THEME.sizes.deliveryText * 1.2);
   const gapHint = Math.round(THEME.sizes.hint * 1.2);
   if (idempotencyKey) { drawText(ctx, `IDEM: ${idempotencyKey}`, W - P, y, { font: font('deliveryText'), align: 'right', color: '#6b7280' }); y += gapSmall; } else { y += gapSmall; }
-  if (dropboxLink) { drawText(ctx, dropboxLink, W - P, y, { font: font('hint'), align: 'right', color: '#2563eb' }); y += gapHint; }
+  if (dropboxLink) {
+    const linkLabel = language === 'he' ? 'קישור לתיקייה' : 'Link to folder';
+    drawText(ctx, linkLabel, W - P, y, { font: font('hint'), align: 'right', color: '#2563eb' });
+    y += gapHint;
+  }
   y += gapSmall;
 
   // Customer and Finance blocks
@@ -229,13 +233,13 @@ export async function composeWorksheetImage({
       if (!d || !d.url) continue;
       const side = areaKey.startsWith('back') ? 'back' : 'front';
       const baseImage = `/schematics/${side}.png`;
-    // Use existing mockup composer at a smaller size
-  let mockup = null;
-  try {
-    mockup = await composeMockupImage({ areaKey, baseImage, designUrl: d.url, width: cellW, height: cellH });
-  } catch (e) {
-    mockup = null;
-  }
+    // Use existing mockup composer at its native square ratio (default 800x800) so overlay ratios match the website
+    let mockup = null;
+    try {
+      mockup = await composeMockupImage({ areaKey, baseImage, designUrl: d.url });
+    } catch (e) {
+      mockup = null;
+    }
 
   // If we're beyond the printable area, stop
   const infoLineH = Math.round(THEME.sizes.deliveryText * 1.5);
@@ -272,7 +276,13 @@ export async function composeWorksheetImage({
       if (mockup) {
         try {
           const img = await loadImage(mockup);
-          ctx.drawImage(img, xMock, frameTop, cellW, effH);
+          // Draw with contain scaling to preserve aspect ratio and placement
+          const scale = Math.min(cellW / img.width, effH / img.height);
+          const mw = Math.round(img.width * scale);
+          const mh = Math.round(img.height * scale);
+          const mx2 = xMock + Math.round((cellW - mw) / 2);
+          const my2 = frameTop + Math.round((effH - mh) / 2);
+          ctx.drawImage(img, mx2, my2, mw, mh);
         } catch {}
       }
       // Try to render the uploaded design; if it's a PDF or fails to load, draw a placeholder
