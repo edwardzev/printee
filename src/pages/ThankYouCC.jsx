@@ -87,6 +87,13 @@ export default function ThankYouCC() {
             value: value,
             currency: currency,
             payment_type: 'cc',
+            items: [
+              {
+                item_id: 'order',
+                item_name: 'Custom apparel order',
+                quantity: 1,
+              },
+            ],
           });
         } catch {}
         if (tx) localStorage.setItem(key, '1');

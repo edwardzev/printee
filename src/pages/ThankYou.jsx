@@ -56,6 +56,13 @@ export default function ThankYou() {
             value: value,
             currency: currency,
             payment_type: 'standard',
+            items: [
+              {
+                item_id: 'order',
+                item_name: 'Custom apparel order',
+                quantity: 1,
+              },
+            ],
           });
         } catch {}
         if (tx) localStorage.setItem(key, '1');
