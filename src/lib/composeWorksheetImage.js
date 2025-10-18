@@ -288,12 +288,13 @@ export async function composeWorksheetImage({
       // Try to render the uploaded design; if it's a PDF or fails to load, draw a placeholder
       try {
         const di = await loadImage(d.url);
-        // fit contain into design cell
+        // fit contain into design cell; horizontally center, vertically top-align
         const scale = Math.min(cellW / di.width, effH / di.height);
         const dw2 = Math.round(di.width * scale);
         const dh2 = Math.round(di.height * scale);
         const dx = xDesign + Math.round((cellW - dw2) / 2);
-        const dy = frameTop + Math.round((effH - dh2) / 2);
+        const topPadding = 6; // small visual padding from top edge
+        const dy = frameTop + topPadding;
         ctx.drawImage(di, dx, dy, dw2, dh2);
       } catch {
         // Draw placeholder for unsupported design previews (e.g., PDFs)
