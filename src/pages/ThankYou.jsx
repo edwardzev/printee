@@ -21,6 +21,23 @@ export default function ThankYou() {
   // no-op: bump for redeploy cache-bust
   const sentRef = useRef(false);
 
+  // QA helper: allow clearing local duplicate guard via ?clear_gtag=1
+  useEffect(() => {
+    try {
+      const qp = new URLSearchParams(window.location.search);
+      const clear = String(qp.get('clear_gtag') || '').toLowerCase() === '1';
+      if (!clear) return;
+      const toDelete = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('gtag_purchase_')) toDelete.push(k);
+      }
+      toDelete.forEach((k) => { try { localStorage.removeItem(k); } catch (_) {} });
+      try { localStorage.removeItem('order_payload_for_gtag'); } catch (_) {}
+      console.info('[gtag] cleared duplicate guards via clear_gtag=1');
+    } catch (_) {}
+  }, []);
+
   const orderId = safeGet(payload, 'order.id') || safeGet(payload, 'order_number') || safeGet(payload, 'id') || '';
   const customerName = safeGet(payload, 'customer.name') || safeGet(payload, 'contact.name') || safeGet(payload, 'contact?.name');
   const customerEmail = safeGet(payload, 'customer.email') || safeGet(payload, 'contact.email');
@@ -46,7 +63,23 @@ export default function ThankYou() {
         if (!tx) tx = String(payload?.idempotency_key || `tmp_${Date.now()}`);
         const key = tx ? `gtag_purchase_${tx}` : '';
         const debugBypass = String(new URLSearchParams(window.location.search).get('debug_gtag') || '').toLowerCase() === '1';
-        if (!debugBypass && tx && key && localStorage.getItem(key)) { console.info('[gtag] suppressed duplicate for tx', tx); return; }
+        // TTL-based suppression: 72 hours
+        const isSuppressed = () => {
+          if (!tx || !key) return false;
+          try {
+            const raw = localStorage.getItem(key);
+            if (!raw) return false;
+            // Support legacy '1' values (no TTL) as suppressed
+            let t = null;
+            try { const obj = JSON.parse(raw); t = obj && obj.t ? Number(obj.t) : null; } catch {}
+            if (!t) return true;
+            const ttlMs = 72 * 60 * 60 * 1000;
+            if (Date.now() - t < ttlMs) return true;
+            try { localStorage.removeItem(key); } catch {}
+            return false;
+          } catch { return false; }
+        };
+        if (!debugBypass && isSuppressed()) { console.info('[gtag] suppressed duplicate for tx', tx); return; }
         const fire = () => {
           if (sentRef.current) return;
           try {
@@ -71,7 +104,7 @@ export default function ThankYou() {
                 },
               ],
             });
-            if (tx && key) localStorage.setItem(key, '1');
+            if (tx && key) try { localStorage.setItem(key, JSON.stringify({ t: Date.now() })); } catch {}
             try { localStorage.removeItem('order_payload_for_gtag'); } catch (e) {}
             // Clear cart only after we fired analytics to avoid racing payload resets
             try { clearCart(); } catch (e) {}
