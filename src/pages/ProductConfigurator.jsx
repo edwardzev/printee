@@ -85,6 +85,73 @@ const ProductConfigurator = () => {
     } catch (err) {}
   }, [selectedPrintAreas, mergePayload]);
 
+  // When a new print area is selected, on mobile we want to smooth-scroll to its upload/mockup
+  // area so the user can immediately upload a design. Use a small animation helper to
+  // control the duration (ms). Only run on mobile to avoid surprising desktop behavior.
+  useEffect(() => {
+    if (!Array.isArray(selectedPrintAreas) || selectedPrintAreas.length === 0) return;
+    // determine last selected area that wasn't present previously - simplest heuristic:
+    // if any area has been newly added in the last tick, scroll to it. We store a ref on window
+    // to remember previously seen keys to avoid complex state bookkeeping.
+    try {
+      if (!isMobile) return;
+      const seenKey = '__printee_last_selected_print_areas__';
+      const prevRaw = window[seenKey] || '';
+      const prev = (prevRaw && Array.isArray(prevRaw)) ? prevRaw : prevRaw ? String(prevRaw).split(',') : [];
+      const current = selectedPrintAreas.map(s => (typeof s === 'string' ? s : s.areaKey));
+      // find first area in current that's not in prev (i.e., newly added)
+      const newly = current.find(k => !prev.includes(k));
+      // update seen cache
+      try { window[seenKey] = current; } catch (e) {}
+      if (!newly) return;
+
+      // helper: animated scroll to element with duration
+      const animateScrollTo = (el, duration = 500, offset = 0) => {
+        try {
+          if (!el) return;
+          const start = window.scrollY || window.pageYOffset;
+          const rect = el.getBoundingClientRect();
+          const target = rect.top + start + offset;
+          const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+          const finalTarget = Math.min(target, maxScroll);
+          const distance = finalTarget - start;
+          if (Math.abs(distance) < 8) return;
+          let startTime = null;
+          const easeInOutCubic = (t) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+          const step = (ts) => {
+            if (!startTime) startTime = ts;
+            const elapsed = ts - startTime;
+            const progress = Math.min(1, elapsed / duration);
+            const eased = easeInOutCubic(progress);
+            window.scrollTo(0, Math.round(start + distance * eased));
+            if (progress < 1) window.requestAnimationFrame(step);
+          };
+          window.requestAnimationFrame(step);
+        } catch (e) {}
+      };
+
+      // Attempt to find the upload area wrapper by id `upload-area-<areaKey>`
+      setTimeout(() => {
+        try {
+          const el = document.getElementById(`upload-area-${newly}`);
+          if (!el) return;
+          // allow configurable duration here; 500ms default. Smaller values = faster scroll.
+          const DURATION_MS = 700; // tweakable
+          // if header is sticky, offset upward so element centers nicely; read CSS var if set
+          const headerOffset = (() => {
+            try {
+              const v = getComputedStyle(document.documentElement).getPropertyValue('--header-height');
+              if (!v) return 0;
+              const n = parseInt(v, 10);
+              return Number.isFinite(n) ? -Math.max(0, n - 20) : 0; // n-20 to leave a small margin
+            } catch (e) { return 0; }
+          })();
+          animateScrollTo(el, DURATION_MS, headerOffset || 0);
+        } catch (e) {}
+      }, 140);
+    } catch (e) {}
+  }, [selectedPrintAreas, isMobile]);
+
   // per-area comments/printColor are persisted when changed directly in the area inputs
 
   // Persist uploaded designs (sanitized: we only keep name/url)
@@ -685,7 +752,7 @@ const ProductConfigurator = () => {
                       const method = typeof sel === 'string' ? 'print' : sel.method || 'print';
                       const selObj = typeof sel === 'string' ? { areaKey: sel, method: 'print' } : sel;
                       return (
-                        <div key={areaKey} className="border rounded-lg p-4">
+                        <div id={`upload-area-${areaKey}`} key={areaKey} className="border rounded-lg p-4">
                           <h3 className="font-medium text-gray-900 mb-3">
                             {language === 'he' ? area?.labelHe : area?.label} {method === 'embo' ? `• ${language === 'he' ? 'רקמה' : 'Embo'}` : ''}
                           </h3>
