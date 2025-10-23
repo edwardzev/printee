@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 
 const Catalog = () => {
   const { t, language } = useLanguage();
+  const navigate = useNavigate();
 
   // Preload first row images for faster first paint on catalog
   useEffect(() => {
@@ -69,7 +70,16 @@ const Catalog = () => {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
-                className="bg-white rounded-xl shadow-lg overflow-hidden card-hover"
+                className="bg-white rounded-xl shadow-lg overflow-hidden card-hover cursor-pointer"
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate(`/product/${product.sku}`)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigate(`/product/${product.sku}`);
+                  }
+                }}
               >
                 <div className="aspect-square overflow-hidden bg-gray-50">
                   <img
@@ -147,8 +157,9 @@ const Catalog = () => {
                       // Dynamic import to warm the product page JS bundle (best-effort)
                       try { import(/* webpackPrefetch: true */ '@/pages/ProductConfigurator'); } catch (e) {}
                     }}
+                    onClick={(e) => { e.stopPropagation(); }}
                   >
-                    <Button className="w-full">
+                    <Button className="w-full" onClick={(e) => { /* ensure button click doesn't bubble to card */ e.stopPropagation(); }}>
                       {language === 'he' ? 'בחר מוצר' : t('startDesigning')}
                     </Button>
                   </Link>
