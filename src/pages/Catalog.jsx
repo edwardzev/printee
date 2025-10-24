@@ -82,44 +82,77 @@ const Catalog = () => {
                 }}
               >
                 <div className="aspect-square overflow-hidden bg-gray-50 flex-shrink-0 pt-1">
-                  <img
-                    src={pick(product.images?.base1, `/product_images/${product.sku}/base_1.webp`)}
-                    alt={language === 'he' ? product.nameHe : product.name}
-                    // On mobile use object-cover but align to top so heads remain visible; on sm+ screens use object-contain
-                    className="w-full h-full object-cover object-top sm:object-contain transition-transform duration-300 hover:scale-[1.02]"
-                    loading="lazy"
-                    decoding="async"
-                    onMouseEnter={e => {
-                      const el = e.currentTarget;
-                      el.dataset.prev = el.src;
-                      const next = pick(product.images?.base2, `/product_images/${product.sku}/base_2.webp`);
-                      el.src = next;
-                    }}
-                    onMouseLeave={e => {
-                      const el = e.currentTarget;
-                      if (el.dataset.prev) el.src = el.dataset.prev;
-                      else el.src = pick(product.images?.base1, `/product_images/${product.sku}/base_1.webp`);
-                    }}
-                    onError={e => {
-                      const el = e.currentTarget;
-                      try {
-                        const pathname = new URL(el.src, window.location.origin).pathname;
-                        const list = Array.isArray(product.images?.base1) ? product.images.base1 : null;
-                        if (list) {
-                          const idx = list.findIndex(item => pathname.endsWith(item));
-                          if (idx >= 0 && idx < list.length - 1) {
-                            el.src = list[idx + 1];
-                            return;
-                          }
-                        }
-                      } catch (err) {
-                        // fall back to simple string comparisons if URL parsing fails
-                      }
-                      if (el.src.endsWith('.webp')) el.src = el.src.replace('.webp', '.jpg');
-                      else if (el.src.endsWith('.jpg')) el.src = el.src.replace('.jpg', '.jpeg');
-                      else if (el.src.endsWith('.jpeg')) el.src = el.src.replace('.jpeg', '.png');
-                    }}
-                  />
+                  {(() => {
+                    // helper: map an original product image path to our generated base name
+                    const makeBase = (src) => {
+                      if (!src || typeof src !== 'string') return null;
+                      const p = src.startsWith('/') ? src.slice(1) : src; // product_images/...
+                      if (!p.startsWith('product_images')) return null;
+                      const rel = p.replace(/^product_images[\\/]/, '');
+                      const noExt = rel.replace(/\.[^.]+$/, '');
+                      const base = noExt.replace(/[\\/]/g, '__');
+                      return `/product_images/${base}`;
+                    };
+
+                    const primary = Array.isArray(product.images?.base1) ? product.images.base1[0] : product.images?.base1 || `/product_images/${product.sku}/base_1.webp`;
+                    const primaryBase = makeBase(primary);
+                    const fallbackSrc = primary && primary.endsWith('.webp') ? primary : primary || `/product_images/${product.sku}/base_1.jpg`;
+
+                    return (
+                      <picture>
+                        {primaryBase && (
+                          <source
+                            type="image/avif"
+                            srcSet={`${primaryBase}.avif, ${primaryBase}-800.avif 800w, ${primaryBase}-1200.avif 1200w, ${primaryBase}-1600.avif 1600w`}
+                          />
+                        )}
+                        {primaryBase && (
+                          <source
+                            type="image/webp"
+                            srcSet={`${primaryBase}.webp, ${primaryBase}-800.webp 800w, ${primaryBase}-1200.webp 1200w, ${primaryBase}-1600.webp 1600w`}
+                          />
+                        )}
+                        <img
+                          src={fallbackSrc}
+                          alt={language === 'he' ? product.nameHe : product.name}
+                          // On mobile use object-cover but align to top so heads remain visible; on sm+ screens use object-contain
+                          className="w-full h-full object-cover object-top sm:object-contain transition-transform duration-300 hover:scale-[1.02]"
+                          loading="lazy"
+                          decoding="async"
+                          onMouseEnter={e => {
+                            const el = e.currentTarget;
+                            el.dataset.prev = el.src;
+                            const next = Array.isArray(product.images?.base2) ? product.images.base2[0] : product.images?.base2 || `/product_images/${product.sku}/base_2.webp`;
+                            el.src = next;
+                          }}
+                          onMouseLeave={e => {
+                            const el = e.currentTarget;
+                            if (el.dataset.prev) el.src = el.dataset.prev;
+                            else el.src = fallbackSrc;
+                          }}
+                          onError={e => {
+                            const el = e.currentTarget;
+                            try {
+                              const pathname = new URL(el.src, window.location.origin).pathname;
+                              const list = Array.isArray(product.images?.base1) ? product.images.base1 : null;
+                              if (list) {
+                                const idx = list.findIndex(item => pathname.endsWith(item));
+                                if (idx >= 0 && idx < list.length - 1) {
+                                  el.src = list[idx + 1];
+                                  return;
+                                }
+                              }
+                            } catch (err) {
+                              // fall back to simple string comparisons if URL parsing fails
+                            }
+                            if (el.src.endsWith('.webp')) el.src = el.src.replace('.webp', '.jpg');
+                            else if (el.src.endsWith('.jpg')) el.src = el.src.replace('.jpg', '.jpeg');
+                            else if (el.src.endsWith('.jpeg')) el.src = el.src.replace('.jpeg', '.png');
+                          }}
+                        />
+                      </picture>
+                    );
+                  })()}
                 </div>
                 
                 <div className="p-3 sm:p-6 flex-1 flex flex-col">

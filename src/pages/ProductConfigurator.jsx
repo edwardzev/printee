@@ -2,7 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet';
-import { ShoppingCart, AlertCircle, Trash2 } from 'lucide-react';
+// Import individual lucide icons directly to avoid pulling the whole icon set into the main bundle
+import ShoppingCart from 'lucide-react/dist/esm/icons/shopping-cart.js';
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle.js';
+import Trash2 from 'lucide-react/dist/esm/icons/trash-2.js';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCart } from '@/contexts/CartContext';
 import { products, printAreas, pricingRules, colorLabelsHe } from '@/data/products';
@@ -607,29 +610,55 @@ const ProductConfigurator = () => {
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
-                      <img
-                        src={pickSrc(product.images[color], product.images.base1)}
-                        alt={`${language === 'he' ? product.nameHe : product.name} ${color}`}
-                        className="w-full h-full object-contain rounded-md"
-                        loading="lazy"
-                        decoding="async"
-                        onError={(e) => {
-                          const el = e.currentTarget;
-                          // if src list provided, try next fallback
-                          const list = Array.isArray(product.images[color]) ? product.images[color] : null;
-                          if (list) {
-                            const idx = list.indexOf(el.src);
-                            if (idx >= 0 && idx < list.length - 1) {
-                              el.src = list[idx + 1];
-                              return;
-                            }
-                          }
-                          // generic extension fallback
-                          if (el.src.endsWith('.webp')) el.src = el.src.replace('.webp', '.jpg');
-                          else if (el.src.endsWith('.jpg')) el.src = el.src.replace('.jpg', '.jpeg');
-                          else if (el.src.endsWith('.jpeg')) el.src = el.src.replace('.jpeg', '.png');
-                        }}
-                      />
+                      {(() => {
+                        const makeBase = (src) => {
+                          if (!src || typeof src !== 'string') return null;
+                          const p = src.startsWith('/') ? src.slice(1) : src;
+                          if (!p.startsWith('product_images')) return null;
+                          const rel = p.replace(/^product_images[\\/]/, '');
+                          const noExt = rel.replace(/\.[^.]+$/, '');
+                          const base = noExt.replace(/[\\/]/g, '__');
+                          return `/product_images/${base}`;
+                        };
+
+                        const original = Array.isArray(product.images[color]) ? product.images[color][0] : product.images[color] || product.images.base1 && product.images.base1[0];
+                        const base = makeBase(original);
+                        const fallback = original || (Array.isArray(product.images.base1) ? product.images.base1[0] : product.images.base1);
+
+                        return (
+                          <picture>
+                            {base && (
+                              <source type="image/avif" srcSet={`${base}.avif, ${base}-800.avif 800w, ${base}-1200.avif 1200w`} />
+                            )}
+                            {base && (
+                              <source type="image/webp" srcSet={`${base}.webp, ${base}-800.webp 800w, ${base}-1200.webp 1200w`} />
+                            )}
+                            <img
+                              src={fallback}
+                              alt={`${language === 'he' ? product.nameHe : product.name} ${color}`}
+                              className="w-full h-full object-contain rounded-md"
+                              loading="lazy"
+                              decoding="async"
+                              onError={(e) => {
+                                const el = e.currentTarget;
+                                // if src list provided, try next fallback
+                                const list = Array.isArray(product.images[color]) ? product.images[color] : null;
+                                if (list) {
+                                  const idx = list.indexOf(el.src);
+                                  if (idx >= 0 && idx < list.length - 1) {
+                                    el.src = list[idx + 1];
+                                    return;
+                                  }
+                                }
+                                // generic extension fallback
+                                if (el.src.endsWith('.webp')) el.src = el.src.replace('.webp', '.jpg');
+                                else if (el.src.endsWith('.jpg')) el.src = el.src.replace('.jpg', '.jpeg');
+                                else if (el.src.endsWith('.jpeg')) el.src = el.src.replace('.jpeg', '.png');
+                              }}
+                            />
+                          </picture>
+                        );
+                      })()}
                       <div className="absolute bottom-2 left-2 right-2">
                           <span className="text-xs font-medium text-white bg-black bg-opacity-50 px-2 py-1 rounded capitalize">
                           {language === 'he' ? (colorLabelsHe[color] || color) : color}

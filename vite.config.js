@@ -1,5 +1,6 @@
 import path from 'node:path';
 import react from '@vitejs/plugin-react';
+import { visualizer } from 'rollup-plugin-visualizer';
 import { createLogger, defineConfig } from 'vite';
 import inlineEditPlugin from './plugins/visual-editor/vite-plugin-react-inline-editor.js';
 import editModeDevPlugin from './plugins/visual-editor/vite-plugin-edit-mode.js';
@@ -206,8 +207,9 @@ export default defineConfig({
 	plugins: [
 		...(isDev ? [inlineEditPlugin(), editModeDevPlugin(), iframeRouteRestorationPlugin()] : []),
 		react(),
-		addTransformIndexHtml
-	],
+		addTransformIndexHtml,
+		!isDev && visualizer({ filename: 'dist/bundle-visualizer.html', gzipSize: true, brotliSize: true })
+	].filter(Boolean),
 	server: {
 		cors: true,
 		headers: {
@@ -229,6 +231,7 @@ export default defineConfig({
 		},
 	},
 	build: {
+		sourcemap: true,
 		rollupOptions: {
 			external: [
 				'@babel/parser',

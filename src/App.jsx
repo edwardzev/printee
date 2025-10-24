@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import { Toaster } from '@/components/ui/toaster';
@@ -10,7 +10,7 @@ import Footer from '@/components/Footer';
 import WhatsAppWidget from '@/components/WhatsAppWidget';
 import Home from '@/pages/Home';
 import Catalog from '@/pages/Catalog';
-import ProductConfigurator from '@/pages/ProductConfigurator';
+const ProductConfigurator = React.lazy(() => import('@/pages/ProductConfigurator'));
 import Cart from '@/pages/Cart';
 import CheckoutResult from '@/pages/CheckoutResult';
 import ThankYou from '@/pages/ThankYou';
@@ -80,7 +80,14 @@ function App() {
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/catalog" element={<Catalog />} />
-                <Route path="/product/:sku" element={<ProductConfigurator />} />
+                <Route
+                  path="/product/:sku"
+                  element={
+                    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">{/* loading */}</div>}>
+                      <ProductConfigurator />
+                    </Suspense>
+                  }
+                />
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/checkout/success" element={<CheckoutResult success={true} />} />
                 <Route path="/checkout/cancel" element={<CheckoutResult success={false} />} />

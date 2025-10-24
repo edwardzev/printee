@@ -19,9 +19,10 @@ export default function HeroImage({
   const timerRef = useRef(null);
   const playingRef = useRef(true);
 
-  // Build candidate list: support hero-1..hero-50 and hero_1..hero_50 with common extensions
+  // Build candidate list: support hero-1..hero-50 and hero_1..hero_50 with modern-first extensions
   const candidates = useMemo(() => {
-    const exts = ["webp", "jpg", "png", "jpeg"];
+    // prefer modern formats if present
+    const exts = ["avif","webp", "jpg", "png", "jpeg"];
     const out = [];
     // try up to 50 files to cover your set
     for (let i = 1; i <= 50; i++) {
@@ -80,7 +81,7 @@ export default function HeroImage({
       let primary = null;
       try {
         const primaryCandidates = [];
-        const exts = ['webp','jpg','png','jpeg'];
+        const exts = ['avif','webp','jpg','png','jpeg'];
         for (const ext of exts) {
           primaryCandidates.push(`/hero_images/hero_${primaryIndex}_sm.${ext}`);
           primaryCandidates.push(`/hero_images/hero_${primaryIndex}_lg.${ext}`);
@@ -254,10 +255,15 @@ export default function HeroImage({
             className={i === idx ? "hero-img active" : "hero-img"}
             loading={i === 0 ? "eager" : "lazy"}
             decoding="async"
-            fetchPriority={i === 0 ? 'high' : undefined}
+            width={1600}
+            height={900}
+            {...(i === 0 ? {fetchpriority: 'high'} : {})}
           />
         ))}
       </div>
+
+      {/* Dynamically preload the resolved primary image (if present) to help LCP */}
+      <DynamicPreload url={images && images.length ? images[0] : null} />
 
       {/* Controls */}
       {images.length > 1 && (
@@ -280,4 +286,25 @@ export default function HeroImage({
       )}
     </section>
   );
+}
+
+// Small helper: preload a URL into document head when available
+function DynamicPreload({ url }) {
+  useEffect(() => {
+    if (!url || typeof document === 'undefined') return;
+    try {
+      const selector = `link[rel="preload"][href="${url}"]`;
+      if (document.querySelector(selector)) return;
+      const link = document.createElement('link');
+      link.rel = 'preload';
+      link.as = 'image';
+      link.href = url;
+      document.head.appendChild(link);
+      return () => {
+        try { document.head.removeChild(link); } catch (e) { /* ignore */ }
+      };
+    } catch (e) { /* noop */ }
+  }, [url]);
+
+  return null;
 }
