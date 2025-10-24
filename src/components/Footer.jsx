@@ -55,7 +55,7 @@ const Footer = () => {
             <h4 className="text-lg font-semibold mb-4">צור קשר</h4>
             <div className="text-gray-300 space-y-2">
               <p>info@printmarket.co.il</p>
-              
+              <p className="text-sm">האורגים 32, חולון</p>
             </div>
           </div>
         </div>

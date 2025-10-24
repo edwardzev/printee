@@ -125,7 +125,8 @@ export default function Header({ dir = "rtl" }) {
             src="/logo_printee.png"
             alt="PRINTEAM"
             style={{
-              height: isMobile ? 110 : 210,
+              // Make logo size relative to the header height so it scales consistently
+              height: 'calc(var(--header-height) * 0.75)',
               width: "auto",
               display: "block",
               objectFit: 'contain',

@@ -20,8 +20,9 @@ section { width: 100%; max-width: 100%; }
 /* Header sizing helpers: keep header fixed but avoid layout shift */
 
 :root {
-  --header-height-desktop: 120px;
-  --header-height-mobile: 88px;
+  /* Reduced header heights: 50% of previous values */
+  --header-height-desktop: 90px;
+  --header-height-mobile: 64px;
 }
 
 @media (min-width: 768px) {

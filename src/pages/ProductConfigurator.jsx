@@ -394,6 +394,9 @@ const ProductConfigurator = () => {
 
   const desc = getProductDescription(product, language);
 
+  // Show-more state for product description
+  const [descExpanded, setDescExpanded] = React.useState(false);
+
   const pricing = calculatePrice();
   // Allow adding to cart when there's a positive quantity and at least one color chosen.
   // We no longer require selecting print areas so users can order blank products.
@@ -480,12 +483,12 @@ const ProductConfigurator = () => {
   }), [language, product, sku]);
 
   // Helper to render rich product description with headings, paragraphs, and bullets
+  // Returns an array of JSX blocks (not wrapped) so the caller can decide to show/hide parts.
   const renderProductDescription = (desc, language) => {
-    if (!desc) return null;
-    const blocks = desc.split('\n\n');
+    if (!desc) return [];
+    const blocks = desc.split('\n\n').map(b => b.trim()).filter(Boolean);
     return blocks.map((block, index) => {
-      const trimmed = block.trim();
-      if (!trimmed) return null;
+      const trimmed = block;
       const headingPatterns = [
         'מאפייני המוצר:',
         'היתרונות של החולצה:',
@@ -556,7 +559,31 @@ const ProductConfigurator = () => {
                   {language === 'he' ? product.nameHe : product.name}
                 </h1>
                 {/* Always render description if resolved */}
-                {renderProductDescription(desc, language)}
+                {(() => {
+                  const blocks = renderProductDescription(desc, language) || [];
+                  if (!blocks || blocks.length === 0) return null;
+                  // Show exactly three lines by default using a CSS clamp; toggle expands to full
+                  return (
+                    <div>
+                      <div
+                        className="text-gray-600 leading-relaxed"
+                        style={!descExpanded ? { display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' } : {}}
+                      >
+                        {blocks}
+                      </div>
+                      {blocks.length > 0 && (
+                        <div className="mt-3">
+                          <button
+                            className="text-sm text-blue-600 hover:underline"
+                            onClick={() => setDescExpanded(s => !s)}
+                          >
+                            {descExpanded ? (language === 'he' ? 'הצג פחות' : 'Show less') : (language === 'he' ? 'הצג עוד' : 'Show more')}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
                 {/* end description area */}
               </motion.div>
 

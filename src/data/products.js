@@ -264,7 +264,7 @@ export const products = [
     sku: 'fleece',
     appearance: 80,
     name: 'Light Fleece',
-    nameHe: 'פלי́ס קל',
+    nameHe: 'פליס קל',
     description: 'Soft fleece layer, suitable for cool weather and comfortable prints.',
     descriptionHe: `מעיל פליז חד צדדי איכותי וחמים, אידיאלי לשימוש יומיומי או פעילות חוץ.
 המעיל עשוי מ-100% פוליאסטר, מה שמספק בידוד טוב ונוחות. הוא מצויד בכיסים לידיים וגומי תחתון להתאמה מושלמת לגוף.
@@ -293,7 +293,7 @@ export const products = [
     sku: 'longsleeve',
     appearance: 20,
     name: 'Long Sleeve Tee',
-    nameHe: 'חולצת טריקן שרוול ארוך',
+    nameHe: 'חולצת טריקו שרוול ארוך',
     description: 'A long-sleeve variant of our classic tee, great for cooler days and layered looks.',
   descriptionHe: `על המוצר
 חולצת טריקו ארוכה בצבע לבן, קלאסית ונוחה, המיועדת לשימוש יום-יומי, פעילות ספורטיבית או עבודה.
