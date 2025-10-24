@@ -62,15 +62,15 @@ const Catalog = () => {
             </p>
           </motion.div>
 
-          {/* Products Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {/* Products Grid - show two products per row on mobile */}
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             {([...products].sort((a, b) => (a.appearance || 0) - (b.appearance || 0))).map((product, index) => (
               <motion.div
                 key={product.sku}
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
-                className="bg-white rounded-xl shadow-lg overflow-hidden card-hover cursor-pointer"
+                className="bg-white rounded-xl shadow-lg overflow-hidden card-hover cursor-pointer flex flex-col"
                 role="button"
                 tabIndex={0}
                 onClick={() => navigate(`/product/${product.sku}`)}
@@ -81,11 +81,12 @@ const Catalog = () => {
                   }
                 }}
               >
-                <div className="aspect-square overflow-hidden bg-gray-50">
+                <div className="aspect-square overflow-hidden bg-gray-50 flex-shrink-0 pt-1">
                   <img
                     src={pick(product.images?.base1, `/product_images/${product.sku}/base_1.webp`)}
                     alt={language === 'he' ? product.nameHe : product.name}
-                    className="w-full h-full object-contain transition-transform duration-300 hover:scale-[1.02]"
+                    // On mobile use object-cover but align to top so heads remain visible; on sm+ screens use object-contain
+                    className="w-full h-full object-cover object-top sm:object-contain transition-transform duration-300 hover:scale-[1.02]"
                     loading="lazy"
                     decoding="async"
                     onMouseEnter={e => {
@@ -121,7 +122,7 @@ const Catalog = () => {
                   />
                 </div>
                 
-                <div className="p-6">
+                <div className="p-3 sm:p-6 flex-1 flex flex-col">
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">
                     {language === 'he' ? product.nameHe : product.name}
                   </h3>
@@ -133,7 +134,7 @@ const Catalog = () => {
                         {product.colors.length}
                       </span>
                     </span>
-                    <span className="text-lg font-bold text-blue-600">
+                    <span className="text-sm sm:text-lg font-bold text-blue-600">
                       {(() => {
                         const tiers = pricingRules[product.sku]?.tiers || [];
                         const min = tiers.length ? Math.min(...tiers.map(t => t.price)) : product.basePrice;
@@ -146,7 +147,8 @@ const Catalog = () => {
 
                   {/* color swatches removed per request; keep the color counter above */}
 
-                  <Link
+                  <div className="mt-auto">
+                    <Link
                     to={`/product/${product.sku}`}
                     onMouseEnter={() => {
                       // Prefetch product image and product page bundle on hover
@@ -158,11 +160,12 @@ const Catalog = () => {
                       try { import(/* webpackPrefetch: true */ '@/pages/ProductConfigurator'); } catch (e) {}
                     }}
                     onClick={(e) => { e.stopPropagation(); }}
-                  >
-                    <Button className="w-full" onClick={(e) => { /* ensure button click doesn't bubble to card */ e.stopPropagation(); }}>
-                      {language === 'he' ? 'בחר מוצר' : t('startDesigning')}
-                    </Button>
-                  </Link>
+                    >
+                      <Button className="w-full" onClick={(e) => { /* ensure button click doesn't bubble to card */ e.stopPropagation(); }}>
+                        {language === 'he' ? 'בחר מוצר' : t('startDesigning')}
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
               </motion.div>
             ))}

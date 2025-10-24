@@ -37,6 +37,7 @@ export default function WhatsAppWidget({
         rel="noopener noreferrer"
         aria-label="WhatsApp chat"
         title="WhatsApp"
+        data-clarity-element="whatsapp-button"
         className={`inline-flex items-center justify-center rounded-full bg-[#25D366] text-white hover:brightness-95 transition ${className}`}
         style={{ width: size, height: size }}
       >
@@ -56,6 +57,7 @@ export default function WhatsAppWidget({
       rel="noopener noreferrer"
       aria-label="צ׳אט ב-WhatsApp"
       title="דברו איתנו ב-WhatsApp"
+      data-clarity-element="whatsapp-button"
       className={`fixed z-50 right-4 bottom-4 sm:right-5 sm:bottom-5 rounded-full shadow-lg hover:shadow-xl transition transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-400 ${className}`}
       style={{ width: 56, height: 56 }}
     >
