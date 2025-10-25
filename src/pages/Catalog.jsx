@@ -15,7 +15,7 @@ const Catalog = () => {
     try {
       const toPreload = [...products].slice(0, 6);
       toPreload.forEach((p) => {
-        const src = pick(p.images?.base1, `/product_images/${p.sku}/base_1.webp`);
+        const src = pick(p.images?.base1, `/product_images/${p.sku}/base1_${p.sku}.png`);
         const img = new Image();
         img.src = src;
       });
@@ -34,7 +34,7 @@ const Catalog = () => {
   // pick the first suitable raster image from an array or fallback
   const pick = (arr, fallback) => {
     if (!Array.isArray(arr) || !arr.length) return fallback;
-    return arr.find(x => /\.(jpe?g|png)$/.test(x)) || arr[0];
+    return arr.find(x => /\.(jpe?g|png)$/i.test(x)) || arr[0];
   };
 
   return (
@@ -83,46 +83,57 @@ const Catalog = () => {
               >
                 <div className="aspect-square overflow-hidden bg-gray-50 flex-shrink-0 pt-1">
                   {(() => {
-                    // helper: map an original product image path to our generated base name
-                    const makeBase = (src) => {
+                    // derive same-folder avif/webp variants from a raster original path
+                    const deriveBase = (src) => {
                       if (!src || typeof src !== 'string') return null;
-                      const p = src.startsWith('/') ? src.slice(1) : src; // product_images/...
-                      if (!p.startsWith('product_images')) return null;
-                      const rel = p.replace(/^product_images[\\/]/, '');
-                      const noExt = rel.replace(/\.[^.]+$/, '');
-                      const base = noExt.replace(/[\\/]/g, '__');
-                      return `/product_images/${base}`;
+                      const m = src.match(/(.+?)\.[^.]+$/);
+                      return m ? m[1] : null; // returns '/product_images/xxx/name'
                     };
 
-                    const primary = Array.isArray(product.images?.base1) ? product.images.base1[0] : product.images?.base1 || `/product_images/${product.sku}/base_1.webp`;
-                    const primaryBase = makeBase(primary);
-                    const fallbackSrc = primary && primary.endsWith('.webp') ? primary : primary || `/product_images/${product.sku}/base_1.jpg`;
+                    const pickRaster = (entry, fallback) => {
+                      if (Array.isArray(entry) && entry.length) {
+                        const r = entry.find(x => /\.(jpe?g|png)$/i.test(x));
+                        if (r) return r;
+                        return entry[0];
+                      }
+                      if (typeof entry === 'string' && entry) return entry;
+                      return fallback;
+                    };
+
+                    let primary = pickRaster(product.images?.base1, `/product_images/${product.sku}/base1_${product.sku}.png`);
+                    // Hotfix: if legacy pattern '/base_1' or '/base_2' sneaks in, rewrite to '/base1_<sku>' or '/base2_<sku>'
+                    try {
+                      const m = primary && primary.match(/^(.*)\/base_(1|2)(\.[^.]+)?$/);
+                      if (m) {
+                        const ext = m[3] || '.png';
+                        primary = `/product_images/${product.sku}/base${m[2]}_${product.sku}${ext}`;
+                      }
+                    } catch {}
+                    const base = deriveBase(primary);
+                    // For maximum reliability on catalog cards, offer webp only; keep raster <img> fallback
+                    const webpSrc = base ? `${base}.webp` : null;
+                    const fallbackSrc = primary;
 
                     return (
                       <picture>
-                        {primaryBase && (
-                          <source
-                            type="image/avif"
-                            srcSet={`${primaryBase}.avif, ${primaryBase}-800.avif 800w, ${primaryBase}-1200.avif 1200w, ${primaryBase}-1600.avif 1600w`}
-                          />
-                        )}
-                        {primaryBase && (
-                          <source
-                            type="image/webp"
-                            srcSet={`${primaryBase}.webp, ${primaryBase}-800.webp 800w, ${primaryBase}-1200.webp 1200w, ${primaryBase}-1600.webp 1600w`}
-                          />
-                        )}
+                        {webpSrc && <source type="image/webp" srcSet={webpSrc} />}
                         <img
                           src={fallbackSrc}
                           alt={language === 'he' ? product.nameHe : product.name}
-                          // On mobile use object-cover but align to top so heads remain visible; on sm+ screens use object-contain
                           className="w-full h-full object-cover object-top sm:object-contain transition-transform duration-300 hover:scale-[1.02]"
                           loading="lazy"
                           decoding="async"
                           onMouseEnter={e => {
                             const el = e.currentTarget;
                             el.dataset.prev = el.src;
-                            const next = Array.isArray(product.images?.base2) ? product.images.base2[0] : product.images?.base2 || `/product_images/${product.sku}/base_2.webp`;
+                            let next = pickRaster(product.images?.base2, `/product_images/${product.sku}/base2_${product.sku}.png`);
+                            try {
+                              const m = next && next.match(/^(.*)\/base_(1|2)(\.[^.]+)?$/);
+                              if (m) {
+                                const ext = m[3] || '.png';
+                                next = `/product_images/${product.sku}/base${m[2]}_${product.sku}${ext}`;
+                              }
+                            } catch {}
                             el.src = next;
                           }}
                           onMouseLeave={e => {
@@ -187,7 +198,15 @@ const Catalog = () => {
                       // Prefetch product image and product page bundle on hover
                       try {
                         const img = new Image();
-                        img.src = pick(product.images?.base1, `/product_images/${product.sku}/base_1.webp`);
+                        let src = pick(product.images?.base1, `/product_images/${product.sku}/base1_${product.sku}.png`);
+                        try {
+                          const m = src && src.match(/^(.*)\/base_(1|2)(\.[^.]+)?$/);
+                          if (m) {
+                            const ext = m[3] || '.png';
+                            src = `/product_images/${product.sku}/base${m[2]}_${product.sku}${ext}`;
+                          }
+                        } catch {}
+                        img.src = src;
                       } catch (e) {}
                       // Dynamic import to warm the product page JS bundle (best-effort)
                       try { import(/* webpackPrefetch: true */ '@/pages/ProductConfigurator'); } catch (e) {}

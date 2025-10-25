@@ -88,16 +88,15 @@ const ProductConfigurator = () => {
     } catch (err) {}
   }, [selectedPrintAreas, mergePayload]);
 
-  // When a new print area is selected, on mobile we want to smooth-scroll to its upload/mockup
-  // area so the user can immediately upload a design. Use a small animation helper to
-  // control the duration (ms). Only run on mobile to avoid surprising desktop behavior.
+  // When a new print area is selected, smooth-scroll to its upload/mockup area so the user can
+  // immediately upload a design. Previously gated to mobile only; enable on all viewports with
+  // a safe offset so it plays nicely with sticky headers on desktop too.
   useEffect(() => {
     if (!Array.isArray(selectedPrintAreas) || selectedPrintAreas.length === 0) return;
     // determine last selected area that wasn't present previously - simplest heuristic:
     // if any area has been newly added in the last tick, scroll to it. We store a ref on window
     // to remember previously seen keys to avoid complex state bookkeeping.
     try {
-      if (!isMobile) return;
       const seenKey = '__printee_last_selected_print_areas__';
       const prevRaw = window[seenKey] || '';
       const prev = (prevRaw && Array.isArray(prevRaw)) ? prevRaw : prevRaw ? String(prevRaw).split(',') : [];
@@ -138,7 +137,7 @@ const ProductConfigurator = () => {
         try {
           const el = document.getElementById(`upload-area-${newly}`);
           if (!el) return;
-          // allow configurable duration here; 500ms default. Smaller values = faster scroll.
+          // allow configurable duration here; 700ms default for a smooth, noticeable scroll.
           const DURATION_MS = 700; // tweakable
           // if header is sticky, offset upward so element centers nicely; read CSS var if set
           const headerOffset = (() => {
@@ -149,7 +148,9 @@ const ProductConfigurator = () => {
               return Number.isFinite(n) ? -Math.max(0, n - 20) : 0; // n-20 to leave a small margin
             } catch (e) { return 0; }
           })();
-          animateScrollTo(el, DURATION_MS, headerOffset || 0);
+          // On desktop, bias toward centering the block slightly below the top for visibility
+          const desktopBias = !isMobile ? -40 : 0;
+          animateScrollTo(el, DURATION_MS, (headerOffset || 0) + desktopBias);
         } catch (e) {}
       }, 140);
     } catch (e) {}
@@ -173,11 +174,19 @@ const ProductConfigurator = () => {
     } catch (err) {}
   }, [uploadedDesigns, mergePayload]);
 
-  // Helper to pick first src from an array or return string as-is
-  const pickSrc = (maybeArrayOrString, fallback) => {
+  // Image helpers: prefer a raster for <img src> and derive modern formats
+  const pickRaster = (maybeArrayOrString, fallback) => {
     if (!maybeArrayOrString) return fallback || '';
-    if (Array.isArray(maybeArrayOrString)) return maybeArrayOrString[0] || fallback || '';
+    if (Array.isArray(maybeArrayOrString)) {
+      const r = maybeArrayOrString.find(x => /\.(jpe?g|png)$/i.test(x));
+      return r || maybeArrayOrString[0] || fallback || '';
+    }
     return maybeArrayOrString;
+  };
+  const deriveBase = (src) => {
+    if (!src || typeof src !== 'string') return null;
+    const m = src.match(/(.+?)\.[^.]+$/);
+    return m ? m[1] : null;
   };
 
   // Toggle color selection; on mobile, scroll to the relevant size matrix after selection
@@ -365,7 +374,7 @@ const ProductConfigurator = () => {
       totalPrice: pricing.totalIls,
       priceBreakdown: pricing.breakdown,
       // mockup: if a color is selected, use its image; otherwise use base image
-      mockupUrl: pickSrc((selectedColors && selectedColors[0]) ? product.images[selectedColors[0]] : product.images.base1, product.images.base1)
+  mockupUrl: pickRaster((selectedColors && selectedColors[0]) ? product.images[selectedColors[0]] : product.images.base1, pickRaster(product.images.base1))
     };
 
     const prefillId = location?.state?.prefill?.id;
@@ -611,28 +620,16 @@ const ProductConfigurator = () => {
                       }`}
                     >
                       {(() => {
-                        const makeBase = (src) => {
-                          if (!src || typeof src !== 'string') return null;
-                          const p = src.startsWith('/') ? src.slice(1) : src;
-                          if (!p.startsWith('product_images')) return null;
-                          const rel = p.replace(/^product_images[\\/]/, '');
-                          const noExt = rel.replace(/\.[^.]+$/, '');
-                          const base = noExt.replace(/[\\/]/g, '__');
-                          return `/product_images/${base}`;
-                        };
-
-                        const original = Array.isArray(product.images[color]) ? product.images[color][0] : product.images[color] || product.images.base1 && product.images.base1[0];
-                        const base = makeBase(original);
-                        const fallback = original || (Array.isArray(product.images.base1) ? product.images.base1[0] : product.images.base1);
+                        const original = pickRaster(product.images[color], pickRaster(product.images.base1));
+                        const base = deriveBase(original);
+                        const avifSrc = base ? `${base}.avif` : null;
+                        const webpSrc = base ? `${base}.webp` : null;
+                        const fallback = original;
 
                         return (
                           <picture>
-                            {base && (
-                              <source type="image/avif" srcSet={`${base}.avif, ${base}-800.avif 800w, ${base}-1200.avif 1200w`} />
-                            )}
-                            {base && (
-                              <source type="image/webp" srcSet={`${base}.webp, ${base}-800.webp 800w, ${base}-1200.webp 1200w`} />
-                            )}
+                            {avifSrc && (<source type="image/avif" srcSet={avifSrc} />)}
+                            {webpSrc && (<source type="image/webp" srcSet={webpSrc} />)}
                             <img
                               src={fallback}
                               alt={`${language === 'he' ? product.nameHe : product.name} ${color}`}
@@ -644,7 +641,7 @@ const ProductConfigurator = () => {
                                 // if src list provided, try next fallback
                                 const list = Array.isArray(product.images[color]) ? product.images[color] : null;
                                 if (list) {
-                                  const idx = list.indexOf(el.src);
+                                  const idx = list.findIndex(item => el.src.endsWith(item));
                                   if (idx >= 0 && idx < list.length - 1) {
                                     el.src = list[idx + 1];
                                     return;

@@ -382,7 +382,7 @@ const Cart = () => {
                   {products.filter(p => !cartItems.some(ci => ci.productSku === p.sku)).slice(0,4).map(p => (
                     <Link key={p.sku} to={`/product/${p.sku}`} className="flex flex-col items-center gap-2 p-3 border rounded">
                       <img
-                        src={(Array.isArray(p.images?.base1) ? (p.images.base1.find(x=>x.endsWith('.jpg')||x.endsWith('.jpeg')||x.endsWith('.png'))||p.images.base1[0]) : `/product_images/${p.sku}/base_1.webp`)}
+                        src={(Array.isArray(p.images?.base1) ? (p.images.base1.find(x=>x.endsWith('.jpg')||x.endsWith('.jpeg')||x.endsWith('.png'))||p.images.base1[0]) : `/product_images/${p.sku}/base1_${p.sku}.png`)}
                         alt={p.nameHe}
                         className="h-20 w-20 object-contain"
                         onError={(e) => {
