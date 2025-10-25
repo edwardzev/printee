@@ -2,7 +2,9 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet';
-import { CheckCircle, XCircle, ArrowRight } from 'lucide-react';
+import CheckCircle from 'lucide-react/dist/esm/icons/check-circle.js';
+import XCircle from 'lucide-react/dist/esm/icons/x-circle.js';
+import ArrowRight from 'lucide-react/dist/esm/icons/arrow-right.js';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 

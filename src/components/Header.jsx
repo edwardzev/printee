@@ -1,8 +1,14 @@
 import { useEffect, useState, useRef } from "react";
-import { ShoppingCart } from 'lucide-react';
+import ShoppingCart from 'lucide-react/dist/esm/icons/shopping-cart.js';
 import { useCart } from '@/contexts/CartContext';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, List, Info, HelpCircle, ShoppingCart as CartIcon, DollarSign } from 'lucide-react';
+import Home from 'lucide-react/dist/esm/icons/home.js';
+import List from 'lucide-react/dist/esm/icons/list.js';
+import Info from 'lucide-react/dist/esm/icons/info.js';
+import HelpCircle from 'lucide-react/dist/esm/icons/help-circle.js';
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign.js';
+// CartIcon alias used in some places – reuse the ShoppingCart default export
+const CartIcon = ShoppingCart;
 import WhatsAppWidget from '@/components/WhatsAppWidget';
 import { useMediaQuery } from '@/hooks/use-media-query';
 

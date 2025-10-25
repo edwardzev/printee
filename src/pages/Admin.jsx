@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet';
-import { Package, Users, DollarSign, TrendingUp } from 'lucide-react';
+import Package from 'lucide-react/dist/esm/icons/package.js';
+import Users from 'lucide-react/dist/esm/icons/users.js';
+import DollarSign from 'lucide-react/dist/esm/icons/dollar-sign.js';
+import TrendingUp from 'lucide-react/dist/esm/icons/trending-up.js';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';

@@ -76,7 +76,7 @@ export const products = [
   },
   {
     sku: 'hoodie',
-    appearance: 30,
+    appearance: 35,
     name: 'Premium Hoodie',
     nameHe: 'קפוצ׳ון פרימיום',
     description: 'Our Premium Hoodie is crafted from a heavyweight cotton blend for warmth and durability. Ideal for prints and comfortable layering.',

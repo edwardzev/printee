@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, AlertCircle, ChevronUp, ChevronDown } from 'lucide-react';
+import ShoppingCart from 'lucide-react/dist/esm/icons/shopping-cart.js';
+import AlertCircle from 'lucide-react/dist/esm/icons/alert-circle.js';
+import ChevronUp from 'lucide-react/dist/esm/icons/chevron-up.js';
+import ChevronDown from 'lucide-react/dist/esm/icons/chevron-down.js';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { printAreas } from '@/data/products';

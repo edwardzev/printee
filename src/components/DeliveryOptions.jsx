@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Truck } from 'lucide-react';
+import Truck from 'lucide-react/dist/esm/icons/truck.js';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 const DeliveryOptions = ({ totalQty, withDelivery, onDeliveryChange, contact = {}, onContactChange }) => {

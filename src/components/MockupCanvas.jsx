@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 // import { motion } from 'framer-motion';
-import { Upload } from 'lucide-react';
+import Upload from 'lucide-react/dist/esm/icons/upload.js';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { printAreas, templatePresets } from '@/data/products';
 import { Button } from '@/components/ui/button';
