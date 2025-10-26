@@ -15,9 +15,12 @@ const Catalog = () => {
     try {
       const toPreload = [...products].slice(0, 6);
       toPreload.forEach((p) => {
-        const src = pick(p.images?.base1, `/product_images/${p.sku}/base1_${p.sku}.png`);
-        const img = new Image();
-        img.src = src;
+        const front = pick(p.images?.base1, `/product_images/${p.sku}/base1_${p.sku}.png`);
+        const back = pick(p.images?.base2, `/product_images/${p.sku}/base2_${p.sku}.png`);
+        const img1 = new Image();
+        img1.src = rewriteLegacy(front, p.sku);
+        const img2 = new Image();
+        img2.src = rewriteLegacy(back, p.sku);
       });
     } catch (e) {
       // ignore
@@ -34,7 +37,27 @@ const Catalog = () => {
   // pick the first suitable raster image from an array or fallback
   const pick = (arr, fallback) => {
     if (!Array.isArray(arr) || !arr.length) return fallback;
-    return arr.find(x => /\.(jpe?g|png)$/i.test(x)) || arr[0];
+    return arr.find(x => /(\.jpe?g|\.png)$/i.test(x)) || arr[0];
+  };
+
+  // rewrite any legacy /base_1 or /base_2 to /base1_<sku> or /base2_<sku>
+  const rewriteLegacy = (src, sku) => {
+    if (!src || typeof src !== 'string') return src;
+    try {
+      const m = src.match(/^(.*)\/base_(1|2)(\.[^.]+)?$/);
+      if (m) {
+        const ext = m[3] || '.png';
+        return `/product_images/${sku}/base${m[2]}_${sku}${ext}`;
+      }
+    } catch {}
+    return src;
+  };
+
+  // derive same-folder base path without extension
+  const deriveBase = (src) => {
+    if (!src || typeof src !== 'string') return null;
+    const m = src.match(/(.+?)\.[^.]+$/);
+    return m ? m[1] : null;
   };
 
   return (
@@ -51,7 +74,7 @@ const Catalog = () => {
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 0.7 }}
             className="text-center mb-12"
           >
             <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
@@ -69,8 +92,8 @@ const Catalog = () => {
                 key={product.sku}
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
-                className="bg-white rounded-xl shadow-lg overflow-hidden card-hover cursor-pointer flex flex-col"
+                transition={{ duration: 0.7, delay: index * 0.1 }}
+                className="bg-white rounded-xl shadow-lg overflow-hidden card-hover cursor-pointer flex flex-col group"
                 role="button"
                 tabIndex={0}
                 onClick={() => navigate(`/product/${product.sku}`)}
@@ -80,88 +103,68 @@ const Catalog = () => {
                     navigate(`/product/${product.sku}`);
                   }
                 }}
+                onMouseEnter={() => {
+                  // warm up base images for instant hover
+                  try {
+                    const f = rewriteLegacy(pick(product.images?.base1, `/product_images/${product.sku}/base1_${product.sku}.png`), product.sku);
+                    const b = rewriteLegacy(pick(product.images?.base2, `/product_images/${product.sku}/base2_${product.sku}.png`), product.sku);
+                    const i1 = new Image(); i1.src = f;
+                    const i2 = new Image(); i2.src = b;
+                  } catch {}
+                }}
               >
-                <div className="aspect-square overflow-hidden bg-gray-50 flex-shrink-0 pt-1">
+                <div className="aspect-square overflow-hidden bg-gray-50 flex-shrink-0 pt-1 relative">
                   {(() => {
-                    // derive same-folder avif/webp variants from a raster original path
-                    const deriveBase = (src) => {
-                      if (!src || typeof src !== 'string') return null;
-                      const m = src.match(/(.+?)\.[^.]+$/);
-                      return m ? m[1] : null; // returns '/product_images/xxx/name'
-                    };
-
-                    const pickRaster = (entry, fallback) => {
-                      if (Array.isArray(entry) && entry.length) {
-                        const r = entry.find(x => /\.(jpe?g|png)$/i.test(x));
-                        if (r) return r;
-                        return entry[0];
-                      }
-                      if (typeof entry === 'string' && entry) return entry;
-                      return fallback;
-                    };
-
-                    let primary = pickRaster(product.images?.base1, `/product_images/${product.sku}/base1_${product.sku}.png`);
-                    // Hotfix: if legacy pattern '/base_1' or '/base_2' sneaks in, rewrite to '/base1_<sku>' or '/base2_<sku>'
-                    try {
-                      const m = primary && primary.match(/^(.*)\/base_(1|2)(\.[^.]+)?$/);
-                      if (m) {
-                        const ext = m[3] || '.png';
-                        primary = `/product_images/${product.sku}/base${m[2]}_${product.sku}${ext}`;
-                      }
-                    } catch {}
-                    const base = deriveBase(primary);
-                    // For maximum reliability on catalog cards, offer webp only; keep raster <img> fallback
-                    const webpSrc = base ? `${base}.webp` : null;
-                    const fallbackSrc = primary;
+                    const primaryRaster = rewriteLegacy(pick(product.images?.base1, `/product_images/${product.sku}/base1_${product.sku}.png`), product.sku);
+                    const secondaryRaster = rewriteLegacy(pick(product.images?.base2, `/product_images/${product.sku}/base2_${product.sku}.png`), product.sku);
+                    const primaryBase = deriveBase(primaryRaster);
+                    const secondaryBase = deriveBase(secondaryRaster);
+                    const webpPrimary = primaryBase ? `${primaryBase}.webp` : null;
+                    const webpSecondary = secondaryBase ? `${secondaryBase}.webp` : null;
 
                     return (
-                      <picture>
-                        {webpSrc && <source type="image/webp" srcSet={webpSrc} />}
-                        <img
-                          src={fallbackSrc}
-                          alt={language === 'he' ? product.nameHe : product.name}
-                          className="w-full h-full object-cover object-top sm:object-contain transition-transform duration-300 hover:scale-[1.02]"
-                          loading="lazy"
-                          decoding="async"
-                          onMouseEnter={e => {
-                            const el = e.currentTarget;
-                            el.dataset.prev = el.src;
-                            let next = pickRaster(product.images?.base2, `/product_images/${product.sku}/base2_${product.sku}.png`);
-                            try {
-                              const m = next && next.match(/^(.*)\/base_(1|2)(\.[^.]+)?$/);
-                              if (m) {
-                                const ext = m[3] || '.png';
-                                next = `/product_images/${product.sku}/base${m[2]}_${product.sku}${ext}`;
-                              }
-                            } catch {}
-                            el.src = next;
-                          }}
-                          onMouseLeave={e => {
-                            const el = e.currentTarget;
-                            if (el.dataset.prev) el.src = el.dataset.prev;
-                            else el.src = fallbackSrc;
-                          }}
-                          onError={e => {
-                            const el = e.currentTarget;
-                            try {
-                              const pathname = new URL(el.src, window.location.origin).pathname;
-                              const list = Array.isArray(product.images?.base1) ? product.images.base1 : null;
-                              if (list) {
-                                const idx = list.findIndex(item => pathname.endsWith(item));
-                                if (idx >= 0 && idx < list.length - 1) {
-                                  el.src = list[idx + 1];
-                                  return;
-                                }
-                              }
-                            } catch (err) {
-                              // fall back to simple string comparisons if URL parsing fails
-                            }
-                            if (el.src.endsWith('.webp')) el.src = el.src.replace('.webp', '.jpg');
-                            else if (el.src.endsWith('.jpg')) el.src = el.src.replace('.jpg', '.jpeg');
-                            else if (el.src.endsWith('.jpeg')) el.src = el.src.replace('.jpeg', '.png');
-                          }}
-                        />
-                      </picture>
+                      <div className="flip-3d">
+                        <div className="flip-3d-inner">
+                          {/* Front face */}
+                          <div className="flip-face">
+                            <picture>
+                              {webpPrimary && <source type="image/webp" srcSet={webpPrimary} />}
+                              <img
+                                src={primaryRaster}
+                                alt={language === 'he' ? product.nameHe : product.name}
+                                className="w-full h-full object-cover object-top sm:object-contain"
+                                loading="lazy"
+                                decoding="async"
+                                onError={e => {
+                                  const el = e.currentTarget;
+                                  if (el.src.endsWith('.webp')) el.src = el.src.replace('.webp', '.jpg');
+                                  else if (el.src.endsWith('.jpg')) el.src = el.src.replace('.jpg', '.jpeg');
+                                  else if (el.src.endsWith('.jpeg')) el.src = el.src.replace('.jpeg', '.png');
+                                }}
+                              />
+                            </picture>
+                          </div>
+                          {/* Back face */}
+                          <div className="flip-face flip-back">
+                            <picture>
+                              {webpSecondary && <source type="image/webp" srcSet={webpSecondary} />}
+                              <img
+                                src={secondaryRaster}
+                                alt={language === 'he' ? product.nameHe : product.name}
+                                className="w-full h-full object-cover object-top sm:object-contain"
+                                loading="lazy"
+                                decoding="async"
+                                onError={e => {
+                                  const el = e.currentTarget;
+                                  if (el.src.endsWith('.webp')) el.src = el.src.replace('.webp', '.jpg');
+                                  else if (el.src.endsWith('.jpg')) el.src = el.src.replace('.jpg', '.jpeg');
+                                  else if (el.src.endsWith('.jpeg')) el.src = el.src.replace('.jpeg', '.png');
+                                }}
+                              />
+                            </picture>
+                          </div>
+                        </div>
+                      </div>
                     );
                   })()}
                 </div>
@@ -181,10 +184,12 @@ const Catalog = () => {
                     <span className="text-sm sm:text-lg font-bold text-blue-600">
                       {(() => {
                         const tiers = pricingRules[product.sku]?.tiers || [];
-                        const min = tiers.length ? Math.min(...tiers.map(t => t.price)) : product.basePrice;
-                        return language === 'he' 
-                          ? `מחיר המוצר מ-${formatILS(min)}`
-                          : `The price of the item is from ${formatILS(min)}`;
+                        // Compute the lowest per-unit price across all tiers (numeric min)
+                        const prices = tiers.map(t => Number(t.price)).filter(n => Number.isFinite(n));
+                        const fromPrice = prices.length ? Math.min(...prices) : Number(product.basePrice || 0);
+                        return language === 'he'
+                          ? `מחיר המוצר מ-${formatILS(fromPrice)}`
+                          : `The price of the item is from ${formatILS(fromPrice)}`;
                       })()}
                     </span>
                   </div>
@@ -199,14 +204,12 @@ const Catalog = () => {
                       try {
                         const img = new Image();
                         let src = pick(product.images?.base1, `/product_images/${product.sku}/base1_${product.sku}.png`);
-                        try {
-                          const m = src && src.match(/^(.*)\/base_(1|2)(\.[^.]+)?$/);
-                          if (m) {
-                            const ext = m[3] || '.png';
-                            src = `/product_images/${product.sku}/base${m[2]}_${product.sku}${ext}`;
-                          }
-                        } catch {}
+                        src = rewriteLegacy(src, product.sku);
                         img.src = src;
+                        const img2 = new Image();
+                        let src2 = pick(product.images?.base2, `/product_images/${product.sku}/base2_${product.sku}.png`);
+                        src2 = rewriteLegacy(src2, product.sku);
+                        img2.src = src2;
                       } catch (e) {}
                       // Dynamic import to warm the product page JS bundle (best-effort)
                       try { import(/* webpackPrefetch: true */ '@/pages/ProductConfigurator'); } catch (e) {}
