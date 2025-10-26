@@ -9,6 +9,7 @@ import Palette from 'lucide-react/dist/esm/icons/palette.js';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import HeroImage from '@/components/HeroImage';
+import HeroCollageDrift from '@/components/HeroCollageDrift';
 
 const Home = () => {
   const { t, isRTL } = useLanguage();
@@ -91,7 +92,7 @@ const Home = () => {
 
             {/* Carousel column */}
             <div className="rounded-xl overflow-hidden shadow-sm bg-[#f6f7f9]">
-              <HeroImage bg="#f6f7f9" primaryIndex={23} />
+              <HeroCollageDrift />
             </div>
           </div>
         </section>
