@@ -14,7 +14,6 @@ const Admin = () => {
   const { toast } = useToast();
   const ADMIN_PASS = (import.meta && import.meta.env && import.meta.env.VITE_ADMIN_PASS) || '';
 
-  // Lightweight client-side gate: store session in sessionStorage
   const [adminAuth, setAdminAuth] = useState(false);
   const [pass, setPass] = useState('');
 
@@ -109,6 +108,30 @@ const Admin = () => {
     toast({ title: 'Logged out' });
   };
 
+  // If not authenticated, render a simple login UI early to avoid nesting large JSX blocks
+  if (!adminAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-full max-w-sm bg-white rounded-xl p-6 shadow-lg">
+          <h2 className="text-lg font-semibold mb-4">Admin Login</h2>
+          <p className="text-sm text-gray-500 mb-3">Enter password to access the admin dashboard.</p>
+          <input
+            type="password"
+            value={pass}
+            onChange={(e) => setPass(e.target.value)}
+            placeholder="Password"
+            className="w-full border rounded-md px-3 py-2 text-sm mb-3"
+          />
+          <div className="flex gap-3">
+            <Button onClick={handleLogin} className="flex-1">Login</Button>
+            <Button variant="outline" onClick={() => { setPass(''); }} className="w-24">Clear</Button>
+          </div>
+          <p className="text-xs text-gray-400 mt-3">This is a lightweight client-side gate. For production, use a server-side auth mechanism.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <Helmet>
@@ -119,43 +142,18 @@ const Admin = () => {
       </Helmet>
 
       <div className="min-h-screen py-8">
-        {/* Lightweight password gate: require correct VITE_ADMIN_PASS before showing dashboard */}
-        {!adminAuth && (
-          <div className="min-h-screen flex items-center justify-center">
-            <div className="w-full max-w-sm bg-white rounded-xl p-6 shadow-lg">
-              <h2 className="text-lg font-semibold mb-4">Admin Login</h2>
-              <p className="text-sm text-gray-500 mb-3">Enter password to access the admin dashboard.</p>
-              <input
-                type="password"
-                value={pass}
-                onChange={(e) => setPass(e.target.value)}
-                placeholder="Password"
-                className="w-full border rounded-md px-3 py-2 text-sm mb-3"
-              />
-              <div className="flex gap-3">
-                <Button onClick={handleLogin} className="flex-1">Login</Button>
-                <Button variant="outline" onClick={() => { setPass(''); }} className="w-24">Clear</Button>
-              </div>
-              <p className="text-xs text-gray-400 mt-3">This is a lightweight client-side gate. For production, use a server-side auth mechanism.</p>
-            </div>
-          </div>
-        )}
-        {adminAuth && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             className="mb-8"
           >
-            <div className="flex items-start justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
-                <p className="text-gray-600">Manage orders, products, and view analytics</p>
-              </div>
-              <div className="ml-4">
-                <Button variant="outline" onClick={handleLogout}>Logout</Button>
-              </div>
-            </div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              Admin Dashboard
+            </h1>
+            <p className="text-gray-600">
+              Manage orders, products, and view analytics
+            </p>
           </motion.div>
 
           {/* Stats Grid */}
