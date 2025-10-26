@@ -28,6 +28,8 @@ function getEnv() {
   fPaid: process.env.AIRTABLE_FIELD_PAID || 'paid',
   fInvrecNum: process.env.AIRTABLE_FIELD_INVREC_NUM || 'invrec_num',
   fInvrecLink: process.env.AIRTABLE_FIELD_INVREC_LINK || 'invrec_link',
+  // Worksheet attachment field (expects array of {url, filename})
+  fWorksheet: process.env.AIRTABLE_FIELD_WORKSHEET || 'worksheet',
     // Dropbox
     dbxAppKey: process.env.DROPBOX_APP_KEY || '',
     dbxAppSecret: process.env.DROPBOX_APP_SECRET || '',
@@ -35,6 +37,32 @@ function getEnv() {
     dbxBaseFolder: process.env.DROPBOX_BASE_FOLDER || '',
     dbxNamespaceId: process.env.DROPBOX_NAMESPACE_ID || '',
   };
+}
+
+function normalizeDropboxFileForAttachment(link) {
+  // Ensure the URL forces a download (dl=1) so Airtable presents it nicely as an attachment
+  try {
+    if (!link) return link;
+    const s = String(link);
+    // If it's already a Dropboxusercontent direct host, append dl=1 if missing
+    try {
+      const u = new URL(s);
+      u.searchParams.delete('raw');
+      u.searchParams.set('dl', '1');
+      return u.toString();
+    } catch {
+      // fallback string manipulation
+      if (s.includes('?dl=1') || s.includes('&dl=1')) return s;
+      if (s.includes('?')) return s + '&dl=1';
+      return s + '?dl=1';
+    }
+  } catch {
+    try {
+      const s = String(link || '');
+      if (s.includes('?dl=1') || s.includes('&dl=1')) return s;
+      return s + (s.includes('?') ? '&dl=1' : '?dl=1');
+    } catch { return link; }
+  }
 }
 
 function normalizeDropboxFolderView(link) {
@@ -309,7 +337,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ ok: false, error: 'invalid_idempotency_key' });
   }
 
-  const { token, baseId, table, fIdem, fStatus, statusDraft, fCartText, fCustomerText, fFinanceText, fPaid, fInvrecNum, fInvrecLink, dbxAppKey, dbxAppSecret, dbxRefreshToken, dbxBaseFolder, dbxNamespaceId } = getEnv();
+  const { token, baseId, table, fIdem, fStatus, statusDraft, fCartText, fCustomerText, fFinanceText, fPaid, fInvrecNum, fInvrecLink, fWorksheet, dbxAppKey, dbxAppSecret, dbxRefreshToken, dbxBaseFolder, dbxNamespaceId } = getEnv();
   try {
     console.log('[airtable/order] invoked', {
       baseId: baseId ? `${baseId}` : '(missing)',
@@ -543,6 +571,28 @@ export default async function handler(req, res) {
               });
             }
             patchFields[fCartText] = JSON.stringify(payload);
+          }
+
+          // If configured, add worksheet attachments to the dedicated Airtable attachment field.
+          try {
+            const wsSource = (financial && financial.dropbox_worksheet_links && typeof financial.dropbox_worksheet_links === 'object')
+              ? financial.dropbox_worksheet_links
+              : (dropbox && dropbox.worksheet_links && typeof dropbox.worksheet_links === 'object') ? dropbox.worksheet_links : null;
+            if (fWorksheet && wsSource && typeof wsSource === 'object') {
+              const attachments = [];
+              for (const [productSku, urlRaw] of Object.entries(wsSource)) {
+                try {
+                  const url = normalizeDropboxFileForAttachment(String(urlRaw));
+                  const filename = `WS-${sanitizeSegment(folderKey)}-${sanitizeSegment(productSku)}.pdf`;
+                  attachments.push({ url, filename });
+                } catch (e) {
+                  try { console.warn('[airtable/order] worksheet attachment build failed', e?.message || String(e)); } catch {}
+                }
+              }
+              if (attachments.length) patchFields[fWorksheet] = attachments;
+            }
+          } catch (e) {
+            try { console.warn('[airtable/order] worksheet attachments build exception', e?.message || String(e)); } catch {}
           }
         } catch (e) {
           try { console.warn('[airtable/order] JSON patch build failed', e?.message || String(e)); } catch {}

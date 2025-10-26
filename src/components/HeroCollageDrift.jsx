@@ -35,8 +35,8 @@ export default function HeroCollageDrift() {
     const rm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
     setPrefersReduced(!!(rm && rm.matches));
 
-    // choose 2 tiles on mobile, otherwise TILES
-    const initialTiles = mobile ? 2 : TILES;
+  // choose 4 tiles on mobile (2x2) to keep the collage full; otherwise TILES
+  const initialTiles = mobile ? 4 : TILES;
     setVisibleIdxs(pickUnique(initialTiles, ALL_IMAGES.length));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
