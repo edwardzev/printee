@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet';
@@ -123,52 +123,17 @@ const Catalog = () => {
                     const webpSecondary = secondaryBase ? `${secondaryBase}.webp` : null;
 
                     return (
-                      <div className="flip-3d">
-                        <div className="flip-3d-inner">
-                          {/* Front face */}
-                          <div className="flip-face">
-                            <picture>
-                              {webpPrimary && <source type="image/webp" srcSet={webpPrimary} />}
-                              <img
-                                src={primaryRaster}
-                                alt={language === 'he' ? product.nameHe : product.name}
-                                className="w-full h-full object-cover object-top sm:object-contain"
-                                loading="lazy"
-                                decoding="async"
-                                onError={e => {
-                                  const el = e.currentTarget;
-                                  if (el.src.endsWith('.webp')) el.src = el.src.replace('.webp', '.jpg');
-                                  else if (el.src.endsWith('.jpg')) el.src = el.src.replace('.jpg', '.jpeg');
-                                  else if (el.src.endsWith('.jpeg')) el.src = el.src.replace('.jpeg', '.png');
-                                }}
-                              />
-                            </picture>
-                          </div>
-                          {/* Back face */}
-                          <div className="flip-face flip-back">
-                            <picture>
-                              {webpSecondary && <source type="image/webp" srcSet={webpSecondary} />}
-                              <img
-                                src={secondaryRaster}
-                                alt={language === 'he' ? product.nameHe : product.name}
-                                className="w-full h-full object-cover object-top sm:object-contain"
-                                loading="lazy"
-                                decoding="async"
-                                onError={e => {
-                                  const el = e.currentTarget;
-                                  if (el.src.endsWith('.webp')) el.src = el.src.replace('.webp', '.jpg');
-                                  else if (el.src.endsWith('.jpg')) el.src = el.src.replace('.jpg', '.jpeg');
-                                  else if (el.src.endsWith('.jpeg')) el.src = el.src.replace('.jpeg', '.png');
-                                }}
-                              />
-                            </picture>
-                          </div>
-                        </div>
-                      </div>
+                      <FlipTile
+                        primaryRaster={primaryRaster}
+                        webpPrimary={webpPrimary}
+                        secondaryRaster={secondaryRaster}
+                        webpSecondary={webpSecondary}
+                        alt={language === 'he' ? product.nameHe : product.name}
+                      />
                     );
                   })()}
                 </div>
-                
+
                 <div className="p-3 sm:p-6 flex-1 flex flex-col">
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">
                     {language === 'he' ? product.nameHe : product.name}
@@ -230,5 +195,57 @@ const Catalog = () => {
     </>
   );
 };
+
+// Small client-side-only tile that auto-flips on mobile every ~3s with random start
+function FlipTile({ primaryRaster, webpPrimary, secondaryRaster, webpSecondary, alt }) {
+  const [flipped, setFlipped] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const rm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (rm && rm.matches) return undefined;
+    const mq = window.matchMedia && window.matchMedia('(max-width: 768px)');
+    const isMobile = !!(mq && mq.matches);
+    if (!isMobile) return undefined; // only auto-flip on mobile
+
+    let mounted = true;
+    // randomized start offset up to 3s
+    const startOffset = Math.floor(Math.random() * 3000);
+    const intervalMs = 3000;
+    let intervalHandle = null;
+    const t = setTimeout(() => {
+      if (!mounted) return;
+      setFlipped((s) => !s);
+      intervalHandle = setInterval(() => {
+        setFlipped((s) => !s);
+      }, intervalMs);
+    }, startOffset);
+
+    return () => {
+      mounted = false;
+      clearTimeout(t);
+      if (intervalHandle) clearInterval(intervalHandle);
+    };
+  }, []);
+
+  return (
+    <div className="flip-3d">
+      <div className={`flip-3d-inner ${flipped ? 'is-flipped' : ''}`}>
+        <div className="flip-face">
+          <picture>
+            {webpPrimary && <source type="image/webp" srcSet={webpPrimary} />}
+            <img src={primaryRaster} alt={alt} className="w-full h-full object-cover object-top sm:object-contain" loading="lazy" decoding="async" />
+          </picture>
+        </div>
+        <div className="flip-face flip-back">
+          <picture>
+            {webpSecondary && <source type="image/webp" srcSet={webpSecondary} />}
+            <img src={secondaryRaster} alt={alt} className="w-full h-full object-cover object-top sm:object-contain" loading="lazy" decoding="async" />
+          </picture>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default Catalog;

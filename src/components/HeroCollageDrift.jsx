@@ -30,13 +30,14 @@ export default function HeroCollageDrift() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const mq = window.matchMedia && window.matchMedia('(max-width: 768px)');
-    setIsMobile(!!(mq && mq.matches));
+    const mobile = !!(mq && mq.matches);
+    setIsMobile(mobile);
     const rm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
     setPrefersReduced(!!(rm && rm.matches));
 
-    if (!mq || !mq.matches) {
-      setVisibleIdxs(pickUnique(TILES, ALL_IMAGES.length));
-    }
+    // choose 2 tiles on mobile, otherwise TILES
+    const initialTiles = mobile ? 2 : TILES;
+    setVisibleIdxs(pickUnique(initialTiles, ALL_IMAGES.length));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -60,15 +61,15 @@ export default function HeroCollageDrift() {
 
   // periodic replacement of a single tile
   useEffect(() => {
-    if (isMobile) return undefined;
-    if (prefersReduced) return undefined;
-    if (!visibleIdxs || visibleIdxs.length === 0) return undefined;
+  // allow replacements on mobile too, but slower
+  if (prefersReduced) return undefined;
+  if (!visibleIdxs || visibleIdxs.length === 0) return undefined;
 
-    const intervalMs = 1400;
+  const intervalMs = isMobile ? 2200 : 1400;
     const handle = setInterval(() => {
       setVisibleIdxs((current) => {
         if (!Array.isArray(current) || current.length === 0) return current;
-        const next = [...current];
+  const next = [...current];
         // pick a position different from lastReplacedRef
         let pos = Math.floor(Math.random() * next.length);
         let attempts = 0;

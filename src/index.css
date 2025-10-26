@@ -201,6 +201,9 @@ body {
 .group:hover .flip-3d-inner {
   transform: rotateY(180deg);
 }
+.flip-3d-inner.is-flipped {
+  transform: rotateY(180deg);
+}
 .flip-face {
   position: absolute;
   inset: 0;
