@@ -65,7 +65,8 @@ export default function HeroCollageDrift() {
   if (prefersReduced) return undefined;
   if (!visibleIdxs || visibleIdxs.length === 0) return undefined;
 
-  const intervalMs = isMobile ? 2200 : 1400;
+  // change tiles every 2 seconds (2000ms) to slow down updates
+  const intervalMs = 2000;
     const handle = setInterval(() => {
       setVisibleIdxs((current) => {
         if (!Array.isArray(current) || current.length === 0) return current;

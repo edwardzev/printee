@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dev Products Admin</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Roboto, sans-serif; padding: 18px; }
+    label { display:block; margin-top:8px; font-weight:600; }
+    input[type=text], input[type=number], textarea, select { width:100%; padding:8px; box-sizing:border-box; }
+    .row { display:flex; gap:8px; margin-bottom:8px; }
+    .two { display:grid; grid-template-columns: 1fr 1fr; gap:8px; }
+    button { padding: 8px 12px; }
+    .small { width:120px; }
+    .img-preview { height:64px; object-fit:cover; border-radius:6px; margin-right:8px; }
+    .images-list { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  </style>
+  <script>
+    const API_BASE = '';
+  let PRODUCTS = [];
+  let META = null;
+    function el(id){ return document.getElementById(id); }
+
+    async function load() {
+      const res = await fetch(API_BASE + '/_local_admin/products');
+      const json = await res.json();
+      if (!json.ok) return alert('Failed to load products');
+      PRODUCTS = json.products || [];
+      // load meta
+      try {
+        const mres = await fetch(API_BASE + '/_local_admin/meta');
+        const mj = await mres.json(); if (mj.ok) META = mj.meta; else META = null;
+      } catch (e) { META = null; }
+      const sel = el('productSelect');
+      sel.innerHTML = '';
+      PRODUCTS.forEach((p, i) => {
+        const o = document.createElement('option'); o.value = i; o.text = p.sku + ' — ' + (p.name||''); sel.appendChild(o);
+      });
+      const newOpt = document.createElement('option'); newOpt.value = 'new'; newOpt.text = '-- Create new product --'; sel.appendChild(newOpt);
+      if (PRODUCTS.length>0) sel.value = 0;
+      onSelectChange();
+    }
+
+    function onSelectChange() {
+      const v = el('productSelect').value;
+      if (v === 'new') return fillForm({ sku: '', name: '', nameHe: '', basePrice: 0, colors: [], sizeRange: [], images: { base1: [] } });
+      const p = PRODUCTS[Number(v)];
+      fillForm(p);
+    }
+
+    function fillForm(p){
+      const prod = p || {};
+      el('sku').value = prod.sku || '';
+      el('name').value = prod.name || '';
+      el('nameHe').value = prod.nameHe || '';
+      el('basePrice').value = prod.basePrice || 0;
+      // populate multiple-choice controls
+      renderColorChoices(prod.colors || []);
+      renderSizeChoices(prod.sizeRange || []);
+      el('colors').value = (prod.colors || []).join(',');
+      el('sizeRange').value = (prod.sizeRange || []).join(',');
+      // images
+      renderImages(prod.images || {});
+      // print areas
+      renderPrintAreaChoices(prod.activePrintAreas || prod.activePrintAreas || []);
+      // pricing tiers
+      renderPricingTiers((prod.pricingRules && prod.pricingRules.tiers) || prod.tiers || []);
+    }
+
+    function renderColorChoices(selected){
+      const wrap = el('colorsChoices'); wrap.innerHTML = '';
+      const choices = (META && META.colors) || [];
+      choices.forEach((c)=>{
+        const id = 'color_'+c;
+        const row = document.createElement('label'); row.style.marginRight='8px';
+        const cb = document.createElement('input'); cb.type='checkbox'; cb.id=id; cb.value=c; cb.checked = (selected||[]).includes(c);
+        cb.onchange = () => updateCommaFieldsFromChoices();
+        row.appendChild(cb); row.appendChild(document.createTextNode(' '+c)); wrap.appendChild(row);
+      });
+    }
+
+    function renderSizeChoices(selected){
+      const wrap = el('sizeChoices'); wrap.innerHTML = '';
+      const choices = (META && META.sizes) || [];
+      choices.forEach((s)=>{
+        const id = 'size_'+s;
+        const row = document.createElement('label'); row.style.marginRight='8px';
+        const cb = document.createElement('input'); cb.type='checkbox'; cb.id=id; cb.value=s; cb.checked = (selected||[]).includes(s);
+        cb.onchange = () => updateCommaFieldsFromChoices();
+        row.appendChild(cb); row.appendChild(document.createTextNode(' '+s)); wrap.appendChild(row);
+      });
+    }
+
+    function renderPrintAreaChoices(selected){
+      const wrap = el('printAreaChoices'); wrap.innerHTML = '';
+      const choices = (META && META.printAreas) || [];
+      choices.forEach((p)=>{
+        const id = 'pa_'+p;
+        const row = document.createElement('label'); row.style.marginRight='8px';
+        const cb = document.createElement('input'); cb.type='checkbox'; cb.id=id; cb.value=p; cb.checked = (selected||[]).includes(p);
+        cb.onchange = () => {}; row.appendChild(cb); row.appendChild(document.createTextNode(' '+p)); wrap.appendChild(row);
+      });
+    }
+
+    function updateCommaFieldsFromChoices(){
+      const cols = Array.from(document.querySelectorAll('[id^="color_"]')).filter(i=>i.checked).map(i=>i.value);
+      const sizes = Array.from(document.querySelectorAll('[id^="size_"]')).filter(i=>i.checked).map(i=>i.value);
+      el('colors').value = cols.join(',');
+      el('sizeRange').value = sizes.join(',');
+    }
+
+    function renderImages(images){
+      const container = el('imagesContainer'); container.innerHTML = '';
+      const keys = Object.keys(images || {});
+      if (keys.length === 0) keys.push('base1');
+      keys.forEach((k) => {
+    const arr = images[k] || [];
+        const row = document.createElement('div'); row.style.marginBottom = '8px';
+        const label = document.createElement('label'); label.textContent = `${k} (images)`; row.appendChild(label);
+        const list = document.createElement('div'); list.className = 'images-list';
+        arr.forEach((src, idx) => {
+          const img = document.createElement('img'); img.src = src; img.className = 'img-preview';
+          list.appendChild(img);
+        });
+        const uploadBtn = document.createElement('input'); uploadBtn.type = 'file'; uploadBtn.accept = 'image/*';
+        uploadBtn.onchange = async (e) => {
+          const f = e.target.files[0];
+          if (!f) return;
+          const fd = new FormData(); fd.append('file', f);
+          const r = await fetch(API_BASE + '/_local_admin/upload', { method: 'POST', body: fd });
+          const j = await r.json();
+          if (!j.ok) return alert('upload failed: '+(j.error||''));
+          // add returned url to list and re-render
+          arr.push(j.url);
+          renderImages(collectFormImages());
+        };
+        row.appendChild(list);
+        row.appendChild(uploadBtn);
+        container.appendChild(row);
+      });
+    }
+
+    function collectFormImages(){
+      // read existing preview images from DOM into object
+      const obj = {};
+      const container = el('imagesContainer');
+      for (const row of container.children){
+        const lbl = row.querySelector('label');
+        if (!lbl) continue;
+        const key = lbl.textContent.split(' ')[0];
+        const imgs = Array.from(row.querySelectorAll('img')).map(i=>i.src);
+        obj[key] = imgs;
+      }
+      if (!Object.keys(obj).length) obj.base1 = [];
+      return obj;
+    }
+
+    // Pricing tiers editor
+    function renderPricingTiers(tiers){
+      const wrap = el('tiersContainer'); wrap.innerHTML = '';
+      const list = Array.isArray(tiers) && tiers.length ? tiers : [];
+      list.forEach((t, idx) => addTierRow(wrap, t, idx));
+      // always show an empty row to append
+      addTierRow(wrap, { min: '', max: '', price: '' }, list.length, true);
+    }
+
+    function addTierRow(wrap, t, idx, isEmpty = false){
+      const row = document.createElement('div'); row.style.display = 'flex'; row.style.gap = '8px'; row.style.marginBottom = '6px';
+      const min = document.createElement('input'); min.type='number'; min.placeholder='min'; min.value = t.min===Infinity? '' : (t.min || ''); min.style.width='80px';
+      const max = document.createElement('input'); max.type='number'; max.placeholder='max'; max.value = (t.max===Infinity || t.max===999999)? '' : (t.max || ''); max.style.width='100px';
+      const price = document.createElement('input'); price.type='number'; price.placeholder='price'; price.value = t.price || ''; price.style.width='100px';
+      const remove = document.createElement('button'); remove.textContent='Remove'; remove.type='button'; remove.onclick = () => { row.remove(); };
+      row.appendChild(min); row.appendChild(max); row.appendChild(price); if (!isEmpty) row.appendChild(remove);
+      wrap.appendChild(row);
+    }
+
+    function collectPricingTiers(){
+      const wrap = el('tiersContainer'); const tiers = [];
+      for (const row of Array.from(wrap.children)){
+        const inputs = row.querySelectorAll('input');
+        if (!inputs || inputs.length < 3) continue;
+        const minV = inputs[0].value.trim();
+        const maxV = inputs[1].value.trim();
+        const priceV = inputs[2].value.trim();
+        if (!priceV) continue;
+        const tier = {
+          min: minV === '' ? 1 : Number(minV),
+          max: maxV === '' ? Infinity : Number(maxV),
+          price: Number(priceV)
+        };
+        tiers.push(tier);
+      }
+      return tiers;
+    }
+
+    async function saveProduct() {
+      const sku = el('sku').value.trim();
+      if (!sku) return alert('sku required');
+      const product = {
+        sku,
+        name: el('name').value,
+        nameHe: el('nameHe').value,
+        basePrice: Number(el('basePrice').value) || 0,
+        colors: el('colors').value.split(',').map(s=>s.trim()).filter(Boolean),
+        sizeRange: el('sizeRange').value.split(',').map(s=>s.trim()).filter(Boolean),
+        activePrintAreas: Array.from(document.querySelectorAll('[id^="pa_"]')).filter(i=>i.checked).map(i=>i.value),
+        images: collectFormImages(),
+        pricingRules: { tiers: collectPricingTiers() }
+      };
+      const sel = el('productSelect').value;
+      if (sel === 'new') {
+        PRODUCTS.push(product);
+      } else {
+        PRODUCTS[Number(sel)] = product;
+      }
+      // save whole array
+      const res = await fetch(API_BASE + '/_local_admin/products', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ products: PRODUCTS }) });
+      const j = await res.json(); if (!j.ok) return alert('save failed: '+(j.error||''));
+      alert('Saved ✔');
+      await load();
+    }
+
+  function newProduct(){ el('productSelect').value = 'new'; onSelectChange(); }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('productSelect').addEventListener('change', onSelectChange);
+      load();
+    });
+  </script>
+</head>
+<body>
+  <h1>Dev Products Admin</h1>
+  <div class="row">
+    <select id="productSelect"></select>
+    <button onclick="newProduct()">Create</button>
+    <button onclick="load()">Reload</button>
+  </div>
+
+  <div class="two">
+    <div>
+      <label for="sku">SKU</label>
+      <input id="sku" type="text" />
+      <label for="name">Name</label>
+      <input id="name" type="text" />
+      <label for="nameHe">Name (Hebrew)</label>
+      <input id="nameHe" type="text" />
+      <label for="basePrice">Base Price</label>
+      <input id="basePrice" type="number" />
+      <label for="colors">Colors (comma-separated)</label>
+      <input id="colors" type="text" />
+      <label for="sizeRange">Sizes (comma-separated)</label>
+      <input id="sizeRange" type="text" />
+    </div>
+    <div>
+      <label>Images</label>
+      <div id="imagesContainer"></div>
+    </div>
+  </div>
+
+  <div style="margin-top:12px;">
+    <button onclick="saveProduct()">Save Product</button>
+  </div>
+
+  <p style="margin-top:18px;color:#666">Server endpoints: GET /_local_admin/products, POST /_local_admin/products, POST /_local_admin/upload</p>
+</body>
+</html>
