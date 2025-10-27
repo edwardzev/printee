@@ -334,18 +334,18 @@ const Cart = () => {
                         }).join(', ')}
                       </div>
 
-                      <div className="flex items-center justify-between">
+                      <div className={`flex items-center justify-between ${language === 'he' ? 'flex-row-reverse' : ''}`}>
                         <span className="text-xl font-bold text-blue-600">
                           ₪{item.totalPrice.toLocaleString()}
                         </span>
                         
-                        <div className="flex space-x-2">
+                        <div className="flex gap-2">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => navigate(`/product/${item.productSku}`, { state: { prefill: item } })}
                           >
-                            <Edit className="h-4 w-4 mr-1" />
+                            <Edit className={`h-4 w-4 ${language === 'he' ? 'ml-1' : 'mr-1'}`} />
                             {t('editItem')}
                           </Button>
                           <Button
@@ -354,7 +354,7 @@ const Cart = () => {
                             onClick={() => handleRemoveItem(item.id)}
                             className="text-red-600 hover:text-red-700"
                           >
-                            <Trash2 className="h-4 w-4 mr-1" />
+                            <Trash2 className={`h-4 w-4 ${language === 'he' ? 'ml-1' : 'mr-1'}`} />
                             {t('removeItem')}
                           </Button>
                         </div>
@@ -373,50 +373,6 @@ const Cart = () => {
                   contact={payload?.contact || {}}
                   onContactChange={(c) => { mergePayload({ contact: c }); }}
                 />
-              </div>
-
-              {/* Upsell area: show other products */}
-              <div className="bg-white rounded-xl p-6 shadow-lg">
-                <h3 className="text-lg font-semibold mb-4">עוד מוצרים שאולי יעניינו אותך</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {products.filter(p => !cartItems.some(ci => ci.productSku === p.sku)).slice(0,4).map(p => (
-                    <Link key={p.sku} to={`/product/${p.sku}`} className="flex flex-col items-center gap-2 p-3 border rounded">
-                      <img
-                        src={(Array.isArray(p.images?.base1) ? (p.images.base1.find(x=>x.endsWith('.jpg')||x.endsWith('.jpeg')||x.endsWith('.png'))||p.images.base1[0]) : `/product_images/${p.sku}/base1_${p.sku}.png`)}
-                        alt={p.nameHe}
-                        className="h-20 w-20 object-contain"
-                        onError={(e) => {
-                          const el = e.currentTarget;
-                          try {
-                            const list = Array.isArray(p.images?.base1) ? p.images.base1 : null;
-                            if (list && list.length) {
-                              try {
-                                const pathname = new URL(el.src, window.location.origin).pathname;
-                                let idx = list.findIndex(path => pathname.endsWith(path));
-                                if (idx === -1) idx = 0;
-                                if (idx >= 0 && idx < list.length - 1) {
-                                  el.src = list[idx + 1];
-                                  return;
-                                }
-                              } catch (err) {
-                                let idx = list.findIndex(path => el.src.endsWith(path));
-                                if (idx === -1) idx = 0;
-                                if (idx >= 0 && idx < list.length - 1) {
-                                  el.src = list[idx + 1];
-                                  return;
-                                }
-                              }
-                            }
-                          } catch (err) {}
-                          if (el.src.endsWith('.webp')) el.src = el.src.replace('.webp', '.jpg');
-                          else if (el.src.endsWith('.jpg')) el.src = el.src.replace('.jpg', '.jpeg');
-                          else if (el.src.endsWith('.jpeg')) el.src = el.src.replace('.jpeg', '.png');
-                        }}
-                      />
-                      <div className="text-sm font-medium">{p.nameHe}</div>
-                    </Link>
-                  ))}
-                </div>
               </div>
             </div>
 
@@ -491,6 +447,50 @@ const Cart = () => {
                   </Button>
                 </Link>
               </motion.div>
+            </div>
+          </div>
+
+          {/* Upsell area: show other products - moved below the main grid so on mobile it appears at the bottom */}
+          <div className="bg-white rounded-xl p-6 shadow-lg mt-6">
+            <h3 className="text-lg font-semibold mb-4">עוד מוצרים שאולי יעניינו אותך</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {products.filter(p => !cartItems.some(ci => ci.productSku === p.sku)).slice(0,4).map(p => (
+                <Link key={p.sku} to={`/product/${p.sku}`} className="flex flex-col items-center gap-2 p-3 border rounded">
+                  <img
+                    src={(Array.isArray(p.images?.base1) ? (p.images.base1.find(x=>x.endsWith('.jpg')||x.endsWith('.jpeg')||x.endsWith('.png'))||p.images.base1[0]) : `/product_images/${p.sku}/base1_${p.sku}.png`)}
+                    alt={p.nameHe}
+                    className="h-20 w-20 object-contain"
+                    onError={(e) => {
+                      const el = e.currentTarget;
+                      try {
+                        const list = Array.isArray(p.images?.base1) ? p.images.base1 : null;
+                        if (list && list.length) {
+                          try {
+                            const pathname = new URL(el.src, window.location.origin).pathname;
+                            let idx = list.findIndex(path => pathname.endsWith(path));
+                            if (idx === -1) idx = 0;
+                            if (idx >= 0 && idx < list.length - 1) {
+                              el.src = list[idx + 1];
+                              return;
+                            }
+                          } catch (err) {
+                            let idx = list.findIndex(path => el.src.endsWith(path));
+                            if (idx === -1) idx = 0;
+                            if (idx >= 0 && idx < list.length - 1) {
+                              el.src = list[idx + 1];
+                              return;
+                            }
+                          }
+                        }
+                      } catch (err) {}
+                      if (el.src.endsWith('.webp')) el.src = el.src.replace('.webp', '.jpg');
+                      else if (el.src.endsWith('.jpg')) el.src = el.src.replace('.jpg', '.jpeg');
+                      else if (el.src.endsWith('.jpeg')) el.src = el.src.replace('.jpeg', '.png');
+                    }}
+                  />
+                  <div className="text-sm font-medium">{p.nameHe}</div>
+                </Link>
+              ))}
             </div>
           </div>
         </div>
