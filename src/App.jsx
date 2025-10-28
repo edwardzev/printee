@@ -27,6 +27,7 @@ import ServiceQuality from '@/pages/ServiceQuality';
 import DevComposer from '@/pages/DevComposer';
 import MethodsOfBranding from '@/pages/MethodsOfBranding';
 import AccessibilityStatement from '@/pages/AccessibilityStatement';
+import Works from '@/pages/Works';
 
 function ScrollToTop() {
   const { pathname, search } = useLocation();
@@ -105,6 +106,7 @@ function App() {
                 <Route path="/returns" element={<Returns />} />
                 <Route path="/methods-of-branding" element={<MethodsOfBranding />} />
                 <Route path="/accessibility" element={<AccessibilityStatement />} />
+                <Route path="/works" element={<Works />} />
                 {process.env.NODE_ENV !== 'production' && (
                   <Route path="/dev/composer" element={<DevComposer />} />
                 )}

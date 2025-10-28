@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 
-// 1) Your real images: hero_2.webp .. hero_34.webp
-const ALL_IMAGES = Array.from({ length: 33 }, (_, i) => `/hero_images/hero_${i + 2}.webp`);
+// 1) Your real images: hero_2.webp .. hero_37.webp
+const ALL_IMAGES = Array.from({ length: 36 }, (_, i) => `/hero_images/hero_${i + 2}.webp`);
 
 function pickUnique(count, maxExclusive) {
   const n = Math.min(count, Math.max(0, maxExclusive));

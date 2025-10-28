@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "prebuild": "node scripts/generate-works-manifest.js",
     "preview": "vite preview",
     "dev:test:order-api": "node scripts/dev-order-api-test.mjs",
     "generate-sitemap": "node scripts/generate-sitemap.mjs",

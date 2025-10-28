@@ -98,7 +98,7 @@ export default function HeroImage({
       if (primary) setImages([primary]);
 
       // 2) Preload the rest concurrently with a modest concurrency limit
-  const maxIndex = 50;
+  const maxIndex = 37;
       const concurrency = 6;
       const results = [];
   let current = 1;

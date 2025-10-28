@@ -1,4 +1,4 @@
-// scripts/convert-hero-images.js (ESM)
+// scripts/convert-hero-images.js (Modified to process files from 'input' folder and output to 'hero_images' without resizing)
 import sharp from 'sharp';
 import fs from 'fs';
 import path from 'path';
@@ -6,16 +6,15 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const dir = path.join(__dirname, '..', 'public', 'hero_images');
-const sizes = [800, 1200, 1600]; // responsive widths
-const jpgQuality = 85;
+const inputDir = path.join(__dirname, '..', 'public', 'hero_images', 'input'); // Input folder
+const outputDir = path.join(__dirname, '..', 'public', 'hero_images'); // Output folder
 const webpQuality = 80;
 const avifQuality = 50;
 
 (async () => {
-  const files = fs.readdirSync(dir).filter(f => /\.(jpe?g|png)$/i.test(f));
+  const files = fs.readdirSync(inputDir).filter(f => /\.(jpe?g|png)$/i.test(f));
   for (const file of files) {
-    const input = path.join(dir, file);
+    const input = path.join(inputDir, file);
     const base = path.parse(file).name;
     console.log('Processing', file);
     try {
@@ -34,15 +33,8 @@ const avifQuality = 50;
       }
 
       // create baseline webp/avif same size
-      await sharp(input).webp({ quality: webpQuality }).toFile(path.join(dir, `${base}.webp`));
-      await sharp(input).avif({ quality: avifQuality }).toFile(path.join(dir, `${base}.avif`));
-      // create responsive variants
-      for (const w of sizes) {
-        const outName = `${base}-${w}.webp`;
-        const outAvif = `${base}-${w}.avif`;
-        await sharp(input).resize({ width: w }).webp({ quality: webpQuality }).toFile(path.join(dir, outName));
-        await sharp(input).resize({ width: w }).avif({ quality: avifQuality }).toFile(path.join(dir, outAvif));
-      }
+      await sharp(input).webp({ quality: webpQuality }).toFile(path.join(outputDir, `${base}.webp`));
+      await sharp(input).avif({ quality: avifQuality }).toFile(path.join(outputDir, `${base}.avif`));
     } catch (err) {
       console.error('Failed processing', file, err && err.message ? err.message : err);
       // continue with next file
