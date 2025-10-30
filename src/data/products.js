@@ -33,7 +33,7 @@ export const products = [
   "apple_green",
   "natural"
 ],
-    sizeRange: ['s', 'm', 'l', 'xl', 'xxl', 'xxxl', 'xxxxl', 'xxxxxl'],
+  sizeRange: ['s','m','l','xl','xxl','xxxl','xxxxl','xxxxxl','4','6','8','10','12','14','16','18'],
     images: {
       white: ['/product_images/tshirt/white_tshirt.jpg'],
       black: ['/product_images/tshirt/black_tshirt.jpg'],
@@ -106,7 +106,7 @@ export const products = [
   'olive',
   'brown'
 ],
-    sizeRange: ['s','m','l','xl','xxl','xxxl','xxxxl','xxxxxl'],
+  sizeRange: ['s','m','l','xl','xxl','xxxl','xxxxl','xxxxxl','4','6','8','10','12','14','16','18'],
     images: {
   white: ['/product_images/hoodie/white_hoodie.jpg','/product_images/hoodie/white_hoodie.png'],
   black: ['/product_images/hoodie/black_hoodie.jpg','/product_images/hoodie/black_hoodie.png'],
@@ -167,7 +167,7 @@ export const products = [
   'lightblue',
   'olive'
 ],
-    sizeRange: ['s','m','l','xl','xxl'],
+    sizeRange: ['s','m','l','xl','xxl','xxxl','xxxxl','xxxxxl'],
     images: {
   white: ['/product_images/polo/white_polo.jpg','/product_images/polo/base1_polo.png'],
   black: ['/product_images/polo/black_polo.jpg','/product_images/polo/base1_polo.png'],
@@ -222,7 +222,7 @@ export const products = [
     colors: [
       'white','black','gray','red','blue','navy','benetongreen','bottlegreen','bordo','purple','tourquise','orange','yellow','lilac','babypink','lightblue','olive','fuksia','brown','banana_yellow','apple_green','phosphor_yellow','phosphor_green','phosphor_pink'
     ],
-    sizeRange: ['s','m','l','xl','xxl','xxxl','xxxxl','xxxxxl'],
+  sizeRange: ['s','m','l','xl','xxl','xxxl','xxxxl','xxxxxl','4','6','8','10','12','14','16','18'],
     images: {
       white: ['/product_images/dryfit/white_dryfit.jpg'],
       black: ['/product_images/dryfit/black_dryfit.jpg'],
@@ -275,7 +275,7 @@ export const products = [
 מתאים לפעילויות חוץ ויום-יומית. המעילמציע את השילוב המושלם של נוחות, חום ועיצוב פונקציונלי, ומתאים לשימושים מגוונים.`,
     tech: 'DTF',
     colors: ['black','olive','navy'],
-    sizeRange: ['s','m','l','xl','xxl','xxxl','xxxxl','xxxxxl'],
+  sizeRange: ['s','m','l','xl','xxl','xxxl','xxxxl','xxxxxl'],
     images: {
       black: ['/product_images/fleece/black_fleece.jpg'],
       olive: ['/product_images/fleece/olive_fleece.jpeg'],
@@ -326,7 +326,7 @@ export const products = [
   'lightblue',
   'olive'
 ],
-    sizeRange: ['s','m','l','xl','xxl','xxxl','xxxxl','xxxxxl'],
+  sizeRange: ['s','m','l','xl','xxl','xxxl','xxxxl','xxxxxl','8','10','12','14','16','18'],
     images: {
       white: ['/product_images/longsleeve/white_longsleeve.jpg','/product_images/longsleeve/base1_longsleeve.png'],
       black: ['/product_images/longsleeve/black_longsleeve.jpg','/product_images/longsleeve/base1_longsleeve.png'],
@@ -372,7 +372,7 @@ export const products = [
 מעיל הסופטשל שלנו משלב עמידות, חום ונוחות, ומותאם לפעילות יומיומית, ספורטיבית או עבודה בתנאי מזג אוויר מאתגרים.`,
     tech: 'DTF',
     colors: ['black','olive'],
-    sizeRange: ['s','m','l','xl','xxl','xxxl','xxxxl','xxxxxl'],
+  sizeRange: ['s','m','l','xl','xxl','xxxl','xxxxl','xxxxxl'],
     images: {
       black: ['/product_images/softshell/black_softshell.jpg'],
       olive: ['/product_images/softshell/olive_softshell.jpg'],
@@ -425,7 +425,7 @@ export const products = [
   'olive',
   'brown'
 ],
-    sizeRange: ['s','m','l','xl','xxl','xxxl','xxxxl','xxxxxl'],
+    sizeRange: ['s','m','l','xl','xxl','xxxl','xxxxl','xxxxxl','8','10','12','14','16','18'],
     images: {
       white: ['/product_images/zipped_hood/white_zipped_hood.jpg','/product_images/zipped_hood/offwhite_zipped_hood.jpg'],
       black: ['/product_images/zipped_hood/black_zipped_hood.jpg'],
@@ -484,7 +484,7 @@ export const products = [
   'lightblue',
   'olive'
 ],
-    sizeRange: ['s', 'm', 'l', 'xl', 'xxl', 'xxxl', 'xxxxl', 'xxxxxl'],
+  sizeRange: ['s', 'm', 'l', 'xl', 'xxl', 'xxxl', 'xxxxl', 'xxxxxl','8','10','12','14','16','18'],
     images: {
   white: ['/product_images/sweatshirt/white_sweatshirt.jpg','/product_images/sweatshirt/base1_sweatshirt.png'],
   black: ['/product_images/sweatshirt/black_sweatshirt.jpg','/product_images/sweatshirt/base1_sweatshirt.png'],
