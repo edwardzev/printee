@@ -14,6 +14,7 @@ import { pdfToDataUrl } from '@/lib/pdfToImage';
 import { useToast } from '@/components/ui/use-toast';
 import SizeMatrix from '@/components/SizeMatrix';
 import PricingTiers from '@/components/PricingTiers';
+import StageStepper from '@/components/StageStepper';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import PrintAreaSelector from '@/components/PrintAreaSelector';
 import MockupCanvas from '@/components/MockupCanvas';
@@ -559,12 +560,13 @@ const ProductConfigurator = () => {
       </Helmet>
 
       <div className="min-h-screen py-4">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div id="configurator-root" className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6 pb-8 lg:pb-48">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
+                id="stage-description"
                 className="bg-white rounded-xl p-4 sm:p-6 shadow-lg"
               >
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -603,6 +605,7 @@ const ProductConfigurator = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
+                id="stage-color"
                 className="bg-white rounded-xl p-4 sm:p-6 shadow-lg"
               >
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">
@@ -670,6 +673,7 @@ const ProductConfigurator = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
+                id="stage-sizes"
                 className="bg-white rounded-xl p-4 sm:p-6 shadow-lg"
               >
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">
@@ -774,6 +778,7 @@ const ProductConfigurator = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
+                id="stage-areas"
                 className="bg-white rounded-xl p-4 sm:p-6 shadow-lg"
               >
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">
@@ -793,6 +798,7 @@ const ProductConfigurator = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 }}
+                  id="stage-upload"
                   className="bg-white rounded-xl p-4 sm:p-6 shadow-lg"
                 >
                   <h2 className="text-xl font-semibold text-gray-900 mb-4">
@@ -833,8 +839,23 @@ const ProductConfigurator = () => {
               {/* Delivery moved to Cart page */}
             </div>
 
+            {/* StageStepper: fixed stage navigation */}
+            <StageStepper
+              stages={[
+                { key: 'color', index: 1, label: t('chooseColor') || 'Color', targetId: 'stage-color' },
+                { key: 'sizes', index: 2, label: t('sizeMatrix') || 'Sizes', targetId: 'stage-sizes' },
+                { key: 'areas', index: 3, label: t('printAreas') || 'Areas', targetId: 'stage-areas' },
+                { key: 'upload', index: 4, label: t('uploadDesign') || 'Upload', targetId: 'stage-upload' }
+              ]}
+              side="right"
+              containerSelector="#configurator-root"
+              railWidth={64}
+              gap={12}
+            />
+
             {/* Sticky sidebar on desktop: apply sticky to the grid item itself for robust behavior in CSS Grid */}
             <div
+              id="sidebar-price-panel"
               className="lg:col-span-1 lg:self-start lg:sticky"
               style={{ top: 'var(--header-height, 120px)' }}
             >
