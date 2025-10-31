@@ -9,6 +9,13 @@ const ICON_FILE_MAP = {
   upload: 'upload_icon.png'
 };
 
+const STAGE_HINTS = {
+  color: 'צבע מוצר',
+  sizes: 'מידות',
+  areas: 'מיקום הדפסה',
+  upload: 'העלאת קובץ'
+};
+
 const StageIcon = ({ stageKey, label, className, fallback }) => {
   const [failed, setFailed] = useState(false);
   useEffect(() => {
@@ -307,22 +314,37 @@ export default function StageStepper({
         <ol className="relative z-10 flex flex-col justify-between items-center h-full py-4">
           {stages.map((s) => {
             const isActive = active === s.key;
+            const hint = STAGE_HINTS[s.key];
+            const hintId = hint ? `stage-stepper-hint-${s.key}` : undefined;
             return (
               <li key={s.key} className="w-full flex items-center justify-center">
-                <button
-                  type="button"
-                  onClick={() => handleClick(s.targetId, s.key)}
-                  className={`flex items-center justify-center h-12 w-12 rounded-full focus:outline-none transition-shadow text-sky-600 ${isActive ? 'bg-sky-50 ring-2 ring-sky-500 shadow-lg' : 'bg-white ring-1 ring-slate-200 hover:bg-sky-50'}`}
-                  aria-current={isActive ? 'step' : undefined}
-                  aria-label={s.label || s.key}
-                >
-                  <StageIcon
-                    stageKey={s.key}
-                    label={s.label || s.key}
-                    className="h-6 w-6"
-                    fallback={() => svgForKey(s.key, 'h-6 w-6')}
-                  />
-                </button>
+                <div className="relative group">
+                  <button
+                    type="button"
+                    onClick={() => handleClick(s.targetId, s.key)}
+                    className={`flex items-center justify-center h-12 w-12 rounded-full focus:outline-none transition-shadow text-sky-600 ${isActive ? 'bg-sky-50 ring-2 ring-sky-500 shadow-lg' : 'bg-white ring-1 ring-slate-200 hover:bg-sky-50'}`}
+                    aria-current={isActive ? 'step' : undefined}
+                    aria-label={s.label || s.key}
+                    aria-describedby={hintId}
+                    tabIndex={0}
+                  >
+                    <StageIcon
+                      stageKey={s.key}
+                      label={s.label || s.key}
+                      className="h-6 w-6"
+                      fallback={() => svgForKey(s.key, 'h-6 w-6')}
+                    />
+                  </button>
+                  {hint ? (
+                    <span
+                      id={hintId}
+                      role="tooltip"
+                      className="pointer-events-none absolute top-1/2 right-full mr-3 -translate-y-1/2 whitespace-nowrap rounded bg-slate-900/90 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-sm transition-opacity duration-150 group-hover:opacity-100"
+                    >
+                      {hint}
+                    </span>
+                  ) : null}
+                </div>
               </li>
             );
           })}

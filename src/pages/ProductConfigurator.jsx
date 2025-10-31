@@ -784,7 +784,7 @@ const ProductConfigurator = () => {
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">
                   3. {t('printAreas')}
                 </h2>
-                <p className="text-sm text-gray-600 mb-4">{language === 'he' ? 'שיטת מיתוג' : 'Branding method'}</p>
+                <p className="text-sm text-gray-600 mb-4">{language === 'he' ? 'בחר איזורי הדפסה' : 'Select print areas'}</p>
                 <PrintAreaSelector
                   availableAreas={product.activePrintAreas}
                   selectedAreas={selectedPrintAreas}
