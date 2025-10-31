@@ -328,9 +328,11 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
                     size="lg"
                     disabled={!canAddToCart}
                     onClick={() => {
-                      try { onAddToCart(); } catch {}
-                      setAddedOnce(true);
-                      setShowDiscountPopup(true);
+                      try { 
+                        onAddToCart();
+                        setAddedOnce(true);
+                        setShowDiscountPopup(true);
+                      } catch {}
                       try { toast({ title: t('addedToCart'), description: t('addToCartCount')(pricing.totalQty) }); } catch {}
                     }}
                     className="rounded-full w-full"
@@ -349,8 +351,10 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
                     size="lg"
                     disabled={!canAddToCart}
                     onClick={() => {
-                      try { onAddToCart(); } catch {}
-                      setShowDiscountPopup(true);
+                      try { 
+                        onAddToCart();
+                        setShowDiscountPopup(true);
+                      } catch {}
                       try { toast({ title: t('addedToCart'), description: t('addToCartCount')(pricing.totalQty) }); } catch {}
                     }}
                     className="rounded-full w-full"
