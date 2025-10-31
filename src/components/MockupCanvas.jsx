@@ -1,12 +1,23 @@
 import React, { useState, useRef, useEffect } from 'react';
 // import { motion } from 'framer-motion';
 import Upload from 'lucide-react/dist/esm/icons/upload.js';
+import PlusCircle from 'lucide-react/dist/esm/icons/plus-circle.js';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { printAreas, templatePresets } from '@/data/products';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 
-const MockupCanvas = ({ areaKey, baseImage, onFileUpload, uploadedDesign, template = 'tshirt', onClearFile, onColorChoice, onDesignerNotesChange }) => {
+const MockupCanvas = ({
+  areaKey,
+  baseImage,
+  onFileUpload,
+  uploadedDesign,
+  template = 'tshirt',
+  onClearFile,
+  onColorChoice,
+  onDesignerNotesChange,
+  onScrollToAreas
+}) => {
   const { t } = useLanguage();
   const { toast } = useToast();
   const fileInputRef = useRef(null);
@@ -313,32 +324,53 @@ const MockupCanvas = ({ areaKey, baseImage, onFileUpload, uploadedDesign, templa
               </div>
             </div>
           ) : <div />}
-          <div className="flex justify-end gap-3 w-full">
-            <Button
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); fileInputRef.current?.click(); }}
-              className="rounded-full px-5 py-3 bg-gradient-to-l from-blue-600 to-indigo-600 text-white shadow-md transition-transform hover:scale-[1.03] active:scale-[0.98] hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              <Upload className="h-4 w-4 ml-2" />
-              החלף קובץ
-            </Button>
-            {effectiveDesign && (
-              <Button
-                onClick={() => {
-                  if (memoryKey) sessionStorage.removeItem(memoryKey);
-                  if (clearedFlagKey) sessionStorage.setItem(clearedFlagKey, '1');
-                  if (areaClearedKey) sessionStorage.setItem(areaClearedKey, '1');
-                  setRemembered(null);
-                  // notify parent if provided so it can clear its own per-area state
-                  if (typeof onClearFile === 'function') {
-                    try { onClearFile(areaKey); } catch {}
-                  }
-                }}
-                className="rounded-full px-5 py-3 bg-gradient-to-l from-rose-600 to-red-600 text-white shadow-md transition-transform hover:scale-[1.03] active:scale-[0.98] hover:shadow-lg"
-              >
-                אפס קובץ
-              </Button>
-            )}
-          </div>
+          {effectiveDesign && (
+            <div className="w-full flex justify-end">
+              <div className="flex flex-col gap-3 w-full sm:w-auto sm:inline-flex sm:flex-col sm:items-stretch">
+                <Button
+                  onClick={() => {
+                    if (typeof onScrollToAreas === 'function') {
+                      try { onScrollToAreas(); } catch {}
+                    } else {
+                      try {
+                        if (typeof window !== 'undefined') {
+                          const el = document.getElementById('stage-areas');
+                          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                      } catch {}
+                    }
+                  }}
+                  className="w-full rounded-full px-5 py-3 border border-sky-200 bg-white text-sky-700 shadow-sm transition-transform hover:-translate-y-[1px] hover:shadow-md hover:bg-white"
+                >
+                  <PlusCircle className="h-4 w-4 ml-2" />
+                  הוסף איזור הדפסה
+                </Button>
+                <div className="flex flex-col sm:flex-row gap-3 sm:justify-end w-full sm:w-auto">
+                  <Button
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); fileInputRef.current?.click(); }}
+                    className="rounded-full px-5 py-3 bg-gradient-to-l from-blue-600 to-indigo-600 text-white shadow-md transition-transform hover:scale-[1.03] active:scale-[0.98] hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    <Upload className="h-4 w-4 ml-2" />
+                    החלף קובץ
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      if (memoryKey) sessionStorage.removeItem(memoryKey);
+                      if (clearedFlagKey) sessionStorage.setItem(clearedFlagKey, '1');
+                      if (areaClearedKey) sessionStorage.setItem(areaClearedKey, '1');
+                      setRemembered(null);
+                      if (typeof onClearFile === 'function') {
+                        try { onClearFile(areaKey); } catch {}
+                      }
+                    }}
+                    className="rounded-full px-5 py-3 bg-gradient-to-l from-rose-600 to-red-600 text-white shadow-md transition-transform hover:scale-[1.03] active:scale-[0.98] hover:shadow-lg"
+                  >
+                    אפס קובץ
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* File info */}

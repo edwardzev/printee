@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet';
@@ -415,6 +415,14 @@ const ProductConfigurator = () => {
   // We no longer require selecting print areas so users can order blank products.
   const canAddToCart = pricing.totalQty > 0 && (selectedColors && selectedColors.length > 0);
 
+  const scrollToPrintAreas = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const el = document.getElementById('stage-areas');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (err) {}
+  }, []);
+
   // Structured data: compute Product and Breadcrumb JSON-LD objects
   const productImagesAbs = React.useMemo(() => {
     try {
@@ -822,6 +830,7 @@ const ProductConfigurator = () => {
                             uploadedDesign={uploadedDesigns[areaKey]}
                             onColorChoice={(aKey, v) => updateAreaField(aKey, { printColor: v })}
                             onDesignerNotesChange={(aKey, notes) => updateAreaField(aKey, { designerComments: notes })}
+                            onScrollToAreas={scrollToPrintAreas}
                           />
                         </div>
                       );
