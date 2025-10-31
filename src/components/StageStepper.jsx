@@ -1,4 +1,39 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+
+const ICON_BASE_PATH = '/schematics/stepper_icons';
+
+const ICON_FILE_MAP = {
+  color: 'color_icon.png',
+  sizes: 'sizes_icon.png',
+  areas: 'area_icon.png',
+  upload: 'upload_icon.png'
+};
+
+const StageIcon = ({ stageKey, label, className, fallback }) => {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    setFailed(false);
+  }, [stageKey]);
+  const fileName = ICON_FILE_MAP[stageKey] || `${stageKey}.png`;
+  const src = `${ICON_BASE_PATH}/${fileName}`;
+
+  if (failed && fallback) {
+    return typeof fallback === 'function' ? fallback() : fallback;
+  }
+
+  return (
+    <img
+      src={src}
+      alt={label || stageKey}
+      className={`${className} object-contain`}
+      loading="lazy"
+      decoding="async"
+      onError={() => {
+        setFailed(true);
+      }}
+    />
+  );
+};
 
 // Right-side vertical stepper with icon-only circular stages and a long guiding line.
 // Uses IntersectionObserver to detect the most visible stage and highlights it.
@@ -11,63 +46,97 @@ export default function StageStepper({
   gap = 12 // px distance from content edge
 }) {
   const [active, setActive] = useState(stages && stages.length ? stages[0].key : null);
-  const observerRef = useRef(null);
+  const stageEntriesRef = useRef([]);
   const navRef = useRef(null);
   const cleanupRef = useRef({ appliedPadding: false, originalPaddingRight: null });
+  const rafRef = useRef(null);
+
+  const collectStageEntries = useCallback(() => {
+    if (!Array.isArray(stages)) {
+      stageEntriesRef.current = [];
+      return;
+    }
+    const entries = stages
+      .map((s) => {
+        const el = document.getElementById(s.targetId);
+        if (!el) return null;
+        el.dataset.stageKey = s.key;
+        return { key: s.key, targetId: s.targetId, element: el };
+      })
+      .filter(Boolean);
+    stageEntriesRef.current = entries;
+  }, [stages]);
+
+  const updateActiveFromScroll = useCallback(() => {
+    const entries = stageEntriesRef.current;
+    if (!entries || entries.length === 0) return;
+
+    const anchor = typeof offset === 'number' ? offset : 120;
+    const viewportHeight = window.innerHeight || 1;
+
+    let nextKey = entries[0]?.key;
+    let bestScore = -Infinity;
+
+    entries.forEach(({ key, element }) => {
+      if (!element) return;
+      const rect = element.getBoundingClientRect();
+      const visibleTop = Math.max(rect.top, 0);
+      const visibleBottom = Math.min(rect.bottom, viewportHeight);
+      const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+      const ratio = rect.height > 0 ? visibleHeight / rect.height : 0;
+      const coversAnchor = rect.top <= anchor && rect.bottom >= anchor;
+      const center = rect.top + rect.height / 2;
+      const distanceScore = -Math.abs(center - anchor) / viewportHeight;
+      let score = distanceScore;
+      if (coversAnchor) {
+        score += 2; // strongly prefer the section that spans the anchor line
+      }
+      score += ratio; // prefer visible sections even if anchor is between
+      if (score > bestScore) {
+        bestScore = score;
+        nextKey = key;
+      }
+    });
+
+    setActive((prev) => (prev === nextKey ? prev : nextKey));
+  }, [offset]);
 
   useEffect(() => {
-    if (!stages || stages.length === 0) return undefined;
-    const opts = {
-      root: null,
-      rootMargin: `-${offset}px 0px -40% 0px`,
-      threshold: [0.15, 0.5, 0.9]
-    };
-
-    const cb = (entries) => {
-      let best = null;
-      for (const e of entries) {
-        if (!best || e.intersectionRatio > best.intersectionRatio) best = e;
-      }
-      if (best && best.isIntersecting) {
-        const key = best.target.dataset.stageKey;
-        if (key) setActive(key);
-      }
-    };
-
-    const obs = new IntersectionObserver(cb, opts);
-    observerRef.current = obs;
-    const observed = new Set();
-
-    const tryObserveAll = () => {
-      stages.forEach((s) => {
-        if (observed.has(s.targetId)) return;
-        const el = document.getElementById(s.targetId);
-        if (el) {
-          el.dataset.stageKey = s.key;
-          obs.observe(el);
-          observed.add(s.targetId);
-        }
+    const scheduleUpdate = () => {
+      if (rafRef.current) return;
+      rafRef.current = window.requestAnimationFrame(() => {
+        rafRef.current = null;
+        updateActiveFromScroll();
       });
     };
 
-    // initial observe attempt
-    tryObserveAll();
+    collectStageEntries();
+    updateActiveFromScroll();
 
-    // observe dynamic DOM mutations (e.g., upload stage appears later)
+    window.addEventListener('scroll', scheduleUpdate, { passive: true });
+    window.addEventListener('resize', scheduleUpdate);
+    window.addEventListener('orientationchange', scheduleUpdate);
+
     let mo;
     try {
       mo = new MutationObserver(() => {
-        tryObserveAll();
+        collectStageEntries();
+        updateActiveFromScroll();
       });
       mo.observe(document.body, { childList: true, subtree: true });
     } catch (e) {}
 
     return () => {
-      try { obs.disconnect(); } catch (e) {}
+      window.removeEventListener('scroll', scheduleUpdate);
+      window.removeEventListener('resize', scheduleUpdate);
+      window.removeEventListener('orientationchange', scheduleUpdate);
+      if (rafRef.current) {
+        window.cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
       try { mo && mo.disconnect(); } catch (e) {}
-      observerRef.current = null;
     };
-  }, [stages, offset]);
+  }, [collectStageEntries, updateActiveFromScroll]);
 
   // Position below header and anchor relative to the colors panel (stage-color) so distance is from blocks.
   // When the right gutter is too small, reserve an inline rail by adding padding-right to the container.
@@ -232,23 +301,27 @@ export default function StageStepper({
     <nav aria-label="Configurator stages" className={containerClass} ref={navRef} style={{ top: 'var(--header-height, 96px)', right: 16 }}>
       <div className="relative h-full w-full flex items-center">
         {/* long guiding line centered in the vertical bar */}
-  <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-0.5 bg-slate-300 dark:bg-slate-600 rounded" aria-hidden="true" />
+    <div className="absolute inset-y-0 left-[63%] -translate-x-[63%] w-1 bg-slate-300 dark:bg-slate-600 rounded" aria-hidden="true" />
 
         {/* spread icons evenly from top to bottom */}
-  <ol className="relative z-10 flex flex-col justify-between items-center h-full py-2">
+        <ol className="relative z-10 flex flex-col justify-between items-center h-full py-4">
           {stages.map((s) => {
             const isActive = active === s.key;
             return (
-              <li key={s.key} className="flex items-center">
+              <li key={s.key} className="w-full flex items-center justify-center">
                 <button
                   type="button"
                   onClick={() => handleClick(s.targetId, s.key)}
-                  className={`flex items-center justify-center h-12 w-12 rounded-full focus:outline-none transition-transform text-sky-600 ${isActive ? 'bg-sky-50 ring-2 ring-sky-500 shadow-md scale-110' : 'bg-white ring-1 ring-slate-200 hover:bg-sky-50'}`}
+                  className={`flex items-center justify-center h-12 w-12 rounded-full focus:outline-none transition-shadow text-sky-600 ${isActive ? 'bg-sky-50 ring-2 ring-sky-500 shadow-lg' : 'bg-white ring-1 ring-slate-200 hover:bg-sky-50'}`}
                   aria-current={isActive ? 'step' : undefined}
                   aria-label={s.label || s.key}
                 >
-                  {/* svg icons inherit color from button text color */}
-                  {svgForKey(s.key, 'h-6 w-6')}
+                  <StageIcon
+                    stageKey={s.key}
+                    label={s.label || s.key}
+                    className="h-6 w-6"
+                    fallback={() => svgForKey(s.key, 'h-6 w-6')}
+                  />
                 </button>
               </li>
             );

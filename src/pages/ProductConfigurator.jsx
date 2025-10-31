@@ -616,7 +616,7 @@ const ProductConfigurator = () => {
                     <button
                       key={color}
                       onClick={() => handleToggleColor(color)}
-                      className={`relative aspect-square rounded-lg border-4 transition-all overflow-visible ${
+                      className={`group relative z-0 aspect-square rounded-lg border-4 overflow-visible transition-shadow duration-200 hover:z-50 ${
                         (selectedColors || []).includes(color)
                           ? 'border-blue-500 ring-2 ring-blue-200'
                           : 'border-gray-200 hover:border-gray-300'
@@ -636,7 +636,7 @@ const ProductConfigurator = () => {
                             <img
                               src={fallback}
                               alt={`${language === 'he' ? product.nameHe : product.name} ${color}`}
-                              className="w-full h-full object-contain rounded-md transform transition-transform duration-[800ms] ease-in-out hover:scale-150 relative z-0 hover:z-50"
+                              className="w-full h-full object-contain rounded-md transition-transform duration-500 ease-out transform group-hover:scale-125"
                               loading="lazy"
                               decoding="async"
                               onError={(e) => {
