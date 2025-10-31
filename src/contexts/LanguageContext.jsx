@@ -100,6 +100,11 @@ const translations = {
   updateCartCount: (count) => `עודכן ${count} פריטים בעגלה`,
     notImplemented: '🚧 התכונה הזו עדיין לא מוכנה - אבל אל תדאגו! תוכלו לבקש אותה בהודעה הבאה! 🚀',
     
+    // Discount popup
+    discountTitle: '🎉 מזל טוב!',
+    discountMessage: 'הלקוח שלנו זכאי להנחה נוספת של 5%!',
+    discountButton: 'מעולה, תודה!',
+    
     // Footer
   company: 'Printeam Ltd.',
     allRightsReserved: 'כל הזכויות שמורות',
@@ -207,6 +212,11 @@ const translations = {
   addToCartCount: (count) => `${count} items added to cart`,
   updateCartCount: (count) => `${count} items updated in cart`,
     notImplemented: '🚧 This feature isn\'t implemented yet—but don\'t worry! You can request it in your next prompt! 🚀',
+    
+    // Discount popup
+    discountTitle: '🎉 Congratulations!',
+    discountMessage: 'You are eligible for an additional 5% discount!',
+    discountButton: 'Great, thanks!',
     
     // Footer
   company: 'Printeam Ltd.',
