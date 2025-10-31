@@ -100,6 +100,19 @@ const translations = {
   updateCartCount: (count) => `עודכן ${count} פריטים בעגלה`,
     notImplemented: '🚧 התכונה הזו עדיין לא מוכנה - אבל אל תדאגו! תוכלו לבקש אותה בהודעה הבאה! 🚀',
     
+    // Discount popup
+    discountTitle: '🎉 מזל טוב!',
+    discountMessage: 'הלקוח שלנו זכאי להנחה נוספת של 5%!',
+    discountFormMessage: 'נא למלא את הפרטים שלך כדי לקבל את ההנחה:',
+    discountButton: 'קבל הנחה',
+    discountSkip: 'דלג',
+    nameLabel: 'שם מלא',
+    namePlaceholder: 'הזן שם מלא',
+    phoneLabel: 'טלפון',
+    phonePlaceholder: 'הזן מספר טלפון',
+    emailLabel: 'אימייל',
+    emailPlaceholder: 'הזן כתובת אימייל',
+    
     // Footer
   company: 'Printeam Ltd.',
     allRightsReserved: 'כל הזכויות שמורות',
@@ -207,6 +220,19 @@ const translations = {
   addToCartCount: (count) => `${count} items added to cart`,
   updateCartCount: (count) => `${count} items updated in cart`,
     notImplemented: '🚧 This feature isn\'t implemented yet—but don\'t worry! You can request it in your next prompt! 🚀',
+    
+    // Discount popup
+    discountTitle: '🎉 Congratulations!',
+    discountMessage: 'You are eligible for an additional 5% discount!',
+    discountFormMessage: 'Please fill in your details to receive the discount:',
+    discountButton: 'Get Discount',
+    discountSkip: 'Skip',
+    nameLabel: 'Full Name',
+    namePlaceholder: 'Enter full name',
+    phoneLabel: 'Phone',
+    phonePlaceholder: 'Enter phone number',
+    emailLabel: 'Email',
+    emailPlaceholder: 'Enter email address',
     
     // Footer
   company: 'Printeam Ltd.',

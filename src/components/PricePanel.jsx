@@ -11,6 +11,7 @@ import { printAreas } from '@/data/products';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { useMediaQuery } from '@/hooks/use-media-query';
+import DiscountPopup from '@/components/DiscountPopup';
 
 const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
   const { t, language } = useLanguage();
@@ -29,6 +30,8 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
   const desktopWrapperRef = useRef(null);
   const [forceFixed, setForceFixed] = useState(false);
   const [fixedStyle, setFixedStyle] = useState({});
+  // State for discount popup
+  const [showDiscountPopup, setShowDiscountPopup] = useState(false);
 
   // Track scroll position only; do not lock overflow to avoid persistent disable/jump.
   useEffect(() => {
@@ -237,7 +240,11 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
                 size="lg"
                 variant={addedOnce ? 'outline' : 'default'}
                 disabled={!canAddToCart}
-                onClick={() => { onAddToCart(); setAddedOnce(true); }}
+                onClick={() => { 
+                  onAddToCart(); 
+                  setAddedOnce(true);
+                  setShowDiscountPopup(true);
+                }}
               >
                 <ShoppingCart className="h-5 w-5 mr-2" />
                 {t('addToCart')}
@@ -321,8 +328,11 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
                     size="lg"
                     disabled={!canAddToCart}
                     onClick={() => {
-                      try { onAddToCart(); } catch {}
-                      setAddedOnce(true);
+                      try { 
+                        onAddToCart();
+                        setAddedOnce(true);
+                        setShowDiscountPopup(true);
+                      } catch {}
                       try { toast({ title: t('addedToCart'), description: t('addToCartCount')(pricing.totalQty) }); } catch {}
                     }}
                     className="rounded-full w-full"
@@ -341,7 +351,10 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
                     size="lg"
                     disabled={!canAddToCart}
                     onClick={() => {
-                      try { onAddToCart(); } catch {}
+                      try { 
+                        onAddToCart();
+                        setShowDiscountPopup(true);
+                      } catch {}
                       try { toast({ title: t('addedToCart'), description: t('addToCartCount')(pricing.totalQty) }); } catch {}
                     }}
                     className="rounded-full w-full"
@@ -420,7 +433,12 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
                     size="lg"
                     variant={addedOnce ? 'outline' : 'default'}
                     disabled={!canAddToCart}
-                    onClick={() => { onAddToCart(); closeSheet(); setAddedOnce(true); }}
+                    onClick={() => { 
+                      onAddToCart(); 
+                      closeSheet(); 
+                      setAddedOnce(true);
+                      setShowDiscountPopup(true);
+                    }}
                   >
                     {t('addToCart')}
                   </Button>
@@ -445,6 +463,9 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Discount popup */}
+      <DiscountPopup open={showDiscountPopup} onOpenChange={setShowDiscountPopup} />
     </>
   );
 };
