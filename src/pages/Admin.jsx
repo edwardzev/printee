@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet';
 import Package from 'lucide-react/dist/esm/icons/package.js';
@@ -8,21 +8,11 @@ import TrendingUp from 'lucide-react/dist/esm/icons/trending-up.js';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
+import ProductForm from '@/components/ProductForm';
 
 const Admin = () => {
   const { t } = useLanguage();
   const { toast } = useToast();
-  const ADMIN_PASS = (import.meta && import.meta.env && import.meta.env.VITE_ADMIN_PASS) || '';
-
-  const [adminAuth, setAdminAuth] = useState(false);
-  const [pass, setPass] = useState('');
-
-  useEffect(() => {
-    try {
-      const v = sessionStorage.getItem('printeam_admin_authed');
-      if (v === '1') setAdminAuth(true);
-    } catch (e) {}
-  }, []);
   const [activeTab, setActiveTab] = useState('orders');
 
   const mockOrders = [
@@ -83,54 +73,7 @@ const Admin = () => {
     });
   };
 
-  const handleLogin = () => {
-    try {
-      if (!ADMIN_PASS) {
-        toast({ title: 'Admin password not configured', variant: 'destructive' });
-        return;
-      }
-      if (pass === ADMIN_PASS) {
-        try { sessionStorage.setItem('printeam_admin_authed', '1'); } catch (e) {}
-        setAdminAuth(true);
-        toast({ title: 'Logged in' });
-      } else {
-        toast({ title: 'Invalid password', variant: 'destructive' });
-      }
-    } catch (e) {
-      toast({ title: 'Login failed', variant: 'destructive' });
-    }
-  };
-
-  const handleLogout = () => {
-    try { sessionStorage.removeItem('printeam_admin_authed'); } catch (e) {}
-    setAdminAuth(false);
-    setPass('');
-    toast({ title: 'Logged out' });
-  };
-
-  // If not authenticated, render a simple login UI early to avoid nesting large JSX blocks
-  if (!adminAuth) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-full max-w-sm bg-white rounded-xl p-6 shadow-lg">
-          <h2 className="text-lg font-semibold mb-4">Admin Login</h2>
-          <p className="text-sm text-gray-500 mb-3">Enter password to access the admin dashboard.</p>
-          <input
-            type="password"
-            value={pass}
-            onChange={(e) => setPass(e.target.value)}
-            placeholder="Password"
-            className="w-full border rounded-md px-3 py-2 text-sm mb-3"
-          />
-          <div className="flex gap-3">
-            <Button onClick={handleLogin} className="flex-1">Login</Button>
-            <Button variant="outline" onClick={() => { setPass(''); }} className="w-24">Clear</Button>
-          </div>
-          <p className="text-xs text-gray-400 mt-3">This is a lightweight client-side gate. For production, use a server-side auth mechanism.</p>
-        </div>
-      </div>
-    );
-  }
+  // Temporary bypass: expose admin UI without password gating during development
 
   return (
     <>
@@ -288,14 +231,8 @@ const Admin = () => {
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="text-center py-12"
                 >
-                  <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Product Management</h3>
-                  <p className="text-gray-500 mb-4">Manage your product catalog and pricing</p>
-                  <Button onClick={() => handleAction('manage-products')}>
-                    Manage Products
-                  </Button>
+                  <ProductForm />
                 </motion.div>
               )}
 

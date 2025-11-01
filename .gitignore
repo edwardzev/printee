@@ -17,3 +17,5 @@ coverage/
 .vercel
 data/
 lighthouse-*.json
+.env
+.push_trigger
