@@ -102,7 +102,7 @@ const translations = {
     
     // Discount popup
     discountTitle: '🎉 מזל טוב!',
-    discountMessage: 'הלקוח שלנו זכאי להנחה נוספת של 5%!',
+    discountMessage: 'קיבלת הנחה של 5%!',
     discountFormMessage: 'נא למלא את הפרטים שלך כדי לקבל את ההנחה:',
     discountButton: 'קבל הנחה',
     discountSkip: 'דלג',
