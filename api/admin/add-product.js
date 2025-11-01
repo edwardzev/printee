@@ -2,12 +2,19 @@
  * API endpoint to add a new product to products.js
  * POST /api/admin/add-product
  * 
- * NOTE: This endpoint modifies source code files (products.js) and is intended
+ * SECURITY WARNING: This endpoint modifies source code files and is intended
  * for development use only. It will not work in production serverless environments
  * like Vercel where the filesystem is read-only.
  * 
+ * TODO: For production use, this should:
+ * - Implement proper authentication (verify admin credentials)
+ * - Add authorization checks (verify user has permission to add products)
+ * - Use a database instead of modifying source files
+ * - Add comprehensive input validation (types, lengths, formats)
+ * - Implement rate limiting to prevent abuse
+ * - Add audit logging for all product modifications
+ * 
  * For development use, run the app locally with `npm run dev`.
- * For a safer alternative, consider using the dev-admin-server.js approach.
  */
 
 import fs from 'fs';
@@ -23,15 +30,45 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // TODO: Add authentication check here
+  // Example: if (!isAuthenticated(req)) return res.status(401).json({ error: 'Unauthorized' });
+
   try {
     const productData = req.body;
 
-    // Validate required fields
+    // Enhanced validation
     const requiredFields = ['sku', 'name', 'nameHe', 'description', 'descriptionHe', 'basePrice'];
     for (const field of requiredFields) {
       if (!productData[field]) {
         return res.status(400).json({ error: `Missing required field: ${field}` });
       }
+    }
+
+    // Validate data types and ranges
+    if (typeof productData.basePrice !== 'number' || productData.basePrice <= 0) {
+      return res.status(400).json({ error: 'Base price must be a positive number' });
+    }
+
+    // Validate string lengths to prevent excessively large data
+    const maxStringLength = 10000;
+    for (const field of ['sku', 'name', 'nameHe', 'description', 'descriptionHe']) {
+      if (typeof productData[field] === 'string' && productData[field].length > maxStringLength) {
+        return res.status(400).json({ error: `Field ${field} exceeds maximum length` });
+      }
+    }
+
+    // Validate SKU format (alphanumeric and hyphens only)
+    if (!/^[a-z0-9-]+$/i.test(productData.sku)) {
+      return res.status(400).json({ error: 'SKU must contain only alphanumeric characters and hyphens' });
+    }
+
+    // Validate arrays
+    if (!Array.isArray(productData.colors) || productData.colors.length === 0) {
+      return res.status(400).json({ error: 'At least one color is required' });
+    }
+
+    if (!Array.isArray(productData.sizeRange) || productData.sizeRange.length === 0) {
+      return res.status(400).json({ error: 'At least one size is required' });
     }
 
     // Path to products.js
