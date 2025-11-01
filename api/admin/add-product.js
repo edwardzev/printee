@@ -30,11 +30,20 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Check if we're in a serverless environment
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    return res.status(501).json({ 
+      error: 'Not Implemented', 
+      details: 'This endpoint requires filesystem access and only works in local development. In production, products must be added manually to products.js and redeployed, or you can use a database-backed solution.' 
+    });
+  }
+
   // TODO: Add authentication check here
   // Example: if (!isAuthenticated(req)) return res.status(401).json({ error: 'Unauthorized' });
 
   try {
     const productData = req.body;
+    console.log('Received product data:', productData);
 
     // Enhanced validation
     const requiredFields = ['sku', 'name', 'nameHe', 'description', 'descriptionHe', 'basePrice'];
@@ -150,9 +159,11 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Error adding product:', error);
+    console.error('Error stack:', error.stack);
     return res.status(500).json({ 
       error: 'Failed to add product',
-      details: error.message 
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 }

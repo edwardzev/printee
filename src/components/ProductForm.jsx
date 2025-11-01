@@ -155,13 +155,27 @@ const ProductForm = () => {
         body: JSON.stringify(formData)
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error('Failed to add product');
+        // If we get a 501 (Not Implemented in production), show a helpful message
+        if (response.status === 501) {
+          toast({
+            title: 'Production Environment Detected',
+            description: 'The product data is validated and ready. Please copy the JSON below and manually add it to products.js, then redeploy.',
+            variant: 'default',
+            duration: 10000
+          });
+          // Show the JSON preview so they can copy it
+          setShowJsonPreview(true);
+          return;
+        }
+        throw new Error(data.error || data.details || 'Failed to add product');
       }
 
       toast({
         title: 'Success',
-        description: 'Product added successfully!'
+        description: 'Product added successfully! You may need to rebuild and redeploy for changes to take effect.'
       });
 
       // Reset form
@@ -195,6 +209,7 @@ const ProductForm = () => {
         }
       });
     } catch (error) {
+      console.error('Submit error:', error);
       toast({
         title: 'Error',
         description: error.message || 'Failed to add product',
