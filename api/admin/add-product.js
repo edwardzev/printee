@@ -1,6 +1,13 @@
 /**
  * API endpoint to add a new product to products.js
  * POST /api/admin/add-product
+ * 
+ * NOTE: This endpoint modifies source code files (products.js) and is intended
+ * for development use only. It will not work in production serverless environments
+ * like Vercel where the filesystem is read-only.
+ * 
+ * For development use, run the app locally with `npm run dev`.
+ * For a safer alternative, consider using the dev-admin-server.js approach.
  */
 
 import fs from 'fs';
