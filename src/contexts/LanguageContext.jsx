@@ -103,9 +103,17 @@ const translations = {
     // Discount popup
     discountTitle: '🎉 מזל טוב!',
     discountMessage: 'קיבלת הנחה של 5%!',
-    discountFormMessage: 'נא למלא את הפרטים שלך כדי לקבל את ההנחה:',
+    discountFormMessage: (saving) => saving
+      ? `נא למלא את הפרטים כדי לחסוך ${saving}:`
+      : 'נא למלא את הפרטים שלך כדי לקבל את ההנחה:',
     discountButton: 'קבל הנחה',
     discountSkip: 'דלג',
+    vatLabel: 'מע"מ (17%)',
+    subtotalBeforeDiscount: 'סיכום ביניים',
+    discountedSubtotal: 'סכום לאחר הנחה',
+    discountLabel: (rate) => `הנחה (${rate}%)`,
+    cardPaymentDiscount: 'הנחת כרטיס אשראי (3%)',
+    totalDue: 'סה"כ לתשלום',
     nameLabel: 'שם מלא',
     namePlaceholder: 'הזן שם מלא',
     phoneLabel: 'טלפון',
@@ -224,9 +232,17 @@ const translations = {
     // Discount popup
     discountTitle: '🎉 Congratulations!',
     discountMessage: 'You are eligible for an additional 5% discount!',
-    discountFormMessage: 'Please fill in your details to receive the discount:',
+    discountFormMessage: (saving) => saving
+      ? `Please fill in your details to save ${saving}:`
+      : 'Please fill in your details to receive the discount:',
     discountButton: 'Get Discount',
     discountSkip: 'Skip',
+    vatLabel: 'VAT (17%)',
+    subtotalBeforeDiscount: 'Subtotal before discount',
+    discountedSubtotal: 'Subtotal after discount',
+    discountLabel: (rate) => `Discount (${rate}%)`,
+    cardPaymentDiscount: 'Card payment discount (3%)',
+    totalDue: 'Amount due',
     nameLabel: 'Full Name',
     namePlaceholder: 'Enter full name',
     phoneLabel: 'Phone',

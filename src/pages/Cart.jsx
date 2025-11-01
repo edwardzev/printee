@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet';
@@ -13,13 +13,86 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import CheckoutModal from '@/components/CheckoutModal';
 import DeliveryOptions from '@/components/DeliveryOptions';
-
+import { deriveDiscountedPricing, DEFAULT_DISCOUNT_RATE } from '@/lib/discountHelpers';
 const Cart = () => {
   const { t, language } = useLanguage();
-  const { cartItems, removeFromCart, getTotalPrice, payload, mergePayload, getTotalItems } = useCart();
+  const { cartItems, removeFromCart, payload, mergePayload, getTotalItems } = useCart();
   const { toast } = useToast();
   const [modalOpen, setModalOpen] = useState(false);
   const navigate = useNavigate();
+
+  const discountClaimed = (() => {
+    if (payload?.discountClaimed) return true;
+    try {
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        return window.sessionStorage.getItem('printee:discount-claimed') === 'true';
+      }
+    } catch (err) {
+      // ignore storage access failures
+    }
+    return false;
+  })();
+
+  const currencyFormatter = useMemo(() => {
+    const locale = language === 'he' ? 'he-IL' : 'en-IL';
+    try {
+      return new Intl.NumberFormat(locale, {
+        style: 'currency',
+        currency: 'ILS',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    } catch {
+      return new Intl.NumberFormat('en-IL', {
+        style: 'currency',
+        currency: 'ILS',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
+  }, [language]);
+
+  const formatCurrency = useCallback((value) => {
+    const num = Number(value);
+    const safe = Number.isFinite(num) ? num : 0;
+    try {
+      return currencyFormatter.format(safe);
+    } catch {
+      return `₪${safe.toFixed(2)}`;
+    }
+  }, [currencyFormatter]);
+
+  const derivedItems = useMemo(() => {
+    return (Array.isArray(cartItems) ? cartItems : []).map((item) => ({
+      item,
+      ...deriveDiscountedPricing(item, { discountClaimed, defaultRate: DEFAULT_DISCOUNT_RATE }),
+    }));
+  }, [cartItems, discountClaimed]);
+
+  const aggregateTotals = useMemo(() => {
+    return derivedItems.reduce((acc, entry) => {
+      acc.totalBeforeDiscount += entry.subtotalBefore;
+      acc.discountTotal += entry.discountAmount;
+      acc.subtotalAfterDiscount += entry.subtotalAfter;
+      return acc;
+    }, { totalBeforeDiscount: 0, discountTotal: 0, subtotalAfterDiscount: 0 });
+  }, [derivedItems]);
+
+  const { totalBeforeDiscount, discountTotal, subtotalAfterDiscount } = aggregateTotals;
+  const totalItems = typeof getTotalItems === 'function' ? getTotalItems() : 0;
+  const deliveryCost = payload?.withDelivery ? Math.ceil(totalItems / 50) * 50 : 0;
+  const vatBase = subtotalAfterDiscount + deliveryCost;
+  const vatAmount = Math.round(vatBase * 0.17);
+  const grandTotal = Math.round(vatBase * 1.17);
+
+  const firstDiscountedItem = derivedItems.find((entry) => entry.discountAmount > 0);
+  const discountRatePercent = firstDiscountedItem
+    ? Math.round(((firstDiscountedItem.discountRate || DEFAULT_DISCOUNT_RATE) || 0) * 100)
+    : Math.round(DEFAULT_DISCOUNT_RATE * 100);
+  const discountLabelValue = t('discountLabel');
+  const discountLabelText = typeof discountLabelValue === 'function'
+    ? discountLabelValue(discountRatePercent)
+    : discountLabelValue;
 
   const handleCheckout = () => {
     // Ensure we have an idempotency key before opening the modal
@@ -334,31 +407,54 @@ const Cart = () => {
                         }).join(', ')}
                       </div>
 
-                      <div className={`flex items-center justify-between ${language === 'he' ? 'flex-row-reverse' : ''}`}>
-                        <span className="text-xl font-bold text-blue-600">
-                          ₪{item.totalPrice.toLocaleString()}
-                        </span>
-                        
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => navigate(`/product/${item.productSku}`, { state: { prefill: item } })}
-                          >
-                            <Edit className={`h-4 w-4 ${language === 'he' ? 'ml-1' : 'mr-1'}`} />
-                            {t('editItem')}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleRemoveItem(item.id)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className={`h-4 w-4 ${language === 'he' ? 'ml-1' : 'mr-1'}`} />
-                            {t('removeItem')}
-                          </Button>
-                        </div>
-                      </div>
+                      {(() => {
+                        const toNumber = (val) => {
+                          const num = Number(val);
+                          return Number.isFinite(num) ? num : 0;
+                        };
+                        const derived = derivedItems[index];
+                        const itemDiscountAmount = derived?.discountAmount ?? toNumber(item.discountAmount);
+                        const itemTotal = derived?.subtotalAfter ?? toNumber(item.totalPrice);
+                        const itemDiscountRate = derived?.discountRate ?? toNumber(item.discountRate);
+                        const itemDiscountLabel = typeof discountLabelValue === 'function'
+                          ? discountLabelValue(Math.round(((itemDiscountRate || DEFAULT_DISCOUNT_RATE) || 0) * 100))
+                          : discountLabelValue;
+
+                        return (
+                          <div className={`flex justify-between gap-4 ${language === 'he' ? 'flex-row-reverse' : ''}`}>
+                            <div className={`space-y-1 ${language === 'he' ? 'text-right' : 'text-left'}`}>
+                              {itemDiscountAmount > 0 && (
+                                <div className="text-sm text-green-600">
+                                  {itemDiscountLabel}: -{formatCurrency(itemDiscountAmount)}
+                                </div>
+                              )}
+                              <div className="text-lg font-semibold text-blue-600">
+                                {t('total')}: {formatCurrency(itemTotal)}
+                              </div>
+                            </div>
+
+                            <div className={`flex gap-2 ${language === 'he' ? 'flex-row-reverse' : ''}`}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigate(`/product/${item.productSku}`, { state: { prefill: item } })}
+                              >
+                                <Edit className={`h-4 w-4 ${language === 'he' ? 'ml-1' : 'mr-1'}`} />
+                                {t('editItem')}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleRemoveItem(item.id)}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <Trash2 className={`h-4 w-4 ${language === 'he' ? 'ml-1' : 'mr-1'}`} />
+                                {t('removeItem')}
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 </motion.div>
@@ -367,7 +463,7 @@ const Cart = () => {
               {/* Delivery options: moved into cart body above upsell */}
               <div className="bg-white rounded-xl p-6 shadow-lg mb-6">
                 <DeliveryOptions
-                  totalQty={getTotalItems()}
+            totalQty={totalItems}
                   withDelivery={payload?.withDelivery || false}
                   onDeliveryChange={(v)=>{ mergePayload({ withDelivery: !!v }); }}
                   contact={payload?.contact || {}}
@@ -390,25 +486,30 @@ const Cart = () => {
 
                 <div className="space-y-4 mb-6">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">סכום ביניים</span>
-                    <span className="font-medium">₪{getTotalPrice().toLocaleString()}</span>
+                    <span className="text-gray-600">{t('subtotalBeforeDiscount')}</span>
+                    <span className="font-medium">{formatCurrency(totalBeforeDiscount)}</span>
                   </div>
-                  {payload?.withDelivery && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">{language === 'he' ? 'עלות משלוח' : 'Delivery cost'}</span>
-                      <span className="font-medium">₪{(Math.ceil(getTotalItems() / 50) * 50).toLocaleString()}</span>
+                  {discountTotal > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span>{discountLabelText}</span>
+                      <span>-{formatCurrency(discountTotal)}</span>
                     </div>
                   )}
-                  {/* delivery block removed from summary (rendered above upsell in main column) */}
+                  {deliveryCost > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">{language === 'he' ? 'עלות משלוח' : 'Delivery cost'}</span>
+                      <span className="font-medium">+{formatCurrency(deliveryCost)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
-                    <span className="text-gray-600">מע"מ (17%)</span>
-                    <span className="font-medium">₪{Math.round((getTotalPrice() + (payload?.withDelivery ? (Math.ceil(getTotalItems() / 50) * 50) : 0)) * 0.17).toLocaleString()}</span>
+                    <span className="text-gray-600">{t('vatLabel')}</span>
+                    <span className="font-medium">{formatCurrency(vatAmount)}</span>
                   </div>
                   <div className="border-t pt-4">
                     <div className="flex justify-between">
-                      <span className="text-lg font-semibold">סה"כ</span>
+                      <span className="text-lg font-semibold">{language === 'he' ? 'סה"כ' : 'Total'}</span>
                       <span className="text-lg font-bold text-blue-600">
-                        ₪{Math.round((getTotalPrice() + (payload?.withDelivery ? (Math.ceil(getTotalItems() / 50) * 50) : 0)) * 1.17).toLocaleString()}
+                        {formatCurrency(grandTotal)}
                       </span>
                     </div>
                   </div>
@@ -435,7 +536,11 @@ const Cart = () => {
                     <CheckoutModal
                       open={modalOpen}
                       onClose={()=>setModalOpen(false)}
-                      cartSummary={{ total: getTotalPrice() }}
+                      cartSummary={{
+                        subtotal: totalBeforeDiscount,
+                        discount: discountTotal,
+                        total: subtotalAfterDiscount
+                      }}
                       prefillContact={prefill}
                     />
                   );

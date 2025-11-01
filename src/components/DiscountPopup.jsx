@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCart } from '@/contexts/CartContext';
 
-const DiscountPopup = ({ open, onOpenChange }) => {
+const DiscountPopup = ({ open, onOpenChange, savingsAmount = '' }) => {
   const { t } = useLanguage();
   const { mergePayload, payload } = useCart();
   
@@ -29,8 +29,16 @@ const DiscountPopup = ({ open, onOpenChange }) => {
           name: name.trim(),
           phone: phone.trim(),
           email: email.trim()
-        }
+        },
+        discountClaimed: true
       });
+      try {
+        if (typeof window !== 'undefined' && window.sessionStorage) {
+          window.sessionStorage.setItem('printee:discount-claimed', 'true');
+        }
+      } catch (storageError) {
+        // ignore storage failures
+      }
     } catch (error) {
       console.error('Failed to save contact info:', error);
     }
@@ -62,7 +70,9 @@ const DiscountPopup = ({ open, onOpenChange }) => {
               {t('discountMessage')}
             </DialogDescription>
             <DialogDescription className="text-center text-sm py-2">
-              {t('discountFormMessage')}
+              {typeof t('discountFormMessage') === 'function'
+                ? t('discountFormMessage')(savingsAmount)
+                : t('discountFormMessage')}
             </DialogDescription>
           </DialogHeader>
           

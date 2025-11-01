@@ -20,6 +20,8 @@ import PrintAreaSelector from '@/components/PrintAreaSelector';
 import MockupCanvas from '@/components/MockupCanvas';
 import PricePanel from '@/components/PricePanel';
 
+const DISCOUNT_RATE = 0.05;
+
 const ProductConfigurator = () => {
   const { sku } = useParams();
   const navigate = useNavigate();
@@ -29,6 +31,17 @@ const ProductConfigurator = () => {
   const location = useLocation();
 
   const product = products.find(p => p.sku === sku);
+  const discountClaimed = (() => {
+    if (payload?.discountClaimed) return true;
+    try {
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        return window.sessionStorage.getItem('printee:discount-claimed') === 'true';
+      }
+    } catch (err) {
+      // ignore storage access failures
+    }
+    return false;
+  })();
   
   // support multiple selected colors: array of color keys
   const [selectedColors, setSelectedColors] = useState([]);
@@ -270,12 +283,25 @@ const ProductConfigurator = () => {
 
     const emboFeeTotal = emboUnitsCount > 0 ? (EMBO_DEV_FEE + (EMBO_UNIT_FEE * totalQty * emboUnitsCount)) : 0;
 
-  const deliveryCost = (payload && payload.withDelivery) ? Math.ceil(totalQty / 50) * 50 : 0;
+    const deliveryCost = (payload && payload.withDelivery) ? Math.ceil(totalQty / 50) * 50 : 0;
 
-    const grandTotal = baseTotal + placementFeesTotal + emboFeeTotal + deliveryCost;
+    const merchandiseTotal = baseTotal + placementFeesTotal + emboFeeTotal;
+    const effectiveDiscountRate = discountClaimed ? DISCOUNT_RATE : 0;
+    const discountAmount = Number(
+      Math.min(merchandiseTotal * effectiveDiscountRate, merchandiseTotal).toFixed(2)
+    );
+    const subtotalAfterDiscount = Math.max(merchandiseTotal - discountAmount, 0);
+    const totalBeforeDiscount = merchandiseTotal + deliveryCost;
+    const totalAfterDiscount = subtotalAfterDiscount + deliveryCost;
 
     return {
       totalQty,
+      discountRate: effectiveDiscountRate,
+      discountClaimed,
+      discountAmount,
+      subtotalBeforeDiscount: merchandiseTotal,
+      subtotalAfterDiscount,
+      totalBeforeDiscount,
       breakdown: {
         unitBase: unitPrice,
         baseTotal,
@@ -290,9 +316,14 @@ const ProductConfigurator = () => {
         emboUnitsCount,
         emboFeeTotal,
         deliveryCost,
-        grandTotal
+        merchandiseTotal,
+        discountRate: effectiveDiscountRate,
+        discountAmount,
+        subtotalAfterDiscount,
+        totalBeforeDiscount,
+        totalAfterDiscount
       },
-      totalIls: grandTotal
+      totalIls: totalAfterDiscount
     };
   };
 
@@ -370,12 +401,21 @@ const ProductConfigurator = () => {
       sizeMatrices: sizeMatrices,
       // store the selected areas with methods
       selectedPrintAreas,
-  uploadedDesigns,
-  withDelivery: payload?.withDelivery,
+      uploadedDesigns,
+      withDelivery: payload?.withDelivery,
       totalPrice: pricing.totalIls,
+      totalBeforeDiscount: pricing.totalBeforeDiscount,
+      discountAmount: pricing.discountAmount,
+      discountRate: pricing.discountRate,
+      subtotalBeforeDiscount: pricing.subtotalBeforeDiscount,
+      subtotalAfterDiscount: pricing.subtotalAfterDiscount,
       priceBreakdown: pricing.breakdown,
       // mockup: if a color is selected, use its image; otherwise use base image
-  mockupUrl: pickRaster((selectedColors && selectedColors[0]) ? product.images[selectedColors[0]] : product.images.base1, pickRaster(product.images.base1))
+      mockupUrl: pickRaster(
+        (selectedColors && selectedColors[0]) ? product.images[selectedColors[0]] : product.images.base1,
+        pickRaster(product.images.base1)
+      ),
+      discountClaimed
     };
 
     const prefillId = location?.state?.prefill?.id;

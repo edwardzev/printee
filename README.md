@@ -4,6 +4,11 @@ Pilot apparel customizer (t-shirt/hoodie, white/black, left chest/back).
 
 ## Minimal API (dev-only)
 
+git add .
+git commit -m "fix: <msg>"
+git pull --rebase
+git push
+
 Endpoints are implemented as serverless handlers under `api/` and routed by `vercel.json`.
 
 - GET `/api/health` → `{ ok: true, name, version, ts }`

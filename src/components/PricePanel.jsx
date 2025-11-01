@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import ShoppingCart from 'lucide-react/dist/esm/icons/shopping-cart.js';
@@ -12,6 +12,9 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import DiscountPopup from '@/components/DiscountPopup';
+import { DEFAULT_DISCOUNT_RATE } from '@/lib/discountHelpers';
+
+const DISCOUNT_POPUP_STORAGE_KEY = 'printee:discount-popup-shown';
 
 const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
   const { t, language } = useLanguage();
@@ -32,6 +35,88 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
   const [fixedStyle, setFixedStyle] = useState({});
   // State for discount popup
   const [showDiscountPopup, setShowDiscountPopup] = useState(false);
+  const [hasSeenDiscountPopup, setHasSeenDiscountPopup] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.sessionStorage.getItem(DISCOUNT_POPUP_STORAGE_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const markDiscountPopupSeen = useCallback(() => {
+    setHasSeenDiscountPopup(true);
+    if (typeof window === 'undefined') return;
+    try {
+      window.sessionStorage.setItem(DISCOUNT_POPUP_STORAGE_KEY, 'true');
+    } catch {
+      // ignore storage failures
+    }
+  }, []);
+
+  const maybeOpenDiscountPopup = useCallback(() => {
+    if (hasSeenDiscountPopup) return;
+    setShowDiscountPopup(true);
+    markDiscountPopupSeen();
+  }, [hasSeenDiscountPopup, markDiscountPopupSeen]);
+
+  const handleDiscountOpenChange = useCallback((nextOpen) => {
+    setShowDiscountPopup(nextOpen);
+    if (!nextOpen) markDiscountPopupSeen();
+  }, [markDiscountPopupSeen]);
+
+  const currencyFormatter = useMemo(() => {
+    const locale = language === 'he' ? 'he-IL' : 'en-IL';
+    try {
+      return new Intl.NumberFormat(locale, {
+        style: 'currency',
+        currency: 'ILS',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    } catch {
+      return new Intl.NumberFormat('en-IL', {
+        style: 'currency',
+        currency: 'ILS',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
+  }, [language]);
+
+  const formatCurrency = useCallback((value) => {
+    const num = Number(value) || 0;
+    try {
+      return currencyFormatter.format(num);
+    } catch {
+      return `₪${num.toFixed(2)}`;
+    }
+  }, [currencyFormatter]);
+
+  const discountAmount = Number(pricing?.discountAmount ?? pricing?.breakdown?.discountAmount ?? 0);
+  const subtotalBeforeDiscount = Number(pricing?.subtotalBeforeDiscount ?? pricing?.breakdown?.merchandiseTotal ?? 0);
+  const subtotalAfterDiscount = Number(pricing?.subtotalAfterDiscount ?? Math.max(subtotalBeforeDiscount - discountAmount, 0));
+  const deliveryCost = Number(pricing?.breakdown?.deliveryCost ?? 0);
+  const totalAfterDiscount = Number(pricing?.totalIls ?? subtotalAfterDiscount + deliveryCost);
+  const fallbackRate = pricing?.discountRate && pricing.discountRate > 0 ? pricing.discountRate : DEFAULT_DISCOUNT_RATE;
+  const discountRatePercent = Math.round((fallbackRate || DEFAULT_DISCOUNT_RATE) * 100);
+  const potentialDiscountAmount = subtotalBeforeDiscount > 0
+    ? Number(Math.min(subtotalBeforeDiscount * (fallbackRate || DEFAULT_DISCOUNT_RATE), subtotalBeforeDiscount).toFixed(2))
+    : 0;
+  const popupDiscountAmount = discountAmount > 0 ? discountAmount : potentialDiscountAmount;
+
+  const discountLabelText = useMemo(() => {
+    const label = t('discountLabel');
+    if (typeof label === 'function') {
+      return label(discountRatePercent);
+    }
+    return label;
+  }, [t, discountRatePercent]);
+
+  const formattedDiscountSavings = useMemo(() => {
+    if (!Number.isFinite(popupDiscountAmount) || popupDiscountAmount <= 0) return '';
+    return formatCurrency(popupDiscountAmount);
+  }, [popupDiscountAmount, formatCurrency]);
 
   // Track scroll position only; do not lock overflow to avoid persistent disable/jump.
   useEffect(() => {
@@ -216,17 +301,24 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
                       </div>
                     )}
 
-                    {pricing.breakdown.deliveryCost > 0 && (
+                    {discountAmount > 0 && (
+                      <div className="flex justify-between text-green-600">
+                        <span>{discountLabelText}</span>
+                        <span>-{formatCurrency(discountAmount)}</span>
+                      </div>
+                    )}
+
+                    {deliveryCost > 0 && (
                       <div className="flex justify-between">
                         <span className="text-gray-600">{t('delivery')}</span>
-                        <span className="font-medium">+₪{pricing.breakdown.deliveryCost?.toLocaleString()}</span>
+                        <span className="font-medium">+{formatCurrency(deliveryCost)}</span>
                       </div>
                     )}
 
                     <div className="border-t pt-4 mt-4">
                       <div className="flex justify-between">
                         <span className="text-lg font-semibold">{t('total')}</span>
-                        <span className="text-lg font-bold text-blue-600">₪{pricing.totalIls?.toLocaleString()}</span>
+                        <span className="text-lg font-bold text-blue-600">{formatCurrency(totalAfterDiscount)}</span>
                       </div>
                     </div>
                   </>
@@ -243,7 +335,7 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
                 onClick={() => { 
                   onAddToCart(); 
                   setAddedOnce(true);
-                  setShowDiscountPopup(true);
+                  maybeOpenDiscountPopup();
                 }}
               >
                 <ShoppingCart className="h-5 w-5 mr-2" />
@@ -308,15 +400,21 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
                   <span>₪{pricing?.breakdown?.emboFeeTotal?.toLocaleString() || 0}</span>
                 </div>
               )}
-              {pricing?.breakdown?.deliveryCost > 0 && (
+              {discountAmount > 0 && (
+                <div className="flex justify-between text-[13px] text-green-600">
+                  <span>{discountLabelText}</span>
+                  <span>-{formatCurrency(discountAmount)}</span>
+                </div>
+              )}
+              {deliveryCost > 0 && (
                 <div className="flex justify-between text-[13px] text-gray-700">
                   <span>{language === 'he' ? 'משלוח' : 'Delivery'}</span>
-                  <span>₪{pricing?.breakdown?.deliveryCost?.toLocaleString() || 0}</span>
+                  <span>{formatCurrency(deliveryCost)}</span>
                 </div>
               )}
               <div className="flex justify-between text-[15px] font-bold pt-1 border-t">
                 <span>{language === 'he' ? 'סה"כ' : 'Total'}</span>
-                <span className="text-blue-600">₪{pricing?.totalIls?.toLocaleString() || 0}</span>
+                <span className="text-blue-600">{formatCurrency(totalAfterDiscount)}</span>
               </div>
             </div>
 
@@ -331,7 +429,7 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
                       try { 
                         onAddToCart();
                         setAddedOnce(true);
-                        setShowDiscountPopup(true);
+                        maybeOpenDiscountPopup();
                       } catch {}
                       try { toast({ title: t('addedToCart'), description: t('addToCartCount')(pricing.totalQty) }); } catch {}
                     }}
@@ -353,7 +451,7 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
                     onClick={() => {
                       try { 
                         onAddToCart();
-                        setShowDiscountPopup(true);
+                        maybeOpenDiscountPopup();
                       } catch {}
                       try { toast({ title: t('addedToCart'), description: t('addToCartCount')(pricing.totalQty) }); } catch {}
                     }}
@@ -422,10 +520,22 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
                     <span className="text-gray-600">{t('totalQuantity')}</span>
                     <span className="font-medium">{pricing.totalQty} {language === 'he' ? 'פריטים' : 'units'}</span>
                   </div>
+                  {discountAmount > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span>{discountLabelText}</span>
+                      <span>-{formatCurrency(discountAmount)}</span>
+                    </div>
+                  )}
+                  {deliveryCost > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">{t('delivery')}</span>
+                      <span className="font-medium">+{formatCurrency(deliveryCost)}</span>
+                    </div>
+                  )}
                   <div className="border-t pt-4 mt-2">
                     <div className="flex justify-between">
                       <span className="text-lg font-semibold">{t('total')}</span>
-                      <span className="text-lg font-bold text-blue-600">₪{pricing.totalIls?.toLocaleString()}</span>
+                      <span className="text-lg font-bold text-blue-600">{formatCurrency(totalAfterDiscount)}</span>
                     </div>
                   </div>
                   <Button
@@ -437,7 +547,7 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
                       onAddToCart(); 
                       closeSheet(); 
                       setAddedOnce(true);
-                      setShowDiscountPopup(true);
+                      maybeOpenDiscountPopup();
                     }}
                   >
                     {t('addToCart')}
@@ -465,7 +575,11 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
       </div>
 
       {/* Discount popup */}
-      <DiscountPopup open={showDiscountPopup} onOpenChange={setShowDiscountPopup} />
+      <DiscountPopup
+        open={showDiscountPopup}
+        onOpenChange={handleDiscountOpenChange}
+        savingsAmount={formattedDiscountSavings}
+      />
     </>
   );
 };

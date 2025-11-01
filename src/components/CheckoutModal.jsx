@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -11,6 +11,7 @@ import FileText from 'lucide-react/dist/esm/icons/file-text.js';
 import { useNavigate } from 'react-router-dom';
 import { composeMockupImage } from '@/lib/composeMockupImage';
 import { composeWorksheetImage } from '@/lib/composeWorksheetImage';
+import { deriveDiscountedPricing, DEFAULT_DISCOUNT_RATE } from '@/lib/discountHelpers';
 // Lazy import for PDF generation to avoid bundle bloat when not needed
 let pdfLibPromise = null;
 async function ensurePdfLib() {
@@ -46,11 +47,51 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
   const [phone, setPhone] = useState(prefillContact?.phone || '');
   const [email, setEmail] = useState(prefillContact?.email || '');
   const [processing, setProcessing] = useState(false);
+  const discountClaimed = (() => {
+    if (payload?.discountClaimed) return true;
+    try {
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        return window.sessionStorage.getItem('printee:discount-claimed') === 'true';
+      }
+    } catch (err) {
+      // ignore storage access failures
+    }
+    return false;
+  })();
   // Keep a reference to the single background forward promise so we can await it before navigating to iCount
   const forwardPromiseRef = useRef(null);
   const idempotencyKeyRef = useRef((payload && payload.idempotency_key) || `local-${Date.now()}-${Math.random().toString(36).slice(2,9)}`);
   const dialogRef = useRef(null);
   const previouslyFocused = useRef(null);
+
+  const currencyFormatter = useMemo(() => {
+    const locale = language === 'he' ? 'he-IL' : 'en-IL';
+    try {
+      return new Intl.NumberFormat(locale, {
+        style: 'currency',
+        currency: 'ILS',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    } catch {
+      return new Intl.NumberFormat('en-IL', {
+        style: 'currency',
+        currency: 'ILS',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    }
+  }, [language]);
+
+  const formatCurrency = useCallback((value) => {
+    const num = Number(value);
+    const safe = Number.isFinite(num) ? num : 0;
+    try {
+      return currencyFormatter.format(safe);
+    } catch {
+      return `₪${safe.toFixed(2)}`;
+    }
+  }, [currencyFormatter]);
 
   // Focus management: when modal opens, save previously focused element and move
   // focus into the dialog. When it closes, restore focus.
@@ -141,9 +182,30 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
     }
   }, [open]);
 
-  const baseTotal = Math.round((cartSummary?.total || 0) * 1.17);
-  const discount = method === 'card' ? Math.round(baseTotal * 0.03) : 0;
-  const totalWithVat = (baseTotal - discount).toLocaleString();
+  const subtotalBeforeDiscount = Number(cartSummary?.subtotal || 0);
+  const subtotalAfterDiscount = Number(cartSummary?.total || 0);
+  const discountAmount = Number(
+    cartSummary?.discount ??
+    (subtotalBeforeDiscount > subtotalAfterDiscount ? subtotalBeforeDiscount - subtotalAfterDiscount : 0)
+  );
+  const firstItemDiscountRate = cartItems?.find((item) => typeof item?.discountRate === 'number')?.discountRate;
+  const inferredDiscountRate = discountAmount > 0 && subtotalBeforeDiscount > 0
+    ? discountAmount / subtotalBeforeDiscount
+    : (typeof firstItemDiscountRate === 'number' ? firstItemDiscountRate : DEFAULT_DISCOUNT_RATE);
+  const discountRatePercent = Math.round((inferredDiscountRate || 0) * 100);
+  const totalItemsCount = typeof getTotalItems === 'function' ? Number(getTotalItems() || 0) : 0;
+  const deliveryCost = payload?.withDelivery ? Math.ceil(totalItemsCount / 50) * 50 : 0;
+  const vatBase = subtotalAfterDiscount + deliveryCost;
+  const vatAmount = Math.round(vatBase * 0.17);
+  const baseTotal = vatBase + vatAmount;
+  const cardDiscount = method === 'card' ? Math.round(baseTotal * 0.03) : 0;
+  const paymentTotal = baseTotal - cardDiscount;
+  const totalWithVat = formatCurrency(paymentTotal);
+
+  const discountLabelValue = t('discountLabel');
+  const discountLabelText = typeof discountLabelValue === 'function'
+    ? discountLabelValue(discountRatePercent)
+    : discountLabelValue;
 
   const requireContact = (m) => {
     // require contact for card, bit, wire, cheque per request
@@ -176,7 +238,28 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
           sanitizedDesigns[key] = preserved;
         }
       }
-      return { ...rest, uploadedDesigns: sanitizedDesigns };
+      const derived = deriveDiscountedPricing(i, { discountClaimed, defaultRate: DEFAULT_DISCOUNT_RATE });
+      const effectiveDiscountRate = derived.discountApplied ? (derived.discountRate || DEFAULT_DISCOUNT_RATE) : 0;
+      return {
+        ...rest,
+        totalPrice: derived.subtotalAfter,
+        subtotalAfterDiscount: derived.subtotalAfter,
+        subtotalBeforeDiscount: derived.subtotalBefore,
+        totalBeforeDiscount: derived.subtotalBefore,
+        discountAmount: derived.discountAmount,
+        discountRate: effectiveDiscountRate,
+        discountClaimed: derived.discountApplied || rest?.discountClaimed || discountClaimed,
+        priceBreakdown: {
+          ...(rest?.priceBreakdown || {}),
+          discountAmount: derived.discountAmount,
+          discountRate: effectiveDiscountRate,
+          subtotalAfterDiscount: derived.subtotalAfter,
+          totalBeforeDiscount: derived.subtotalBefore,
+          totalAfterDiscount: derived.subtotalAfter,
+          merchandiseTotal: derived.subtotalBefore,
+        },
+        uploadedDesigns: sanitizedDesigns,
+      };
     });
 
     const toSend = {
@@ -186,13 +269,14 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       paymentMethod: method,
       // Provide totals to satisfy backend validation; keep currency simple for now
       totals: {
-        subtotal: Number(cartSummary?.subtotal || 0),
-        total: Number(cartSummary?.total || 0),
+        subtotal: subtotalBeforeDiscount,
+        discount: discountAmount,
+        total: subtotalAfterDiscount,
         currency: 'ILS',
       },
     };
 
-  setProcessing(true);
+    setProcessing(true);
 
     // Fire-and-forget order POST; prefer sendBeacon to avoid abort on navigation, fallback to fetch
     try {
@@ -219,10 +303,10 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       let orderIdFromAirtable = payload?.airtable_order_id || '';
       let dropboxSharedLink = payload?.financial?.dropbox_shared_link || '';
 
-      const subtotal0 = Number(cartSummary?.total || 0);
-      const delivery0 = payload?.withDelivery ? Math.ceil(Number(getTotalItems?.() || 0) / 50) * 50 : 0;
-      const vat0 = Math.round((subtotal0 + delivery0) * 0.17);
-      const total0 = Math.round((subtotal0 + delivery0) * 1.17);
+      const subtotal0 = subtotalAfterDiscount;
+      const delivery0 = deliveryCost;
+      const vat0 = vatAmount;
+      const total0 = baseTotal;
 
       try {
         const prelim = await fetch('/api/airtable/order', {
@@ -355,12 +439,11 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
         } catch (e) { return []; }
       })();
 
-      const subtotal = Number(cartSummary?.total || 0);
-      const delivery = payload?.withDelivery ? Math.ceil(Number(getTotalItems?.() || 0) / 50) * 50 : 0;
-      const vat = Math.round((subtotal + delivery) * 0.17);
-      const total = Math.round((subtotal + delivery) * 1.17);
+      const subtotal = subtotalAfterDiscount;
+      const delivery = deliveryCost;
+      const vat = vatAmount;
+      const total = baseTotal;
       const financialBlock = { subtotal, delivery, vat, total, payment_method: method };
-
       const builtUploads = await uploads;
       const enriched = {
         idempotency_key: idempotencyKeyRef.current,
@@ -431,12 +514,11 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
 
 
     // helper: compute total charge (incl. VAT and delivery)
-    const computeTotalCharge = () => {
-      const subtotal = Number(cartSummary?.total || 0);
-      const delivery = payload?.withDelivery ? Math.ceil(Number(getTotalItems?.() || 0) / 50) * 50 : 0;
-      const totalToCharge = Math.round((subtotal + delivery) * 1.17);
-      return { subtotal, delivery, totalToCharge };
-    };
+    const computeTotalCharge = () => ({
+      subtotal: subtotalAfterDiscount,
+      delivery: deliveryCost,
+      totalToCharge: baseTotal,
+    });
 
     const persistGtagPayload = (overrideValue) => {
       try {
@@ -467,12 +549,12 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
   const emailParam = (import.meta?.env?.VITE_ICOUNT_EMAIL_PARAM || 'contact_email');
   const phoneParam = (import.meta?.env?.VITE_ICOUNT_PHONE_PARAM || 'contact_phone');
 
-  const { totalToCharge } = computeTotalCharge();
+  const amountToCharge = paymentTotal;
 
         const u = new URL(`${base}/${pageCode}`);
-  u.searchParams.set(amountParam, String(totalToCharge));
+  u.searchParams.set(amountParam, String(amountToCharge));
   // For compatibility: some iCount pages accept 'cs' (custom sum) or 'sum'. Send both.
-  try { u.searchParams.set('cs', String(totalToCharge)); } catch {}
+  try { u.searchParams.set('cs', String(amountToCharge)); } catch {}
   // Include a short description and currency code to help some page configurations
   // Build a prettier description: use first product name (fallback to sku) and total qty, include 'מיתוג'
   try {
@@ -503,7 +585,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
         setProcessing(false);
         onClose();
         // Persist minimal order info so returning from external payment can still fire gtag
-        try { persistGtagPayload(totalToCharge); } catch (e) {}
+  try { persistGtagPayload(amountToCharge); } catch (e) {}
         window.location.assign(u.toString());
         return;
       } catch (e) {
@@ -598,7 +680,44 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
           >
             ✕
           </button>
-          <div className="text-sm text-gray-500">סה"כ: ₪{totalWithVat}</div>
+          <div className="text-sm text-gray-500">סה"כ: {totalWithVat}</div>
+        </div>
+
+        <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 space-y-1">
+          <div className="flex items-center justify-between">
+            <span>{t('subtotalBeforeDiscount')}</span>
+            <span>{formatCurrency(subtotalBeforeDiscount)}</span>
+          </div>
+          {discountAmount > 0 && (
+            <div className="flex items-center justify-between text-green-600 font-medium">
+              <span>{discountLabelText}</span>
+              <span>-{formatCurrency(discountAmount)}</span>
+            </div>
+          )}
+          <div className="flex items-center justify-between">
+            <span>{t('delivery')}</span>
+            <span>{formatCurrency(deliveryCost)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span>{t('vatLabel')}</span>
+            <span>{formatCurrency(vatAmount)}</span>
+          </div>
+          {cardDiscount > 0 && (
+            <>
+              <div className="flex items-center justify-between">
+                <span>{t('total')}</span>
+                <span>{formatCurrency(baseTotal)}</span>
+              </div>
+              <div className="flex items-center justify-between text-green-600 font-medium">
+                <span>{t('cardPaymentDiscount')}</span>
+                <span>-{formatCurrency(cardDiscount)}</span>
+              </div>
+            </>
+          )}
+          <div className="flex items-center justify-between text-base font-semibold">
+            <span>{cardDiscount > 0 ? t('totalDue') : t('total')}</span>
+            <span>{totalWithVat}</span>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3 mb-4">
@@ -668,9 +787,9 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
           </label>
         </div>
 
-        {method === 'card' && discount > 0 && (
+        {method === 'card' && cardDiscount > 0 && (
           <div className="text-sm text-green-600 font-medium text-center mt-3">
-            חסכת ₪{discount} בבחירת תשלום בכרטיס אשראי
+            חסכת {formatCurrency(cardDiscount)} בבחירת תשלום בכרטיס אשראי
           </div>
         )}
 
