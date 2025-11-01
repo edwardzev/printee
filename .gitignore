@@ -17,3 +17,4 @@ coverage/
 .vercel
 data/
 lighthouse-*.json
+.env

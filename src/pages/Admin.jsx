@@ -8,6 +8,7 @@ import TrendingUp from 'lucide-react/dist/esm/icons/trending-up.js';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
+import ProductForm from '@/components/ProductForm';
 
 const Admin = () => {
   const { t } = useLanguage();
@@ -288,14 +289,8 @@ const Admin = () => {
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="text-center py-12"
                 >
-                  <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Product Management</h3>
-                  <p className="text-gray-500 mb-4">Manage your product catalog and pricing</p>
-                  <Button onClick={() => handleAction('manage-products')}>
-                    Manage Products
-                  </Button>
+                  <ProductForm />
                 </motion.div>
               )}
 
