@@ -17,6 +17,13 @@ const ProductForm = () => {
     images: {},
     activePrintAreas: [],
     basePrice: 0,
+    pricingTiers: [
+      { min: 1, max: 9, price: 50 },
+      { min: 10, max: 19, price: 30 },
+      { min: 20, max: 49, price: 20 },
+      { min: 50, max: 99, price: 15 },
+      { min: 100, max: Infinity, price: 10 }
+    ],
     specs: {
       material: '',
       materialHe: '',
@@ -76,6 +83,31 @@ const ProductForm = () => {
         ...prev.images,
         [color]: paths.split(',').map(p => p.trim()).filter(Boolean)
       }
+    }));
+  };
+
+  const handlePricingTierChange = (index, field, value) => {
+    setFormData(prev => {
+      const newTiers = [...prev.pricingTiers];
+      newTiers[index] = {
+        ...newTiers[index],
+        [field]: field === 'max' && value === '' ? Infinity : (value === '' ? '' : Number(value))
+      };
+      return { ...prev, pricingTiers: newTiers };
+    });
+  };
+
+  const addPricingTier = () => {
+    setFormData(prev => ({
+      ...prev,
+      pricingTiers: [...prev.pricingTiers, { min: '', max: '', price: '' }]
+    }));
+  };
+
+  const removePricingTier = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      pricingTiers: prev.pricingTiers.filter((_, i) => i !== index)
     }));
   };
 
@@ -146,6 +178,13 @@ const ProductForm = () => {
         images: {},
         activePrintAreas: [],
         basePrice: 0,
+        pricingTiers: [
+          { min: 1, max: 9, price: 50 },
+          { min: 10, max: 19, price: 30 },
+          { min: 20, max: 49, price: 20 },
+          { min: 50, max: 99, price: 15 },
+          { min: 100, max: Infinity, price: 10 }
+        ],
         specs: {
           material: '',
           materialHe: '',
@@ -372,6 +411,73 @@ const ProductForm = () => {
                 />
               </div>
             ))}
+          </div>
+
+          {/* Pricing Tiers */}
+          <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="font-semibold text-lg">Pricing Tiers</h3>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addPricingTier}
+              >
+                Add Tier
+              </Button>
+            </div>
+            <p className="text-sm text-gray-600">Define price tiers based on quantity ranges</p>
+            
+            <div className="space-y-2">
+              {formData.pricingTiers.map((tier, index) => (
+                <div key={index} className="flex gap-2 items-center">
+                  <div className="flex-1">
+                    <input
+                      type="number"
+                      value={tier.min}
+                      onChange={(e) => handlePricingTierChange(index, 'min', e.target.value)}
+                      className="w-full px-3 py-2 border rounded-md text-sm"
+                      placeholder="Min qty"
+                      min="1"
+                    />
+                  </div>
+                  <span className="text-gray-500">to</span>
+                  <div className="flex-1">
+                    <input
+                      type="number"
+                      value={tier.max === Infinity ? '' : tier.max}
+                      onChange={(e) => handlePricingTierChange(index, 'max', e.target.value)}
+                      className="w-full px-3 py-2 border rounded-md text-sm"
+                      placeholder="Max (empty = ∞)"
+                      min="1"
+                    />
+                  </div>
+                  <span className="text-gray-500">=</span>
+                  <div className="flex-1">
+                    <input
+                      type="number"
+                      value={tier.price}
+                      onChange={(e) => handlePricingTierChange(index, 'price', e.target.value)}
+                      className="w-full px-3 py-2 border rounded-md text-sm"
+                      placeholder="Price (₪)"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                  {formData.pricingTiers.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removePricingTier(index)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Specifications */}

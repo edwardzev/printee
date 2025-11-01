@@ -288,6 +288,50 @@ function createProductASTNode(productData) {
     )
   );
 
+  // pricingTiers (stored as pricingRules.tiers in products.js)
+  if (productData.pricingTiers && Array.isArray(productData.pricingTiers) && productData.pricingTiers.length > 0) {
+    const tiersArray = productData.pricingTiers.map(tier => {
+      const tierProps = [];
+      
+      tierProps.push(
+        t.objectProperty(
+          t.identifier('min'),
+          t.numericLiteral(Number(tier.min) || 1)
+        )
+      );
+      
+      tierProps.push(
+        t.objectProperty(
+          t.identifier('max'),
+          tier.max === Infinity || tier.max === '' || tier.max === null
+            ? t.identifier('Infinity')
+            : t.numericLiteral(Number(tier.max))
+        )
+      );
+      
+      tierProps.push(
+        t.objectProperty(
+          t.identifier('price'),
+          t.numericLiteral(Number(tier.price) || 0)
+        )
+      );
+      
+      return t.objectExpression(tierProps);
+    });
+
+    properties.push(
+      t.objectProperty(
+        t.identifier('pricingRules'),
+        t.objectExpression([
+          t.objectProperty(
+            t.identifier('tiers'),
+            t.arrayExpression(tiersArray)
+          )
+        ])
+      )
+    );
+  }
+
   // specs object
   if (productData.specs) {
     const specProps = [];
