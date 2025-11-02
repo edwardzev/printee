@@ -397,16 +397,34 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
                 <span>{language === 'he' ? 'מחיר בסיס' : 'Base'}</span>
                 <span>₪{pricing?.breakdown?.unitBase || 0} × {pricing?.totalQty || 0}</span>
               </div>
-              {selectedAreas.length > 0 && (
+              {selectedAreas.length > 0 && placementCombinedTotal > 0 && (
                 <div className="flex justify-between text-[13px] text-gray-700">
                   <span>{language === 'he' ? 'עלויות מיתוג' : 'Placement'}</span>
                   <span>{formatCurrency(placementCombinedTotal)}</span>
                 </div>
               )}
-              {emboFeeTotal > 0 && (
+              {selectedAreas.length > 0 && placementCombinedTotal > 0 && (
+                <div className="pr-1 text-[12px] text-gray-500 space-y-1">
+                  {selectedAreas.map((areaKey) => {
+                    const sel = typeof areaKey === 'string' ? { areaKey, method: 'print' } : areaKey;
+                    const area = printAreas[sel.areaKey];
+                    if (!area) return null;
+                    const feePerUnit = sel.method === 'print' ? (area?.fee || 0) : 10;
+                    const label = language === 'he' ? area?.labelHe : area?.label;
+                    const methodLabel = sel.method === 'embo' ? (language === 'he' ? 'רקמה' : 'Embo') : (language === 'he' ? 'הדפסה' : 'Print');
+                    return (
+                      <div key={`mobile-area-${sel.areaKey}`} className="flex justify-between">
+                        <span>{label} • {methodLabel}</span>
+                        <span>₪{feePerUnit} × {pricing?.totalQty || 0} = ₪{(feePerUnit * (pricing?.totalQty || 0)).toLocaleString()}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {emboDevFee > 0 && (
                 <div className="flex justify-between text-[13px] text-gray-700">
-                  <span>{language === 'he' ? 'דמי גלופה' : 'Embo fee'}</span>
-                  <span>{formatCurrency(emboFeeTotal)}</span>
+                  <span>{language === 'he' ? 'דמי גלופה (חד פעמי)' : 'Embo development'}</span>
+                  <span>{formatCurrency(emboDevFee)}</span>
                 </div>
               )}
               {discountAmount > 0 && (
