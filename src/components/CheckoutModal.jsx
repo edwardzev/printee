@@ -202,11 +202,6 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
   const paymentTotal = baseTotal - cardDiscount;
   const totalWithVat = formatCurrency(paymentTotal);
 
-  const discountLabelValue = t('discountLabel');
-  const discountLabelText = typeof discountLabelValue === 'function'
-    ? discountLabelValue(discountRatePercent)
-    : discountLabelValue;
-
   const requireContact = (m) => {
     // require contact for card, bit, wire, cheque per request
     return ['card', 'bit', 'wire', 'cheque'].includes(m);
@@ -683,36 +678,16 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
           <div className="text-sm text-gray-500">סה"כ: {totalWithVat}</div>
         </div>
 
-        <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 space-y-1">
+        <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 space-y-2">
           <div className="flex items-center justify-between">
-            <span>{t('subtotalBeforeDiscount')}</span>
-            <span>{formatCurrency(subtotalBeforeDiscount)}</span>
-          </div>
-          {discountAmount > 0 && (
-            <div className="flex items-center justify-between text-green-600 font-medium">
-              <span>{discountLabelText}</span>
-              <span>-{formatCurrency(discountAmount)}</span>
-            </div>
-          )}
-          <div className="flex items-center justify-between">
-            <span>{t('delivery')}</span>
-            <span>{formatCurrency(deliveryCost)}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span>{t('vatLabel')}</span>
-            <span>{formatCurrency(vatAmount)}</span>
+            <span>{t('total')}</span>
+            <span>{formatCurrency(baseTotal)}</span>
           </div>
           {cardDiscount > 0 && (
-            <>
-              <div className="flex items-center justify-between">
-                <span>{t('total')}</span>
-                <span>{formatCurrency(baseTotal)}</span>
-              </div>
-              <div className="flex items-center justify-between text-green-600 font-medium">
-                <span>{t('cardPaymentDiscount')}</span>
-                <span>-{formatCurrency(cardDiscount)}</span>
-              </div>
-            </>
+            <div className="flex items-center justify-between text-green-600 font-medium">
+              <span>{t('cardPaymentDiscount')}</span>
+              <span>-{formatCurrency(cardDiscount)}</span>
+            </div>
           )}
           <div className="flex items-center justify-between text-base font-semibold">
             <span>{cardDiscount > 0 ? t('totalDue') : t('total')}</span>
