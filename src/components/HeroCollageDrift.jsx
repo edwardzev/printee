@@ -114,7 +114,9 @@ export default function HeroCollageDrift() {
   }
 
   return (
-    <section className="relative w-full min-h-[60vh] overflow-hidden">
+    // reduce the min-height on small screens so the collage doesn't leave a large empty
+    // area below the tiles on mobile. Keep the larger min-height on sm+ viewports.
+    <section className="relative w-full min-h-[40vh] sm:min-h-[60vh] overflow-hidden">
       <motion.div ref={containerRef} onMouseMove={handleMouseMove} style={{ rotateX, rotateY }} className="relative mx-auto max-w-7xl px-4 py-6 sm:py-10">
         <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-2 md:grid-cols-2" style={{ perspective: 1000 }}>
           {visibleIdxs.length > 0 ? (

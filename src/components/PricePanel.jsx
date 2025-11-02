@@ -118,6 +118,15 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
     return formatCurrency(popupDiscountAmount);
   }, [popupDiscountAmount, formatCurrency]);
 
+  // Embo (embroidery) derived values — compute safely for display.
+  const emboUnitsCount = Number(pricing?.breakdown?.emboUnitsCount ?? 0);
+  const emboFeeTotal = Number(pricing?.breakdown?.emboFeeTotal ?? 0);
+  // per-unit embo fees use a hard-coded unit fee of 10 (kept for backward compatibility)
+  const emboPerUnitTotal = emboUnitsCount * Number(pricing?.totalQty ?? 0) * 10;
+  const emboDevFee = emboFeeTotal > 0 ? Math.max(0, emboFeeTotal - emboPerUnitTotal) : 0;
+  const placementPrintTotal = Number(pricing?.breakdown?.placementFeesTotal ?? 0);
+  const placementCombinedTotal = placementPrintTotal + emboPerUnitTotal;
+
   // Track scroll position only; do not lock overflow to avoid persistent disable/jump.
   useEffect(() => {
     if (isSheetOpen) {
@@ -272,7 +281,7 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
                       <div className="space-y-2">
                         <div className="flex justify-between">
                           <span className="text-gray-600">{t('placementFees')}</span>
-                          <span className="font-medium">₪{pricing.breakdown.placementFeesTotal?.toLocaleString()}</span>
+                          <span className="font-medium">{formatCurrency(placementCombinedTotal)}</span>
                         </div>
                         <div className="text-sm text-gray-500 space-y-1 pl-4">
                           {selectedAreas.map((areaKey) => {
@@ -292,11 +301,11 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
                       </div>
                     )}
 
-                    {pricing.breakdown && pricing.breakdown.emboFeeTotal > 0 && (
+                    {emboFeeTotal > 0 && (
                       <div className="mt-2 text-sm text-gray-700">
                         <div className="flex justify-between">
                           <span>{language === 'he' ? 'דמי גלופה (חד פעמי)' : 'Embo development fee (one-time)'}</span>
-                          <span className="font-medium">₪{(pricing.breakdown.emboFeeTotal - (pricing.breakdown.emboUnitsCount * pricing.totalQty * 10)).toLocaleString()}</span>
+                          <span className="font-medium">{formatCurrency(emboDevFee)}</span>
                         </div>
                       </div>
                     )}
@@ -391,13 +400,13 @@ const PricePanel = ({ pricing, selectedAreas, canAddToCart, onAddToCart }) => {
               {selectedAreas.length > 0 && (
                 <div className="flex justify-between text-[13px] text-gray-700">
                   <span>{language === 'he' ? 'עלויות מיתוג' : 'Placement'}</span>
-                  <span>₪{pricing?.breakdown?.placementFeesTotal?.toLocaleString() || 0}</span>
+                  <span>{formatCurrency(placementCombinedTotal)}</span>
                 </div>
               )}
-              {pricing?.breakdown?.emboFeeTotal > 0 && (
+              {emboFeeTotal > 0 && (
                 <div className="flex justify-between text-[13px] text-gray-700">
                   <span>{language === 'he' ? 'דמי גלופה' : 'Embo fee'}</span>
-                  <span>₪{pricing?.breakdown?.emboFeeTotal?.toLocaleString() || 0}</span>
+                  <span>{formatCurrency(emboFeeTotal)}</span>
                 </div>
               )}
               {discountAmount > 0 && (
