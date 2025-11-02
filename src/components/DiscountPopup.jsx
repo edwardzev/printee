@@ -74,7 +74,7 @@ const DiscountPopup = ({ open, onOpenChange, savingsAmount = '' }) => {
         body,
       }).catch(() => {});
     } catch (error) {
-      console.error('Failed to send Airtable webhook:', error);
+      console.error('Failed to send Airtable webhook during discount acceptance:', error);
     }
     
     onOpenChange(false);

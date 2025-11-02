@@ -59,7 +59,7 @@ export function buildUploadsFromCart(cartItems) {
     }
     return list;
   } catch (e) {
-    console.error('Error building uploads from cart:', e);
+    console.error('Error building uploads from cart items for Airtable webhook:', e);
     return [];
   }
 }
