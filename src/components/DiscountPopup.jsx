@@ -10,10 +10,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCart } from '@/contexts/CartContext';
+import { buildUploadsFromCart } from '@/lib/buildUploadsFromCart';
 
 const DiscountPopup = ({ open, onOpenChange, savingsAmount = '' }) => {
   const { t } = useLanguage();
-  const { mergePayload, payload } = useCart();
+  const { mergePayload, payload, cartItems } = useCart();
   
   const [name, setName] = useState(payload?.contact?.name || '');
   const [phone, setPhone] = useState(payload?.contact?.phone || '');
@@ -41,6 +42,39 @@ const DiscountPopup = ({ open, onOpenChange, savingsAmount = '' }) => {
       }
     } catch (error) {
       console.error('Failed to save contact info:', error);
+    }
+    
+    // Send Airtable webhook with customer details at the point of accepting discount
+    try {
+      // Ensure we have an idempotency key
+      let idem = payload?.idempotency_key;
+      if (!idem) {
+        idem = `ord-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+        try { mergePayload({ idempotency_key: idem }); } catch {}
+      }
+      
+      // Build uploads list from cart items using shared utility
+      const uploads = buildUploadsFromCart(cartItems);
+      
+      // Send webhook to Airtable with customer details
+      const body = JSON.stringify({
+        idempotency_key: idem,
+        customer: {
+          name: name.trim(),
+          phone: phone.trim(),
+          email: email.trim()
+        },
+        uploads
+      });
+      
+      // Fire-and-forget webhook
+      fetch('/api/airtable/order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      }).catch(() => {});
+    } catch (error) {
+      console.error('Failed to send Airtable webhook during discount acceptance:', error);
     }
     
     onOpenChange(false);
