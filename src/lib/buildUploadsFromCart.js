@@ -20,11 +20,11 @@ export function buildUploadsFromCart(cartItems) {
       // Reduce to active colors with qty > 0
       const activeColors = [];
       let totalQtyForItem = 0;
-      for (const c of colors) {
-        const mat = (matrices && matrices[c]) || (c === item.color ? (item.sizeMatrix || {}) : {});
+      for (const color of colors) {
+        const mat = (matrices && matrices[color]) || (color === item.color ? (item.sizeMatrix || {}) : {});
         const qty = Object.values(mat || {}).reduce((s, q) => s + (q || 0), 0);
         if (qty > 0) {
-          activeColors.push(c);
+          activeColors.push(color);
           totalQtyForItem += qty;
         }
       }
