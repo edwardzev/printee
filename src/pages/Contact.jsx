@@ -1,10 +1,7 @@
 import React from 'react';
 import { Helmet } from 'react-helmet';
-import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function Contact() {
-  const { t } = useLanguage();
-  
   // WhatsApp configuration as per requirements
   const whatsappPhone = '9725074497';
   const whatsappMessage = 'שלום, הגעתי מאתר printeam.co.il\nיש לי שאלה -';
@@ -35,7 +32,7 @@ export default function Contact() {
                 addressCountry: "IL"
               },
               email: "info@printmarket.co.il",
-              telephone: "+972-50-744-9749"
+              telephone: "+9725074497"
             }
           })}
         </script>
