@@ -29,6 +29,7 @@ import MethodsOfBranding from '@/pages/MethodsOfBranding';
 import AccessibilityStatement from '@/pages/AccessibilityStatement';
 import Works from '@/pages/Works';
 import Contact from '@/pages/Contact';
+import WinterCampaign from '@/pages/WinterCampaign';
 
 function ScrollToTop() {
   const { pathname, search } = useLocation();
@@ -109,6 +110,7 @@ function App() {
                 <Route path="/accessibility" element={<AccessibilityStatement />} />
                 <Route path="/works" element={<Works />} />
                 <Route path="/contact" element={<Contact />} />
+                <Route path="/winter-campaign" element={<WinterCampaign />} />
                 {process.env.NODE_ENV !== 'production' && (
                   <Route path="/dev/composer" element={<DevComposer />} />
                 )}
