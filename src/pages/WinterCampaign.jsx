@@ -60,9 +60,9 @@ const WinterCampaign = () => {
     {
       sku: 'fleece_blanket',
       name: 'Fleece Blanket',
-      nameHe: 'שמיכת פליז',
+      nameHe: 'שמיכת פליס',
       description: 'Warm fleece blanket perfect for winter',
-      descriptionHe: 'שמיכת פליז חמה ומושלמת לחורף',
+      descriptionHe: 'שמיכת פליס חמה ומושלמת לחורף',
       image: 'https://via.placeholder.com/400x400/708090/FFFFFF?text=Fleece+Blanket',
       price: 120,
       isPlaceholder: true
