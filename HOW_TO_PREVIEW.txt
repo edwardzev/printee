@@ -1,0 +1,54 @@
+HEBREW FONT PREVIEW - QUICK START GUIDE
+========================================
+
+You now have three static HTML files to preview different Hebrew fonts for your homepage.
+
+STEP 1: VIEW THE PREVIEWS
+--------------------------
+Open each file in your web browser:
+1. Double-click homepage_font1.html (Rubik - Modern & Clean)
+2. Double-click homepage_font2.html (Heebo - Professional)
+3. Double-click homepage_font3.html (Alef - Classic & Elegant)
+
+Each page shows the same content with a different font applied to all headers and titles.
+
+STEP 2: COMPARE THE FONTS
+--------------------------
+Look at these key areas on each page:
+- Main hero title at the top
+- Section headings ("איך זה עובד", "למה לבחור בנו")
+- Card titles and descriptions
+- Button text
+
+Notice:
+- Readability: Which is easiest to read?
+- Brand fit: Which matches your brand personality?
+- Professional look: Which looks most trustworthy?
+- Visual hierarchy: Which creates the best distinction between elements?
+
+STEP 3: MAKE YOUR CHOICE
+-------------------------
+Once you've decided which font works best for Printeam:
+1. Note the font name (Rubik, Heebo, or Alef)
+2. Share your selection with the development team
+3. The chosen font will be integrated into the actual website
+
+FONT CHARACTERISTICS:
+---------------------
+Rubik: Modern, rounded, friendly, contemporary
+Heebo: Balanced, versatile, professional, neutral
+Alef: Traditional, elegant, classic, timeless
+
+All three fonts:
+✓ Are designed specifically for Hebrew
+✓ Are highly legible on all devices
+✓ Load quickly from Google Fonts
+✓ Are free for commercial use
+
+Need help deciding? Consider:
+- Your target audience (young/professional/traditional)
+- Your brand values (modern/trustworthy/classic)
+- Your competitors' typography choices
+- Overall website aesthetic
+
+For more details, see FONT_PREVIEW_README.md
