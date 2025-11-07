@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Printeam - Homepage Preview (Font 2: Heebo)</title>
+    
+    <!-- Google Fonts - Heebo (Professional, versatile Hebrew font) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Heebo', Arial, sans-serif;
+            background: linear-gradient(to bottom right, #f8fafc, #e0f2fe);
+            min-height: 100vh;
+            direction: rtl;
+            line-height: 1.6;
+        }
+        
+        .font-indicator {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(123, 0, 255, 0.9);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: 700;
+            font-size: 14px;
+            z-index: 1000;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        /* Hero Section */
+        .hero {
+            background: white;
+            padding: 60px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .hero-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            align-items: center;
+        }
+        
+        .hero-text {
+            text-align: right;
+        }
+        
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 900;
+            line-height: 1.2;
+            color: #111827;
+            margin-bottom: 20px;
+        }
+        
+        .hero-subtitle {
+            font-size: 1.25rem;
+            color: #4b5563;
+            margin-bottom: 30px;
+            font-weight: 400;
+        }
+        
+        .cta-button {
+            background: linear-gradient(90deg, #7a00ff 0%, #fe00ff 100%);
+            color: white;
+            padding: 16px 40px;
+            font-size: 1.125rem;
+            font-weight: 700;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            box-shadow: 0 4px 6px rgba(122, 0, 255, 0.3);
+            transition: transform 0.2s;
+        }
+        
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(122, 0, 255, 0.4);
+        }
+        
+        .hero-image {
+            background: #f6f7f9;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            min-height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6b7280;
+            font-size: 1.125rem;
+        }
+        
+        /* How It Works Section */
+        .how-it-works {
+            padding: 80px 0;
+            background: #f9fafb;
+        }
+        
+        h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #111827;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        
+        .section-subtitle {
+            text-align: center;
+            color: #6b7280;
+            font-size: 1.125rem;
+            margin-bottom: 50px;
+        }
+        
+        .steps-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        
+        .step-card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #f3f4f6;
+            position: relative;
+        }
+        
+        .step-number {
+            position: absolute;
+            top: -12px;
+            right: -12px;
+            width: 32px;
+            height: 32px;
+            background: #2563eb;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.875rem;
+            box-shadow: 0 2px 4px rgba(37, 99, 235, 0.4);
+        }
+        
+        h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 10px;
+        }
+        
+        .step-desc {
+            color: #6b7280;
+            font-size: 0.938rem;
+            line-height: 1.6;
+        }
+        
+        /* Branding Methods Section */
+        .branding-section {
+            padding: 50px 0;
+            background: #dbeafe;
+        }
+        
+        .branding-card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 30px;
+            align-items: center;
+        }
+        
+        .branding-image {
+            width: 100%;
+            height: 180px;
+            background: #e5e7eb;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6b7280;
+        }
+        
+        .branding-content {
+            text-align: right;
+        }
+        
+        .branding-content h3 {
+            font-size: 1.75rem;
+            margin-bottom: 15px;
+        }
+        
+        .branding-content p {
+            color: #374151;
+            margin-bottom: 20px;
+            line-height: 1.7;
+        }
+        
+        .secondary-button {
+            background: #7a00ff;
+            color: white;
+            padding: 12px 30px;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: background 0.2s;
+        }
+        
+        .secondary-button:hover {
+            background: #6600dd;
+        }
+        
+        /* Features Section */
+        .features {
+            padding: 80px 0;
+            background: white;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+        }
+        
+        .feature-card {
+            text-align: center;
+            padding: 40px;
+            border-radius: 12px;
+            background: linear-gradient(to bottom right, #eff6ff, #f3e8ff);
+        }
+        
+        .feature-icon {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(to right, #2563eb, #9333ea);
+            border-radius: 50%;
+            margin: 0 auto 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+        }
+        
+        .feature-card h3 {
+            font-size: 1.25rem;
+            margin-bottom: 15px;
+        }
+        
+        .feature-card p {
+            color: #6b7280;
+        }
+        
+        /* CTA Section */
+        .cta-section {
+            padding: 80px 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            text-align: center;
+        }
+        
+        .cta-section h2 {
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .cta-section .cta-button {
+            background: white;
+            color: #2563eb;
+        }
+        
+        .cta-section .cta-button:hover {
+            background: #eff6ff;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+            
+            h2 {
+                font-size: 1.75rem;
+            }
+            
+            .hero-content,
+            .branding-card {
+                grid-template-columns: 1fr;
+            }
+            
+            .steps-grid,
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="font-indicator">גופן: Heebo (פונט 2)</div>
+    
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-text">
+                    <h1>הזמנת ביגוד ממותג אונליין – פשוט, מהיר, משתלם</h1>
+                    <p class="hero-subtitle">מעלים עיצוב, בוחרים בגד, ומקבלים הזמנה מוכנה תוך ימים</p>
+                    <a href="#" class="cta-button">התחל בהזמנה</a>
+                </div>
+                <div class="hero-image">
+                    [קולאז' תמונות]
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- How It Works Section -->
+    <section class="how-it-works">
+        <div class="container">
+            <h2>איך זה עובד</h2>
+            <p class="section-subtitle">תהליך מהיר וברור — משלב העיצוב ועד קבלת ההזמנה</p>
+            
+            <div class="steps-grid">
+                <div class="step-card">
+                    <div class="step-number">1</div>
+                    <h3>בחרו מוצר וצבעים</h3>
+                    <p class="step-desc">גלשו בקטלוג ובחרו סוג בגד, צבעים ומידות.</p>
+                </div>
+                
+                <div class="step-card">
+                    <div class="step-number">2</div>
+                    <h3>העלו את העיצוב</h3>
+                    <p class="step-desc">צרפו קובץ או תמונה לכל אזור הדפסה.</p>
+                </div>
+                
+                <div class="step-card">
+                    <div class="step-number">3</div>
+                    <h3>אישור ותשלום</h3>
+                    <p class="step-desc">ממלאים פרטים קצרים ומבצעים תשלום מאובטח.</p>
+                </div>
+                
+                <div class="step-card">
+                    <div class="step-number">4</div>
+                    <h3>ייצור ומשלוח</h3>
+                    <p class="step-desc">אנחנו מדפיסים, אורזים ושולחים — בדרך אליכם!</p>
+                </div>
+            </div>
+            
+            <div style="text-align: center;">
+                <a href="#" class="cta-button">התחילו עכשיו</a>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Branding Methods Section -->
+    <section class="branding-section">
+        <div class="container">
+            <div class="branding-card">
+                <div class="branding-image">
+                    [תמונה: שיטות מיתוג]
+                </div>
+                <div class="branding-content">
+                    <h3>השיטות שאנו מציעים למיתוג</h3>
+                    <p>ב-Printeam אנחנו משתמשים בשיטות מתקדמות ומבוקרות: רקמה, הדפסה במסך, הדפסה DTG/DTF וסובלימציה. לכל שיטה יש יתרונות ושימושים ספציפיים — נכין את ההדפסה המתאימה ביותר עבורך כדי להבטיח מראה מקצועי ועמידות ארוכת טווח.</p>
+                    <a href="#" class="secondary-button">למד עוד על שיטות המיתוג</a>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Features Section -->
+    <section class="features">
+        <div class="container">
+            <h2>למה לבחור בנו</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>משלוח מהיר</h3>
+                    <p>קבלו את ההזמנה שלכם תוך ימים ספורים</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">💲</div>
+                    <h3>מחירים הוגנים</h3>
+                    <p>מחירים תחרותיים ללא פשרות על איכות</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">🎨</div>
+                    <h3>עיצוב קל</h3>
+                    <p>ממשק פשוט וידידותי להעלאת עיצובים</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="container">
+            <h2>מוכנים ליצור ביגוד ממותג מותאם אישית?</h2>
+            <a href="#" class="cta-button">התחל בהזמנה</a>
+        </div>
+    </section>
+</body>
+</html>
