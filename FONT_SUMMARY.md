@@ -23,23 +23,23 @@ This PR provides **six Hebrew font options** for the Printeam homepage, allowing
 - **Best for**: Established brands valuing tradition
 - **File**: fonts/Alef.ttf (89KB)
 
-### 4. Varela Round (homepage_font4.html)
-- **Style**: Friendly with smooth curves
-- **Personality**: Warm, welcoming, gentle
-- **Best for**: Service-oriented, approachable brands
-- **File**: fonts/VarelaRound.ttf (130KB)
+### 4. Assistant (homepage_font4.html)
+- **Style**: Clean with modern design
+- **Personality**: Neutral, readable, professional
+- **Best for**: Tech companies, modern businesses
+- **File**: fonts/Assistant.ttf (98KB)
 
-### 5. Lunasima (homepage_font5.html)
-- **Style**: Geometric with clean lines
-- **Personality**: Technical, modern, precise
-- **Best for**: Tech companies, startups, innovation-focused brands
-- **File**: fonts/Lunasima.ttf (191KB)
+### 5. Karantina (homepage_font5.html)
+- **Style**: Bold with distinctive character
+- **Personality**: Unique, eye-catching, strong
+- **Best for**: Creative brands, unique products
+- **File**: fonts/Karantina.ttf (48KB)
 
-### 6. Fredoka (homepage_font6.html)
-- **Style**: Playful with bold character
-- **Personality**: Energetic, fun, distinctive
-- **Best for**: Youth brands, creative industries, casual products
-- **File**: fonts/Fredoka.ttf (156KB)
+### 6. Frank Ruhl Libre (homepage_font6.html)
+- **Style**: Traditional serif
+- **Personality**: Sophisticated, elegant, classic
+- **Best for**: Traditional businesses, formal brands
+- **File**: fonts/FrankRuhlLibre.ttf (175KB)
 
 ## Quick Comparison
 
@@ -48,9 +48,9 @@ This PR provides **six Hebrew font options** for the Printeam homepage, allowing
 | Rubik | Medium | High | High | Medium |
 | Heebo | High | Medium | Medium | Low |
 | Alef | High | Low | Low | Medium |
-| Varela Round | Low | Medium | Very High | Medium |
-| Lunasima | Medium | Very High | Medium | High |
-| Fredoka | Low | High | High | Very High |
+| Assistant | Medium | High | Medium | Low |
+| Karantina | Low | High | Medium | Very High |
+| Frank Ruhl Libre | Very High | Low | Low | High |
 
 ## How to Choose
 
@@ -58,19 +58,19 @@ This PR provides **six Hebrew font options** for the Printeam homepage, allowing
 → Consider: **Heebo** or **Alef**
 
 ### For a Modern Consumer Brand
-→ Consider: **Rubik** or **Lunasima**
+→ Consider: **Rubik** or **Assistant**
 
 ### For a Friendly Service Brand
-→ Consider: **Varela Round** or **Rubik**
+→ Consider: **Rubik** or **Heebo**
 
-### For a Youth/Fun Brand
-→ Consider: **Fredoka** or **Varela Round**
+### For a Creative/Unique Brand
+→ Consider: **Karantina** or **Rubik**
 
 ### For a Tech Startup
-→ Consider: **Lunasima** or **Heebo**
+→ Consider: **Assistant** or **Heebo**
 
 ### For an Established Traditional Brand
-→ Consider: **Alef** or **Heebo**
+→ Consider: **Frank Ruhl Libre** or **Alef**
 
 ## Technical Details
 
@@ -78,7 +78,7 @@ This PR provides **six Hebrew font options** for the Printeam homepage, allowing
 - Loaded from local files (no external dependencies)
 - RTL (right-to-left) layout fully supported
 - Responsive design across all devices
-- Total font package size: ~1.1MB
+- Total font package size: ~930KB
 
 ## Next Steps
 

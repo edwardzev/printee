@@ -22,22 +22,22 @@ This directory contains six static HTML previews of the Printeam homepage, each 
 - **Best for**: Established brands that value tradition and elegance
 - **Preview**: Open `homepage_font3.html` in your browser
 
-### 4. **Varela Round** (homepage_font4.html)
-- **Description**: Friendly, rounded Hebrew font
-- **Characteristics**: Smooth curves, warm feel, highly approachable
-- **Best for**: Brands that want to appear friendly, warm, and welcoming
+### 4. **Assistant** (homepage_font4.html)
+- **Description**: Clean, modern Hebrew font
+- **Characteristics**: High readability, neutral design, works well at all sizes
+- **Best for**: Tech companies, modern startups, clean designs
 - **Preview**: Open `homepage_font4.html` in your browser
 
-### 5. **Lunasima** (homepage_font5.html)
-- **Description**: Geometric, modern Hebrew font
-- **Characteristics**: Clean lines, technical precision, contemporary design
-- **Best for**: Tech-forward brands, modern startups, innovative companies
+### 5. **Karantina** (homepage_font5.html)
+- **Description**: Bold, distinctive Hebrew font
+- **Characteristics**: Strong personality, unique character, eye-catching
+- **Best for**: Creative brands, unique products, bold statements
 - **Preview**: Open `homepage_font5.html` in your browser
 
-### 6. **Fredoka** (homepage_font6.html)
-- **Description**: Playful, bold Hebrew font
-- **Characteristics**: Distinctive character, energetic feel, fun personality
-- **Best for**: Brands targeting younger audiences, creative industries, fun products
+### 6. **Frank Ruhl Libre** (homepage_font6.html)
+- **Description**: Traditional serif Hebrew font
+- **Characteristics**: Classic styling, sophisticated, elegant appearance
+- **Best for**: Traditional businesses, sophisticated brands, formal contexts
 - **Preview**: Open `homepage_font6.html` in your browser
 
 ## How to Preview
