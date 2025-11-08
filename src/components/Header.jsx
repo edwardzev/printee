@@ -329,7 +329,7 @@ export default function Header({ dir = "rtl" }) {
             <nav className="flex flex-col gap-5 bg-white px-6 pb-6 pt-6" ref={menuListRef}>
               {dir === 'rtl' ? (
                 <>
-                  <Link to="/catalog" onClick={() => setOpen(false)} className="text-xl font-semibold text-gray-900 py-3 border-b border-gray-200 inline-flex items-center gap-3">
+                  <Link to="/catalog" onClick={() => setOpen(false)} className="text-xl font-light text-gray-900 py-3 border-b border-gray-200 inline-flex items-center gap-3">
                     <DollarSign className="h-6 w-6" /> מחירים
                   </Link>
                   <Link to="/catalog" onClick={() => setOpen(false)} className="text-xl font-semibold text-gray-900 py-3 border-b border-gray-200 inline-flex items-center gap-3">
@@ -343,16 +343,16 @@ export default function Header({ dir = "rtl" }) {
                   </Link>
                 </>
               )}
-              <a href="#how" onClick={goTo('how')} className="text-xl font-semibold text-gray-900 py-3 border-b border-gray-200 inline-flex items-center gap-3">
+              <a href="#how" onClick={goTo('how')} className="text-xl font-light text-gray-900 py-3 border-b border-gray-200 inline-flex items-center gap-3">
                 <Info className="h-6 w-6" /> איך זה עובד
               </a>
-              <Link to="/methods-of-branding" onClick={() => setOpen(false)} className="text-xl font-semibold text-gray-900 py-3 border-b border-gray-200 inline-flex items-center gap-3">
+              <Link to="/methods-of-branding" onClick={() => setOpen(false)} className="text-xl font-light text-gray-900 py-3 border-b border-gray-200 inline-flex items-center gap-3">
                 <Info className="h-6 w-6" /> שיטות מיתוג
               </Link>
-              <Link to="/faq" onClick={() => setOpen(false)} className="text-xl font-semibold text-gray-900 py-3 border-b border-gray-200 inline-flex items-center gap-3">
+              <Link to="/faq" onClick={() => setOpen(false)} className="text-xl font-light text-gray-900 py-3 border-b border-gray-200 inline-flex items-center gap-3">
                 <HelpCircle className="h-6 w-6" /> שאלות נפוצות
               </Link>
-              <Link to="/cart" onClick={() => setOpen(false)} className="text-xl font-semibold text-gray-900 py-3 border-b border-gray-200 inline-flex items-center gap-3">
+              <Link to="/cart" onClick={() => setOpen(false)} className="text-xl font-light text-gray-900 py-3 border-b border-gray-200 inline-flex items-center gap-3">
                 <CartIcon className="h-6 w-6" /> עגלה ({getTotalItems()})
               </Link>
             </nav>

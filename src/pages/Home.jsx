@@ -75,7 +75,7 @@ const Home = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
             {/* Copy column */}
             <div className="text-right">
-              <h1 className="text-4xl lg:text-6xl font-extrabold leading-tight tracking-tight text-gray-900 mb-4">
+              <h1 className="text-4xl lg:text-6xl font-normal leading-tight tracking-tight text-gray-900 mb-4">
                 הזמנת ביגוד ממותג אונליין – פשוט, מהיר, משתלם
               </h1>
               <p className="text-lg lg:text-xl text-gray-600 mb-8">

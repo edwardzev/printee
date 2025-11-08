@@ -1,3 +1,5 @@
+const defaultTheme = require('tailwindcss/defaultTheme');
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
 	darkMode: ['class'],
@@ -16,6 +18,18 @@ module.exports = {
 			},
 		},
 		extend: {
+			fontFamily: {
+				sans: ['"Fredoka"', ...defaultTheme.fontFamily.sans],
+				heading: ['"Fredoka"', ...defaultTheme.fontFamily.sans],
+			},
+			fontWeight: {
+				normal: '400',
+				medium: '450',
+				semibold: '480',
+				bold: '500',
+				extrabold: '500',
+				black: '500',
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',

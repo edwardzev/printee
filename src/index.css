@@ -2,7 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@font-face {
+  font-family: 'Fredoka';
+  src: url('/fonts/Fredoka-VariableFont_wdth,wght.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
 
 /* Global: kill horizontal scroll & enforce full width */
 html, body {
@@ -85,9 +91,24 @@ main {
 }
 
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Fredoka', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 400;
   background: hsl(var(--background));
   color: hsl(var(--foreground));
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 400;
+}
+
+strong,
+b {
+  font-weight: 500;
 }
 
 .rtl {
