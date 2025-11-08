@@ -304,11 +304,13 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       const total0 = baseTotal;
 
       try {
+        const gclidValue = payload?.tracking?.googleAds?.gclid || '';
         const prelim = await fetch('/api/airtable/order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             idempotency_key: idempotencyKeyRef.current,
+            gclid: gclidValue,
             customer: {
               name,
               phone,

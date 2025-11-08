@@ -59,6 +59,7 @@ const DiscountPopup = ({ open, onOpenChange, savingsAmount = '' }) => {
       // Send webhook to Airtable with customer details
       const body = JSON.stringify({
         idempotency_key: idem,
+        gclid: payload?.tracking?.googleAds?.gclid || '',
         customer: {
           name: name.trim(),
           phone: phone.trim(),
