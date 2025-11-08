@@ -1,6 +1,6 @@
 # Hebrew Font Preview - Printeam Homepage
 
-This directory contains three static HTML previews of the Printeam homepage, each using a different Hebrew font for headers and main titles.
+This directory contains six static HTML previews of the Printeam homepage, each using a different Hebrew font for headers and main titles.
 
 ## Font Options
 
@@ -22,10 +22,28 @@ This directory contains three static HTML previews of the Printeam homepage, eac
 - **Best for**: Established brands that value tradition and elegance
 - **Preview**: Open `homepage_font3.html` in your browser
 
+### 4. **Varela Round** (homepage_font4.html)
+- **Description**: Friendly, rounded Hebrew font
+- **Characteristics**: Smooth curves, warm feel, highly approachable
+- **Best for**: Brands that want to appear friendly, warm, and welcoming
+- **Preview**: Open `homepage_font4.html` in your browser
+
+### 5. **Lunasima** (homepage_font5.html)
+- **Description**: Geometric, modern Hebrew font
+- **Characteristics**: Clean lines, technical precision, contemporary design
+- **Best for**: Tech-forward brands, modern startups, innovative companies
+- **Preview**: Open `homepage_font5.html` in your browser
+
+### 6. **Fredoka** (homepage_font6.html)
+- **Description**: Playful, bold Hebrew font
+- **Characteristics**: Distinctive character, energetic feel, fun personality
+- **Best for**: Brands targeting younger audiences, creative industries, fun products
+- **Preview**: Open `homepage_font6.html` in your browser
+
 ## How to Preview
 
 1. Open each HTML file in your web browser
-2. Compare the appearance of headers and titles across all three versions
+2. Compare the appearance of headers and titles across all six versions
 3. Each page has a colored indicator in the top-left corner showing which font is being displayed
 4. The fonts are applied to:
    - Main hero heading (h1)
@@ -35,18 +53,18 @@ This directory contains three static HTML previews of the Printeam homepage, eac
 
 ## Making Your Selection
 
-Once you've reviewed all three options and selected your preferred font, let the development team know which one you'd like to apply to the actual homepage and across the site.
+Once you've reviewed all six options and selected your preferred font, let the development team know which one you'd like to apply to the actual homepage and across the site.
 
-All three fonts are:
+All six fonts are:
 - ✅ Specifically designed for Hebrew typography
 - ✅ Highly legible on all screen sizes
-- ✅ Loaded from Google Fonts (fast and reliable)
+- ✅ Loaded from local files (fast and reliable)
 - ✅ Free to use for commercial purposes
 
 ## Next Steps
 
 After you choose your preferred font:
-1. Inform the team which font you selected (Rubik, Heebo, or Alef)
+1. Inform the team which font you selected (Rubik, Heebo, Alef, Varela Round, Lunasima, or Fredoka)
 2. The selected font will be integrated into the main application
 3. The font will be applied consistently across all pages
 

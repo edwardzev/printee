@@ -1,7 +1,7 @@
 HEBREW FONT PREVIEW - QUICK START GUIDE
 ========================================
 
-You now have three static HTML files to preview different Hebrew fonts for your homepage.
+You now have six static HTML files to preview different Hebrew fonts for your homepage.
 
 STEP 1: VIEW THE PREVIEWS
 --------------------------
@@ -9,6 +9,9 @@ Open each file in your web browser:
 1. Double-click homepage_font1.html (Rubik - Modern & Clean)
 2. Double-click homepage_font2.html (Heebo - Professional)
 3. Double-click homepage_font3.html (Alef - Classic & Elegant)
+4. Double-click homepage_font4.html (Varela Round - Friendly & Warm)
+5. Double-click homepage_font5.html (Lunasima - Geometric & Modern)
+6. Double-click homepage_font6.html (Fredoka - Playful & Bold)
 
 Each page shows the same content with a different font applied to all headers and titles.
 
@@ -29,7 +32,7 @@ Notice:
 STEP 3: MAKE YOUR CHOICE
 -------------------------
 Once you've decided which font works best for Printeam:
-1. Note the font name (Rubik, Heebo, or Alef)
+1. Note the font name (Rubik, Heebo, Alef, Varela Round, Lunasima, or Fredoka)
 2. Share your selection with the development team
 3. The chosen font will be integrated into the actual website
 
@@ -38,16 +41,19 @@ FONT CHARACTERISTICS:
 Rubik: Modern, rounded, friendly, contemporary
 Heebo: Balanced, versatile, professional, neutral
 Alef: Traditional, elegant, classic, timeless
+Varela Round: Friendly, warm, approachable, smooth
+Lunasima: Geometric, modern, technical, clean
+Fredoka: Playful, bold, energetic, fun
 
-All three fonts:
+All six fonts:
 ✓ Are designed specifically for Hebrew
 ✓ Are highly legible on all devices
-✓ Load quickly from Google Fonts
+✓ Load quickly from local files
 ✓ Are free for commercial use
 
 Need help deciding? Consider:
 - Your target audience (young/professional/traditional)
-- Your brand values (modern/trustworthy/classic)
+- Your brand values (modern/trustworthy/classic/fun)
 - Your competitors' typography choices
 - Overall website aesthetic
 
