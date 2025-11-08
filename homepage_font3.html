@@ -5,12 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Printeam - Homepage Preview (Font 3: Alef)</title>
     
-    <!-- Google Fonts - Alef (Classic, elegant Hebrew font) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Alef:wght@400;700&display=swap" rel="stylesheet">
-    
     <style>
+        /* Local Alef font (Classic, elegant Hebrew font) */
+        @font-face {
+            font-family: 'Alef';
+            src: url('/fonts/Alef.ttf') format('truetype');
+            font-weight: 400;
+            font-display: swap;
+        }
+        
         * {
             margin: 0;
             padding: 0;
@@ -18,7 +21,7 @@
         }
         
         body {
-            font-family: 'Alef', Arial, sans-serif;
+            font-family: 'Alef', 'Georgia', 'Times New Roman', serif;
             background: linear-gradient(to bottom right, #f8fafc, #e0f2fe);
             min-height: 100vh;
             direction: rtl;

@@ -5,12 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Printeam - Homepage Preview (Font 1: Rubik)</title>
     
-    <!-- Google Fonts - Rubik (Modern, clean Hebrew font) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    
     <style>
+        /* Local Rubik font (Modern, clean Hebrew font) */
+        @font-face {
+            font-family: 'Rubik';
+            src: url('/fonts/Rubik.ttf') format('truetype');
+            font-weight: 100 900;
+            font-display: swap;
+        }
+        
         * {
             margin: 0;
             padding: 0;
@@ -18,7 +21,7 @@
         }
         
         body {
-            font-family: 'Rubik', Arial, sans-serif;
+            font-family: 'Rubik', 'Arial', 'Helvetica Neue', sans-serif;
             background: linear-gradient(to bottom right, #f8fafc, #e0f2fe);
             min-height: 100vh;
             direction: rtl;
