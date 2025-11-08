@@ -8,6 +8,7 @@ import DevErrorBoundary from '@/components/DevErrorBoundary';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import WhatsAppWidget from '@/components/WhatsAppWidget';
+import GoogleAdsAttributionTracker from '@/components/GoogleAdsAttributionTracker';
 import Home from '@/pages/Home';
 import Catalog from '@/pages/Catalog';
 const ProductConfigurator = React.lazy(() => import('@/pages/ProductConfigurator'));
@@ -78,6 +79,7 @@ function App() {
             <Header />
             <ScrollToTop />
             <AdsRouteTracker />
+            <GoogleAdsAttributionTracker />
             <main className="min-h-screen">
               <Routes>
                 <Route path="/" element={<Home />} />

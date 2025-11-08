@@ -20,12 +20,19 @@ export default async function handler(req, res) {
         return res.status(400).json({ ok: false, error: 'invalid_payload', details: errors });
       }
       // minimal shape: cart[], contact{}, paymentMethod?, totals?
-      const rec = await createOrder({
+      const orderPayload = {
         cart: Array.isArray(body.cart) ? body.cart : [],
         contact: body.contact || {},
         paymentMethod: body.paymentMethod || '',
         totals: body.totals || body.cartSummary || {},
-      });
+      };
+      if (body.tracking && typeof body.tracking === 'object') {
+        orderPayload.tracking = body.tracking;
+      }
+      if (body.idempotency_key) {
+        orderPayload.idempotency_key = String(body.idempotency_key);
+      }
+      const rec = await createOrder(orderPayload);
       return res.status(201).json({ ok: true, order: rec });
     } catch (e) {
       return res.status(400).json({ ok: false, error: e?.message || String(e) });
