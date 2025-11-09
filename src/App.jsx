@@ -65,12 +65,20 @@ function AdsRouteTracker() {
   return null;
 }
 
+function detectBasename() {
+  if (typeof window === 'undefined') return undefined;
+  const { pathname } = window.location;
+  if (pathname.startsWith('/copilot/')) return '/copilot';
+  return undefined;
+}
+
 function App() {
+  const basename = detectBasename();
   return (
     <LanguageProvider>
       <CartProvider>
         <DevErrorBoundary>
-          <Router>
+          <Router basename={basename}>
             <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
             <Helmet>
               <title>Printeam – Custom Apparel Printing</title>
