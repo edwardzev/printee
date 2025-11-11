@@ -56,10 +56,16 @@ const DiscountPopup = ({ open, onOpenChange, savingsAmount = '' }) => {
       // Build uploads list from cart items using shared utility
       const uploads = buildUploadsFromCart(cartItems);
       
-      // Send webhook to Airtable with customer details
+      const googleAds = payload?.tracking?.googleAds || {};
+      const metadata = payload?.tracking?.metadata || {};
+
+      // Send webhook to Airtable with customer and attribution details
       const body = JSON.stringify({
         idempotency_key: idem,
-        gclid: payload?.tracking?.googleAds?.gclid || '',
+        gclid: googleAds.gclid || '',
+        campaign: googleAds.campaign || '',
+        search: googleAds.keyword || '',
+        device: metadata.device || '',
         customer: {
           name: name.trim(),
           phone: phone.trim(),

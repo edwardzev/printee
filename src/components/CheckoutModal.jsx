@@ -304,13 +304,21 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       const total0 = baseTotal;
 
       try {
-        const gclidValue = payload?.tracking?.googleAds?.gclid || '';
+        const googleAds = payload?.tracking?.googleAds || {};
+        const trackingMetadata = payload?.tracking?.metadata || {};
+        const gclidValue = googleAds.gclid || '';
+        const campaignValue = googleAds.campaign || '';
+        const searchValue = googleAds.keyword || '';
+        const deviceValue = trackingMetadata.device || '';
         const prelim = await fetch('/api/airtable/order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             idempotency_key: idempotencyKeyRef.current,
             gclid: gclidValue,
+            campaign: campaignValue,
+            search: searchValue,
+            device: deviceValue,
             customer: {
               name,
               phone,
@@ -444,6 +452,10 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       const builtUploads = await uploads;
       const enriched = {
         idempotency_key: idempotencyKeyRef.current,
+        gclid: payload?.tracking?.googleAds?.gclid || '',
+        campaign: payload?.tracking?.googleAds?.campaign || '',
+        search: payload?.tracking?.googleAds?.keyword || '',
+        device: payload?.tracking?.metadata?.device || '',
         customer: {
           name,
           phone,

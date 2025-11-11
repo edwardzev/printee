@@ -18,18 +18,22 @@ function getEnv() {
     token: process.env.AIRTABLE_API_KEY || process.env.AIRTABLE_TOKEN || '',
     baseId: process.env.AIRTABLE_BASE_ID || '',
     table: process.env.AIRTABLE_ORDERS_TABLE || process.env.AIRTABLE_TABLE_ORDERS || '',
-  fIdem: process.env.AIRTABLE_FIELD_IDEMPOTENCY_KEY || 'IdempotencyKey',
+    fIdem: process.env.AIRTABLE_FIELD_IDEMPOTENCY_KEY || 'IdempotencyKey',
+    fGclid: process.env.AIRTABLE_FIELD_GCLID || 'gclid',
+    fCampaign: process.env.AIRTABLE_FIELD_CAMPAIGN || 'campaign',
+    fSearch: process.env.AIRTABLE_FIELD_SEARCH || 'search',
+    fDevice: process.env.AIRTABLE_FIELD_DEVICE || 'device',
     fStatus: process.env.AIRTABLE_FIELD_STATUS || '',
     statusDraft: process.env.AIRTABLE_STATUS_DRAFT || '',
-  // Long-text JSON fields
-  fCartText: process.env.AIRTABLE_FIELD_CART_TEXT || 'cart_text',
-  fCustomerText: process.env.AIRTABLE_FIELD_CUSTOMER_TEXT || 'customer_text',
-  fFinanceText: process.env.AIRTABLE_FIELD_FINANCE_TEXT || 'finance_text',
-  fPaid: process.env.AIRTABLE_FIELD_PAID || 'paid',
-  fInvrecNum: process.env.AIRTABLE_FIELD_INVREC_NUM || 'invrec_num',
-  fInvrecLink: process.env.AIRTABLE_FIELD_INVREC_LINK || 'invrec_link',
-  // Worksheet attachment field (expects array of {url, filename})
-  fWorksheet: process.env.AIRTABLE_FIELD_WORKSHEET || 'worksheet',
+    // Long-text JSON fields
+    fCartText: process.env.AIRTABLE_FIELD_CART_TEXT || 'cart_text',
+    fCustomerText: process.env.AIRTABLE_FIELD_CUSTOMER_TEXT || 'customer_text',
+    fFinanceText: process.env.AIRTABLE_FIELD_FINANCE_TEXT || 'finance_text',
+    fPaid: process.env.AIRTABLE_FIELD_PAID || 'paid',
+    fInvrecNum: process.env.AIRTABLE_FIELD_INVREC_NUM || 'invrec_num',
+    fInvrecLink: process.env.AIRTABLE_FIELD_INVREC_LINK || 'invrec_link',
+    // Worksheet attachment field (expects array of {url, filename})
+    fWorksheet: process.env.AIRTABLE_FIELD_WORKSHEET || 'worksheet',
     // Dropbox
     dbxAppKey: process.env.DROPBOX_APP_KEY || '',
     dbxAppSecret: process.env.DROPBOX_APP_SECRET || '',
@@ -329,6 +333,10 @@ export default async function handler(req, res) {
   const body = await readJson(req);
   const idempotency_key = String(body.idempotency_key || '').trim();
   const uploads = Array.isArray(body.uploads) ? body.uploads : [];
+  const gclid = typeof body.gclid === 'string' ? body.gclid.trim() : '';
+  const campaign = typeof body.campaign === 'string' ? body.campaign.trim() : '';
+  const search = typeof body.search === 'string' ? body.search.trim() : '';
+  const device = typeof body.device === 'string' ? body.device.trim() : '';
   const customer = (body.customer && typeof body.customer === 'object') ? body.customer : null;
   const financial = (body.financial && typeof body.financial === 'object') ? body.financial : null;
   const cart = (body.cart && typeof body.cart === 'object') ? body.cart : null;
@@ -337,7 +345,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ ok: false, error: 'invalid_idempotency_key' });
   }
 
-  const { token, baseId, table, fIdem, fStatus, statusDraft, fCartText, fCustomerText, fFinanceText, fPaid, fInvrecNum, fInvrecLink, fWorksheet, dbxAppKey, dbxAppSecret, dbxRefreshToken, dbxBaseFolder, dbxNamespaceId } = getEnv();
+  const { token, baseId, table, fIdem, fGclid, fCampaign, fSearch, fDevice, fStatus, statusDraft, fCartText, fCustomerText, fFinanceText, fPaid, fInvrecNum, fInvrecLink, fWorksheet, dbxAppKey, dbxAppSecret, dbxRefreshToken, dbxBaseFolder, dbxNamespaceId } = getEnv();
   try {
     console.log('[airtable/order] invoked', {
       baseId: baseId ? `${baseId}` : '(missing)',
@@ -505,6 +513,18 @@ export default async function handler(req, res) {
               address_street: customer.address_street || customer.adress_street || '',
               address_city: customer.address_city || customer.adres_city || '',
             });
+          }
+          if (fGclid && gclid) {
+            patchFields[fGclid] = gclid;
+          }
+          if (fCampaign && campaign) {
+            patchFields[fCampaign] = campaign;
+          }
+          if (fSearch && search) {
+            patchFields[fSearch] = search;
+          }
+          if (fDevice && device) {
+            patchFields[fDevice] = device;
           }
           if (financial) {
             const isPaymentConfirmation = (financial.paid === true || financial.paid === 'true' || financial.paid === 1);
