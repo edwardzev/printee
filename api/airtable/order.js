@@ -8,6 +8,8 @@
 // - AIRTABLE_FIELD_STATUS (default: Status)
 // - AIRTABLE_STATUS_DRAFT (default: draft)
 
+import { logError } from '../lib/logger.js';
+
 const API_URL = 'https://api.airtable.com/v0';
 const DROPBOX_OAUTH_URL = 'https://api.dropboxapi.com/oauth2/token';
 const DROPBOX_API_URL = 'https://api.dropboxapi.com/2';
@@ -114,91 +116,111 @@ function normalizeDropboxFileRaw(link) {
 
 async function airtableFetchRecord(baseId, table, recordId, token) {
   const url = `${API_URL}/${encodeURIComponent(baseId)}/${encodeURIComponent(table)}/${encodeURIComponent(recordId)}`;
-  const resp = await fetch(url, {
-    method: 'GET',
-    headers: { 'Authorization': `Bearer ${token}` },
-  });
-  if (!resp.ok) {
-    const text = await resp.text().catch(() => '');
-    throw new Error(`airtable_get_record ${resp.status}: ${text}`);
+  try {
+    const resp = await fetch(url, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '');
+      throw new Error(`airtable_get_record ${resp.status}: ${text}`);
+    }
+    return resp.json();
+  } catch (err) {
+    logError(err, { endpoint: 'airtableFetchRecord', airtableRecordId: recordId });
+    throw err;
   }
-  return resp.json();
 }
 
 async function getDropboxAccessToken({ appKey, appSecret, refreshToken }) {
-  const basic = Buffer.from(`${appKey}:${appSecret}`).toString('base64');
-  const params = new URLSearchParams({
-    grant_type: 'refresh_token',
-    refresh_token: refreshToken,
-  });
-  const resp = await fetch(DROPBOX_OAUTH_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Basic ${basic}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: params.toString(),
-  });
-  if (!resp.ok) {
-    const text = await resp.text().catch(() => '');
-    throw new Error(`dropbox_token ${resp.status}: ${text}`);
+  try {
+    const basic = Buffer.from(`${appKey}:${appSecret}`).toString('base64');
+    const params = new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+    });
+    const resp = await fetch(DROPBOX_OAUTH_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${basic}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: params.toString(),
+    });
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '');
+      throw new Error(`dropbox_token ${resp.status}: ${text}`);
+    }
+    const data = await resp.json();
+    return data.access_token;
+  } catch (err) {
+    logError(err, { endpoint: 'getDropboxAccessToken' });
+    throw err;
   }
-  const data = await resp.json();
-  return data.access_token;
 }
 
 async function dropboxCreateFolder({ accessToken, namespaceId, folderPath }) {
-  const headers = {
-    'Authorization': `Bearer ${accessToken}`,
-    'Content-Type': 'application/json',
-  };
-  if (namespaceId) {
-    headers['Dropbox-API-Path-Root'] = JSON.stringify({ '.tag': 'namespace_id', namespace_id: namespaceId });
+  try {
+    const headers = {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    };
+    if (namespaceId) {
+      headers['Dropbox-API-Path-Root'] = JSON.stringify({ '.tag': 'namespace_id', namespace_id: namespaceId });
+    }
+    const url = `${DROPBOX_API_URL}/files/create_folder_v2`;
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ path: folderPath, autorename: false }),
+    });
+    if (resp.ok) return resp.json();
+    const errText = await resp.text().catch(() => '');
+    // Treat conflict (already exists) as success
+    if (resp.status === 409 && /conflict/i.test(errText)) {
+      return { ok: true, conflict: true };
+    }
+    throw new Error(`dropbox_create_folder ${resp.status}: ${errText}`);
+  } catch (err) {
+    logError(err, { endpoint: 'dropboxCreateFolder', dropboxPath: folderPath });
+    throw err;
   }
-  const url = `${DROPBOX_API_URL}/files/create_folder_v2`;
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ path: folderPath, autorename: false }),
-  });
-  if (resp.ok) return resp.json();
-  const errText = await resp.text().catch(() => '');
-  // Treat conflict (already exists) as success
-  if (resp.status === 409 && /conflict/i.test(errText)) {
-    return { ok: true, conflict: true };
-  }
-  throw new Error(`dropbox_create_folder ${resp.status}: ${errText}`);
 }
 
 async function dropboxCreateSharedLink({ accessToken, namespaceId, path }) {
-  const headers = {
-    'Authorization': `Bearer ${accessToken}`,
-    'Content-Type': 'application/json',
-  };
-  if (namespaceId) {
-    headers['Dropbox-API-Path-Root'] = JSON.stringify({ '.tag': 'namespace_id', namespace_id: namespaceId });
-  }
-  const url = `${DROPBOX_API_URL}/sharing/create_shared_link_with_settings`;
-  const resp = await fetch(url, { method: 'POST', headers, body: JSON.stringify({ path }) });
-  if (resp.ok) {
-    const data = await resp.json().catch(() => null);
-    const urlOnly = data && data.url ? data.url : null;
-    try { console.log('[airtable/order] dropbox created shared link', urlOnly); } catch {}
-    return urlOnly;
-  }
-  // Try to parse error body; Dropbox may return 409 when a shared link already exists and include metadata
-  const errText = await resp.text().catch(() => '');
   try {
-    const errJson = JSON.parse(errText || '{}');
-    const existing = errJson?.error?.shared_link_already_exists?.metadata?.url || errJson?.shared_link_already_exists?.metadata?.url;
-    if (existing) {
-      try { console.log('[airtable/order] dropbox shared link already existed', existing); } catch {}
-      return existing;
+    const headers = {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    };
+    if (namespaceId) {
+      headers['Dropbox-API-Path-Root'] = JSON.stringify({ '.tag': 'namespace_id', namespace_id: namespaceId });
     }
-  } catch (e) {
-    // fallthrough to throw below
+    const url = `${DROPBOX_API_URL}/sharing/create_shared_link_with_settings`;
+    const resp = await fetch(url, { method: 'POST', headers, body: JSON.stringify({ path }) });
+    if (resp.ok) {
+      const data = await resp.json().catch(() => null);
+      const urlOnly = data && data.url ? data.url : null;
+      try { console.log('[airtable/order] dropbox created shared link', urlOnly); } catch {}
+      return urlOnly;
+    }
+    // Try to parse error body; Dropbox may return 409 when a shared link already exists and include metadata
+    const errText = await resp.text().catch(() => '');
+    try {
+      const errJson = JSON.parse(errText || '{}');
+      const existing = errJson?.error?.shared_link_already_exists?.metadata?.url || errJson?.shared_link_already_exists?.metadata?.url;
+      if (existing) {
+        try { console.log('[airtable/order] dropbox shared link already existed', existing); } catch {}
+        return existing;
+      }
+    } catch (e) {
+      // fallthrough to throw below
+    }
+    throw new Error(`dropbox_create_shared_link ${resp.status}: ${errText}`);
+  } catch (err) {
+    logError(err, { endpoint: 'dropboxCreateSharedLink', dropboxPath: path });
+    throw err;
   }
-  throw new Error(`dropbox_create_shared_link ${resp.status}: ${errText}`);
 }
 
 async function dropboxGetTemporaryLink({ accessToken, namespaceId, path }) {
@@ -225,24 +247,29 @@ async function dropboxGetTemporaryLink({ accessToken, namespaceId, path }) {
 }
 
 async function dropboxUploadFile({ accessToken, namespaceId, path, content, mode = { '.tag': 'add' }, autorename = false, mute = false }) {
-  const headers = {
-    'Authorization': `Bearer ${accessToken}`,
-    'Content-Type': 'application/octet-stream',
-    'Dropbox-API-Arg': JSON.stringify({ path, mode, autorename, mute }),
-  };
-  if (namespaceId) {
-    headers['Dropbox-API-Path-Root'] = JSON.stringify({ '.tag': 'namespace_id', namespace_id: namespaceId });
-  }
-  const url = `${DROPBOX_CONTENT_API_URL}/files/upload`;
-  const resp = await fetch(url, { method: 'POST', headers, body: content });
-  if (!resp.ok) {
-    const text = await resp.text().catch(() => '');
-    if (resp.status === 409 && /conflict/i.test(text || '')) {
-      return { ok: true, conflict: true };
+  try {
+    const headers = {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/octet-stream',
+      'Dropbox-API-Arg': JSON.stringify({ path, mode, autorename, mute }),
+    };
+    if (namespaceId) {
+      headers['Dropbox-API-Path-Root'] = JSON.stringify({ '.tag': 'namespace_id', namespace_id: namespaceId });
     }
-    throw new Error(`dropbox_upload ${resp.status}: ${text}`);
+    const url = `${DROPBOX_CONTENT_API_URL}/files/upload`;
+    const resp = await fetch(url, { method: 'POST', headers, body: content });
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '');
+      if (resp.status === 409 && /conflict/i.test(text || '')) {
+        return { ok: true, conflict: true };
+      }
+      throw new Error(`dropbox_upload ${resp.status}: ${text}`);
+    }
+    return resp.json();
+  } catch (err) {
+    logError(err, { endpoint: 'dropboxUploadFile', dropboxPath: path });
+    throw err;
   }
-  return resp.json();
 }
 
 function sanitizeSegment(s) {
@@ -384,6 +411,8 @@ export default async function handler(req, res) {
 
     if (!resp.ok) {
       const text = await resp.text().catch(() => '');
+      const error = new Error(`airtable_error ${resp.status}: ${text}`);
+      logError(error, { endpoint: '/api/airtable/order', orderId: idempotency_key, payloadPreview: { status: resp.status } });
       try { console.error('[airtable/order] airtable_error', resp.status, String(text).slice(0, 200)); } catch {}
       return res.status(resp.status).json({ ok: false, error: 'airtable_error', details: text });
     }
@@ -637,6 +666,7 @@ export default async function handler(req, res) {
           }
         }
       } catch (e) {
+        logError(e, { endpoint: '/api/airtable/order/dropbox', orderId: orderId || idempotency_key });
         try { console.error('[airtable/order] dropbox error', e?.message || String(e)); } catch {}
       }
     } else {
@@ -645,6 +675,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ ok: true, record: rec ? { id: rec.id, created: !!rec.created } : null, orderId: orderId || null, dropbox });
   } catch (e) {
+    logError(e, { endpoint: '/api/airtable/order', orderId: idempotency_key || 'unknown' });
     try { console.error('[airtable/order] exception', e?.message || String(e)); } catch {}
     return res.status(500).json({ ok: false, error: 'airtable_exception', details: e?.message || String(e) });
   }
