@@ -38,6 +38,44 @@ async function pngsToPdf(pngDataUrls, opts = {}) {
   return dataUri;
 }
 
+// Helper function to compose consistent upload filenames matching backend pattern
+function composeUploadFilename({ areaKey, method, product, colors, qty, ext }) {
+  const sanitizeSegment = (s) => {
+    return String(s || '')
+      .trim()
+      .replace(/\s+/g, '_')
+      .replace(/[^a-zA-Z0-9_\-\.]+/g, '-')
+      .replace(/_+/g, '_')
+      .replace(/-+/g, '-')
+      .replace(/^[_\-]+|[_\-]+$/g, '');
+  };
+  
+  const colorsPart = (() => {
+    if (Array.isArray(colors) && colors.length) {
+      return colors.map((c) => sanitizeSegment(c)).filter(Boolean).join('_');
+    }
+    if (typeof colors === 'string' && colors.trim()) {
+      return colors
+        .split(/[\s,;]+/)
+        .map((c) => sanitizeSegment(c))
+        .filter(Boolean)
+        .join('_');
+    }
+    return '';
+  })();
+  
+  const parts = [
+    sanitizeSegment(areaKey || 'area'),
+    sanitizeSegment(method || 'print'),
+    sanitizeSegment(product || 'product'),
+    colorsPart,
+    sanitizeSegment(qty == null ? '' : String(qty)),
+  ].filter(Boolean);
+  
+  const base = parts.join('_');
+  return ext ? `${base}.${ext}` : base;
+}
+
 export default function CheckoutModal({ open, onClose, cartSummary, prefillContact }) {
   const { t, language } = useLanguage();
   const { toast } = useToast();
@@ -399,7 +437,16 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
                 const baseImage = `/schematics/${side}.png`;
                 const mockupDataUrl = await composeMockupImage({ areaKey, baseImage, designUrl: d.url });
                 if (mockupDataUrl) {
-                  pushUpload({ areaKey, method: 'mockup', product, colors: activeColors, qty: totalQtyForItem, dataUrl: mockupDataUrl, fileName: `${areaKey}-mockup.png` });
+                  // Use consistent filename pattern matching backend: {areaKey}_{method}_{product}_{colors}_{qty}.png
+                  const mockupFileName = composeUploadFilename({ 
+                    areaKey, 
+                    method: 'mockup', 
+                    product, 
+                    colors: activeColors, 
+                    qty: totalQtyForItem, 
+                    ext: 'png' 
+                  });
+                  pushUpload({ areaKey, method: 'mockup', product, colors: activeColors, qty: totalQtyForItem, dataUrl: mockupDataUrl, fileName: mockupFileName });
                 }
               } catch (_) {}
             }
@@ -438,7 +485,9 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
               if (pagePngs.length > 0) {
                 const pdfDataUrl = await pngsToPdf(pagePngs, { widthPx: 1240, heightPx: 1754 });
                 if (pdfDataUrl) {
-                  pushUpload({ areaKey: 'worksheet', method: 'worksheet', product, colors: activeColors, qty: totalQtyForItem, dataUrl: pdfDataUrl, fileName: 'worksheet.pdf' });
+                  // Use consistent filename pattern for worksheet: WS-{product}.pdf (backend will prepend orderId)
+                  const worksheetFileName = `WS-${product}.pdf`;
+                  pushUpload({ areaKey: 'worksheet', method: 'worksheet', product, colors: activeColors, qty: totalQtyForItem, dataUrl: pdfDataUrl, fileName: worksheetFileName });
                 }
               }
             } catch (_) {}
