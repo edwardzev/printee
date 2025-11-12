@@ -286,8 +286,11 @@ export async function composeWorksheetImage({
         } catch {}
       }
       // Try to render the uploaded design; if it's a PDF or fails to load, draw a placeholder
+      // Prefer originalUrl (the actual uploaded file, e.g., PDF) over url (preview/raster)
+      // so the worksheet shows the actual file that will be used in production
       try {
-        const di = await loadImage(d.url);
+        const designFileUrl = (d.originalUrl && typeof d.originalUrl === 'string') ? d.originalUrl : d.url;
+        const di = await loadImage(designFileUrl);
         // fit contain into design cell; horizontally center, vertically top-align
         const scale = Math.min(cellW / di.width, effH / di.height);
         const dw2 = Math.round(di.width * scale);
