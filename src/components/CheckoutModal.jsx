@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { composeMockupImage } from '@/lib/composeMockupImage';
 import { composeWorksheetImage } from '@/lib/composeWorksheetImage';
 import { deriveDiscountedPricing, DEFAULT_DISCOUNT_RATE } from '@/lib/discountHelpers';
+import { buildCartItemsForAirtable } from '@/lib/buildCartItemsForAirtable';
 // Lazy import for PDF generation to avoid bundle bloat when not needed
 let pdfLibPromise = null;
 async function ensurePdfLib() {
@@ -310,6 +311,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
         const campaignValue = googleAds.campaign || '';
         const searchValue = googleAds.keyword || '';
         const deviceValue = trackingMetadata.device || '';
+        const cartItemsPayload = buildCartItemsForAirtable(cartItems);
         const prelim = await fetch('/api/airtable/order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -319,6 +321,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
             campaign: campaignValue,
             search: searchValue,
             device: deviceValue,
+            cart: { items: cartItemsPayload },
             customer: {
               name,
               phone,
@@ -450,6 +453,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       const total = baseTotal;
       const financialBlock = { subtotal, delivery, vat, total, payment_method: method };
       const builtUploads = await uploads;
+      const cartItemsPayload = buildCartItemsForAirtable(cartItems);
       const enriched = {
         idempotency_key: idempotencyKeyRef.current,
         gclid: payload?.tracking?.googleAds?.gclid || '',
@@ -466,31 +470,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
         },
         financial: financialBlock,
         cart: {
-          items: (cartItems || []).map((i) => {
-            // Normalize selected print areas
-            const areas = (i.selectedPrintAreas || []).map((sel) => {
-              if (!sel) return null;
-              if (typeof sel === 'string') return { areaKey: sel, method: 'print', printColor: 'as-is', designerComments: '' };
-              return {
-                areaKey: sel.areaKey,
-                method: sel.method || 'print',
-                printColor: sel.printColor || 'as-is',
-                designerComments: sel.designerComments || '',
-              };
-            }).filter(Boolean);
-
-            // Ensure sizeMatrices exists; fallback from legacy single color/sizeMatrix if needed
-            const matrices = (i.sizeMatrices && typeof i.sizeMatrices === 'object')
-              ? i.sizeMatrices
-              : (i.color ? { [i.color]: (i.sizeMatrix || {}) } : {});
-
-            return {
-              productSku: i.productSku,
-              productName: i.productName,
-              sizeMatrices: matrices,
-              selectedPrintAreas: areas,
-            };
-          }),
+          items: cartItemsPayload,
         },
         // Actual files to upload server-side
         uploads: builtUploads,

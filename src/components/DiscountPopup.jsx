@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCart } from '@/contexts/CartContext';
 import { buildUploadsFromCart } from '@/lib/buildUploadsFromCart';
+import { buildCartItemsForAirtable } from '@/lib/buildCartItemsForAirtable';
 
 const DiscountPopup = ({ open, onOpenChange, savingsAmount = '' }) => {
   const { t } = useLanguage();
@@ -55,6 +56,15 @@ const DiscountPopup = ({ open, onOpenChange, savingsAmount = '' }) => {
       
       // Build uploads list from cart items using shared utility
       const uploads = buildUploadsFromCart(cartItems);
+      const cartItemsPayload = buildCartItemsForAirtable(cartItems);
+      const cartUploads = uploads.map((u) => ({
+        areaKey: u.areaKey,
+        method: u.method,
+        product: u.product,
+        colors: u.colors,
+        qty: u.qty,
+        fileName: u.fileName,
+      }));
       
       const googleAds = payload?.tracking?.googleAds || {};
       const metadata = payload?.tracking?.metadata || {};
@@ -66,6 +76,8 @@ const DiscountPopup = ({ open, onOpenChange, savingsAmount = '' }) => {
         campaign: googleAds.campaign || '',
         search: googleAds.keyword || '',
         device: metadata.device || '',
+        cart: { items: cartItemsPayload },
+        cartUploads,
         customer: {
           name: name.trim(),
           phone: phone.trim(),
