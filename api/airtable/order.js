@@ -112,6 +112,74 @@ function normalizeDropboxFileRaw(link) {
   }
 }
 
+function formatPrimitiveForAirtable(value) {
+  if (value === null || value === undefined) return '—';
+  if (typeof value === 'string') {
+    if (!value.trim()) return '""';
+    return value.replace(/\r?\n/g, '\\n');
+  }
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) return '0';
+    return String(value);
+  }
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  if (value instanceof Date) return value.toISOString();
+  return JSON.stringify(value);
+}
+
+function formatValueForAirtable(value, depth = 0) {
+  const indent = '  '.repeat(depth);
+  const lines = [];
+
+  if (Array.isArray(value)) {
+    if (!value.length) {
+      lines.push(`${indent}(none)`);
+      return lines;
+    }
+    for (const entry of value) {
+      const childLines = formatValueForAirtable(entry, depth + 1);
+      if (!childLines.length) continue;
+      const [first, ...rest] = childLines;
+      lines.push(`${indent}- ${first.trimStart()}`);
+      for (const remainder of rest) {
+        lines.push(remainder);
+      }
+    }
+    return lines;
+  }
+
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value);
+    if (!entries.length) {
+      lines.push(`${indent}(empty)`);
+      return lines;
+    }
+    for (const [key, val] of entries) {
+      const childLines = formatValueForAirtable(val, depth + 1);
+      if (!childLines.length) {
+        lines.push(`${indent}${key}:`);
+        continue;
+      }
+      if (childLines.length === 1) {
+        lines.push(`${indent}${key}: ${childLines[0].trimStart()}`);
+      } else {
+        lines.push(`${indent}${key}:`);
+        for (const remainder of childLines) {
+          lines.push(remainder);
+        }
+      }
+    }
+    return lines;
+  }
+
+  lines.push(`${indent}${formatPrimitiveForAirtable(value)}`);
+  return lines;
+}
+
+function formatForAirtableLongText(value) {
+  return formatValueForAirtable(value).join('\n');
+}
+
 async function airtableFetchRecord(baseId, table, recordId, token) {
   const url = `${API_URL}/${encodeURIComponent(baseId)}/${encodeURIComponent(table)}/${encodeURIComponent(recordId)}`;
   const resp = await fetch(url, {
@@ -506,7 +574,7 @@ export default async function handler(req, res) {
         const patchFields = {};
         try {
           if (fCustomerText && customer) {
-            patchFields[fCustomerText] = JSON.stringify({
+            patchFields[fCustomerText] = formatForAirtableLongText({
               name: customer.name || '',
               phone: customer.phone || '',
               email: customer.email || '',
@@ -568,7 +636,7 @@ export default async function handler(req, res) {
                 if (keys.length === 1) financePayload.dropbox_worksheet_link = financePayload.dropbox_worksheet_links[keys[0]];
               }
               // Ignore invrec in pre-payment stage; it isn't present yet
-              patchFields[fFinanceText] = JSON.stringify(financePayload);
+              patchFields[fFinanceText] = formatForAirtableLongText(financePayload);
             }
           }
           if (fCartText && (cart || (Array.isArray(cartUploads) && cartUploads.length))) {
@@ -590,7 +658,7 @@ export default async function handler(req, res) {
                 return { areaKey, method, product, colors, qty, fileName, path };
               });
             }
-            patchFields[fCartText] = JSON.stringify(payload);
+            patchFields[fCartText] = formatForAirtableLongText(payload);
           }
 
           // If configured, add worksheet attachments to the dedicated Airtable attachment field.
