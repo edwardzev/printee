@@ -29,6 +29,7 @@ function getEnv() {
     fCartText: process.env.AIRTABLE_FIELD_CART_TEXT || 'cart_text',
     fCustomerText: process.env.AIRTABLE_FIELD_CUSTOMER_TEXT || 'customer_text',
     fFinanceText: process.env.AIRTABLE_FIELD_FINANCE_TEXT || 'finance_text',
+    fActionLog: process.env.AIRTABLE_FIELD_ACTION_LOG || 'Customer Action Log',
     fPaid: process.env.AIRTABLE_FIELD_PAID || 'paid',
     fInvrecNum: process.env.AIRTABLE_FIELD_INVREC_NUM || 'invrec_num',
     fInvrecLink: process.env.AIRTABLE_FIELD_INVREC_LINK || 'invrec_link',
@@ -409,6 +410,7 @@ export default async function handler(req, res) {
   const financial = (body.financial && typeof body.financial === 'object') ? body.financial : null;
   const cart = (body.cart && typeof body.cart === 'object') ? body.cart : null;
   const cartUploads = Array.isArray(body.cartUploads) ? body.cartUploads : [];
+  const customerActionLog = typeof body.customerActionLog === 'string' ? body.customerActionLog.trim() : '';
   if (!idempotency_key || idempotency_key.length < 6) {
     return res.status(400).json({ ok: false, error: 'invalid_idempotency_key' });
   }
@@ -659,6 +661,9 @@ export default async function handler(req, res) {
               });
             }
             patchFields[fCartText] = formatForAirtableLongText(payload);
+          }
+          if (fActionLog && customerActionLog) {
+            patchFields[fActionLog] = customerActionLog;
           }
 
           // If configured, add worksheet attachments to the dedicated Airtable attachment field.

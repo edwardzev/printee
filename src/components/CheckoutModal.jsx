@@ -44,7 +44,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
   const { toast } = useToast();
   const { mergePayload, payload, cartItems, getTotalItems } = useCart();
   const navigate = useNavigate();
-  const { record, flushLogsToAirtable } = useActionLogger();
+  const { record, flushLogsToAirtable, clearLogs, getFormattedLog } = useActionLogger();
   const [method, setMethod] = useState('card');
   const [name, setName] = useState(prefillContact?.name || '');
   const [phone, setPhone] = useState(prefillContact?.phone || '');
@@ -333,6 +333,11 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       },
     };
 
+    let actionLogForAirtable = '';
+    try {
+      actionLogForAirtable = getFormattedLog();
+    } catch (_) {}
+
     try {
       record('checkout_payload_ready', {
         method,
@@ -580,6 +585,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
           qty: u.qty,
           fileName: u.fileName,
         })),
+        customerActionLog: actionLogForAirtable,
       };
 
       try {
@@ -623,7 +629,12 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
 
     try {
       const recordIdForFlush = airtableRecordIdRef.current || payload?.airtable_record_id || '';
-      if (recordIdForFlush) {
+      if (actionLogForAirtable) {
+        clearLogs();
+        try {
+          record('checkout_flush_via_server', { recordId: recordIdForFlush || null });
+        } catch (_) {}
+      } else if (recordIdForFlush) {
         try {
           record('checkout_prepare_flush', { recordId: recordIdForFlush });
         } catch (_) {}

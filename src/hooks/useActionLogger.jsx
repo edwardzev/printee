@@ -223,12 +223,15 @@ function useProvideActionLogger(options = {}) {
     }
   }, [clearLogs, options.apiKey, options.baseId, options.tableName, persistLogs]);
 
+  const getFormattedLog = useCallback(() => formatEntriesForAirtable(logRef.current), []);
+
   const value = useMemo(() => ({
     log: logRef.current,
     record,
     flushLogsToAirtable,
     clearLogs,
-  }), [record, flushLogsToAirtable, clearLogs]);
+    getFormattedLog,
+  }), [record, flushLogsToAirtable, clearLogs, getFormattedLog]);
 
   return value;
 }
