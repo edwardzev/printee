@@ -7,6 +7,56 @@ const ACTION_BUFFER_THRESHOLD = 5;
 // Interval (ms) for auto-persisting logs to localStorage.
 const AUTO_PERSIST_INTERVAL = 10_000;
 
+function formatPrimitive(value) {
+  if (value === null || value === undefined) return '—';
+  if (typeof value === 'string') return value.trim() ? value : '""';
+  if (typeof value === 'number') return Number.isFinite(value) ? String(value) : 'NaN';
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  if (value instanceof Date) return value.toISOString();
+  return JSON.stringify(value);
+}
+
+function formatValue(value, depth = 0) {
+  const indent = '  '.repeat(depth);
+  if (Array.isArray(value)) {
+    if (!value.length) return `${indent}(none)`;
+    return value
+      .map((entry) => {
+        const formatted = formatValue(entry, depth + 1);
+        const [first, ...rest] = formatted.split('\n');
+        const lines = [`${indent}- ${first.trim()}`];
+        rest.forEach((line) => lines.push(line));
+        return lines.join('\n');
+      })
+      .join('\n');
+  }
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value);
+    if (!entries.length) return `${indent}(empty)`;
+    return entries
+      .map(([key, val]) => {
+        const formatted = formatValue(val, depth + 1);
+        if (!formatted.includes('\n')) {
+          return `${indent}${key}: ${formatted.trim()}`;
+        }
+        return `${indent}${key}:\n${formatted}`;
+      })
+      .join('\n');
+  }
+  return `${indent}${formatPrimitive(value)}`;
+}
+
+function formatEntriesForAirtable(entries) {
+  return entries
+    .map((entry) => {
+      const header = `- ${entry.timestamp} • ${entry.action}`;
+      if (entry.details == null || entry.details === undefined) return header;
+      const block = formatValue(entry.details, 1);
+      return `${header}\n${block}`;
+    })
+    .join('\n');
+}
+
 function readLogsFromStorage() {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -134,7 +184,7 @@ function useProvideActionLogger(options = {}) {
 
     const body = JSON.stringify({
       fields: {
-        'Customer Action Log': JSON.stringify(entries, null, 2),
+        'Customer Action Log': formatEntriesForAirtable(entries),
       },
     });
 
