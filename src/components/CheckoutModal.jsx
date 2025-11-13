@@ -13,6 +13,7 @@ import { composeMockupImage } from '@/lib/composeMockupImage';
 import { composeWorksheetImage } from '@/lib/composeWorksheetImage';
 import { deriveDiscountedPricing, DEFAULT_DISCOUNT_RATE } from '@/lib/discountHelpers';
 import { buildCartItemsForAirtable } from '@/lib/buildCartItemsForAirtable';
+import { useActionLogger } from '@/hooks/useActionLogger';
 // Lazy import for PDF generation to avoid bundle bloat when not needed
 let pdfLibPromise = null;
 async function ensurePdfLib() {
@@ -43,6 +44,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
   const { toast } = useToast();
   const { mergePayload, payload, cartItems, getTotalItems } = useCart();
   const navigate = useNavigate();
+  const { record, flushLogsToAirtable } = useActionLogger();
   const [method, setMethod] = useState('card');
   const [name, setName] = useState(prefillContact?.name || '');
   const [phone, setPhone] = useState(prefillContact?.phone || '');
@@ -62,8 +64,14 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
   // Keep a reference to the single background forward promise so we can await it before navigating to iCount
   const forwardPromiseRef = useRef(null);
   const idempotencyKeyRef = useRef((payload && payload.idempotency_key) || `local-${Date.now()}-${Math.random().toString(36).slice(2,9)}`);
+  const airtableRecordIdRef = useRef((payload && payload.airtable_record_id) || '');
   const dialogRef = useRef(null);
   const previouslyFocused = useRef(null);
+  const loggedOpenRef = useRef(false);
+
+  useEffect(() => {
+    airtableRecordIdRef.current = payload?.airtable_record_id || '';
+  }, [payload?.airtable_record_id]);
 
   const currencyFormatter = useMemo(() => {
     const locale = language === 'he' ? 'he-IL' : 'en-IL';
@@ -93,6 +101,37 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       return `₪${safe.toFixed(2)}`;
     }
   }, [currencyFormatter]);
+
+  const cartItemCount = Array.isArray(cartItems) ? cartItems.length : 0;
+
+  useEffect(() => {
+    if (open && !loggedOpenRef.current) {
+      loggedOpenRef.current = true;
+      try {
+        record('checkout_modal_open', {
+          method,
+          cartItems: cartItemCount,
+          subtotal: Number(cartSummary?.total ?? 0),
+        });
+      } catch (_) {}
+    } else if (!open) {
+      loggedOpenRef.current = false;
+    }
+  }, [open, record, method, cartItemCount, cartSummary?.total]);
+
+  const handlePaymentMethodChange = useCallback((nextId) => {
+    if (!nextId) return;
+    setMethod((prev) => {
+      if (prev === nextId) return prev;
+      try {
+        record('checkout_select_payment_method', {
+          previous: prev,
+          next: nextId,
+        });
+      } catch (_) {}
+      return nextId;
+    });
+  }, [record]);
 
   // Focus management: when modal opens, save previously focused element and move
   // focus into the dialog. When it closes, restore focus.
@@ -209,7 +248,20 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
   };
 
   const handleConfirm = async () => {
-    if (requireContact(method) && (!name.trim() || !phone.trim() || !email.trim())) {
+    const contactMissing = requireContact(method) && (!name.trim() || !phone.trim() || !email.trim());
+    try {
+      record('checkout_confirm_clicked', {
+        method,
+        cartItems: cartItemCount,
+        subtotal: Number(cartSummary?.total ?? 0),
+        contactMissing,
+      });
+    } catch (_) {}
+
+    if (contactMissing) {
+      try {
+        record('checkout_validation_error', { reason: 'missing_contact', method });
+      } catch (_) {}
       toast({ title: 'אנא מלא/י שם, טלפון ואימייל' , variant: 'destructive'});
       return;
     }
@@ -220,6 +272,15 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
     } catch (err) {
       // ignore
     }
+
+    try {
+      record('checkout_contact_captured', {
+        method,
+        nameProvided: !!name.trim(),
+        phoneProvided: !!phone.trim(),
+        emailProvided: !!email.trim(),
+      });
+    } catch (_) {}
 
   // Build a sanitized cart (strip File objects) but preserve uploadedDesigns.url (which may contain data URLs)
     const sanitizedCart = (Array.isArray(cartItems) ? cartItems : []).map((i) => {
@@ -272,6 +333,15 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       },
     };
 
+    try {
+      record('checkout_payload_ready', {
+        method,
+        cartItems: sanitizedCart.length,
+        subtotal: subtotalAfterDiscount,
+        delivery: deliveryCost,
+      });
+    } catch (_) {}
+
     setProcessing(true);
 
     // Fire-and-forget order POST; prefer sendBeacon to avoid abort on navigation, fallback to fetch
@@ -291,6 +361,13 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
           keepalive: true,
         }).catch(() => {});
       }
+      try {
+        record('checkout_order_posted', {
+          method,
+          transport: sent ? 'beacon' : 'fetch',
+          payloadBytes: json.length,
+        });
+      } catch (_) {}
     } catch (_) {}
 
     // Enrich Airtable record with Customer + Financial + Cart and attach file paths.
@@ -298,6 +375,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       // First: upsert order in Airtable to get orderId and (optionally) a Dropbox link
       let orderIdFromAirtable = payload?.airtable_order_id || '';
       let dropboxSharedLink = payload?.financial?.dropbox_shared_link || '';
+      let airtableRecordId = airtableRecordIdRef.current || '';
 
       const subtotal0 = subtotalAfterDiscount;
       const delivery0 = deliveryCost;
@@ -343,8 +421,20 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
           }),
         });
         const prelimJson = await prelim.json().catch(() => null);
+        try {
+          record('checkout_airtable_preflight', {
+            ok: prelimJson?.ok !== false,
+            recordId: prelimJson?.record?.id || null,
+            orderId: prelimJson?.orderId || null,
+          });
+        } catch (_) {}
         if (prelimJson && prelimJson.orderId) {
           orderIdFromAirtable = prelimJson.orderId;
+        }
+        if (prelimJson && prelimJson.record && prelimJson.record.id) {
+          airtableRecordId = prelimJson.record.id;
+          airtableRecordIdRef.current = prelimJson.record.id;
+          try { mergePayload({ airtable_record_id: prelimJson.record.id }); } catch {}
         }
         if (prelimJson && prelimJson.dropbox && prelimJson.dropbox.shared_link) {
           dropboxSharedLink = prelimJson.dropbox.shared_link;
@@ -355,7 +445,14 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
         if (dropboxSharedLink) {
           try { mergePayload({ financial: { ...(payload?.financial || {}), dropbox_shared_link: dropboxSharedLink } }); } catch {}
         }
-      } catch {}
+        if (!airtableRecordId && payload?.airtable_record_id) {
+          airtableRecordId = payload.airtable_record_id;
+        }
+      } catch (err) {
+        try {
+          record('checkout_airtable_preflight_exception', { error: err?.message || String(err) });
+        } catch (_) {}
+      }
 
       // Recreate the same uploads we generated in Cart for naming consistency
       const uploads = (async () => {
@@ -493,13 +590,62 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
         });
         try {
           const j = await resp.json().catch(() => null);
+          if (j && j.record && j.record.id) {
+            airtableRecordIdRef.current = j.record.id;
+            try { mergePayload({ airtable_record_id: j.record.id }); } catch (e) {}
+          }
           const link = j && j.dropbox && j.dropbox.shared_link;
           if (link) {
             try { mergePayload({ financial: { ...(payload?.financial || {}), dropbox_shared_link: link } }); } catch (e) {}
           }
+          try {
+            record('checkout_airtable_patch', {
+              ok: j?.ok !== false,
+              recordId: j?.record?.id || airtableRecordIdRef.current || null,
+              orderId: j?.orderId || null,
+            });
+          } catch (_) {}
+        } catch (jsonErr) {
+          try {
+            record('checkout_airtable_patch_parse_error', { error: jsonErr?.message || String(jsonErr) });
+          } catch (_) {}
+        }
+      } catch (patchErr) {
+        try {
+          record('checkout_airtable_patch_exception', { error: patchErr?.message || String(patchErr) });
         } catch (_) {}
+      }
+    } catch (blockErr) {
+      try {
+        record('checkout_airtable_block_exception', { error: blockErr?.message || String(blockErr) });
       } catch (_) {}
-    } catch (_) {}
+    }
+
+    try {
+      const recordIdForFlush = airtableRecordIdRef.current || payload?.airtable_record_id || '';
+      if (recordIdForFlush) {
+        try {
+          record('checkout_prepare_flush', { recordId: recordIdForFlush });
+        } catch (_) {}
+        const flushResult = await flushLogsToAirtable(recordIdForFlush);
+        if (!flushResult.ok) {
+          try {
+            record('checkout_flush_failed', {
+              recordId: recordIdForFlush,
+              error: flushResult.error?.message || String(flushResult.error || 'unknown'),
+            });
+          } catch (_) {}
+        }
+      } else {
+        try {
+          record('checkout_flush_skipped', { reason: 'missing_record_id' });
+        } catch (_) {}
+      }
+    } catch (err) {
+      try {
+        record('checkout_flush_exception', { error: err?.message || String(err) });
+      } catch (_) {}
+    }
 
 
     // helper: compute total charge (incl. VAT and delivery)
@@ -638,7 +784,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
     if (e.key === 'Home') next = 0;
     if (e.key === 'End') next = methodCards.length - 1;
     const nextId = methodCards[next].id;
-    setMethod(nextId);
+    handlePaymentMethodChange(nextId);
     // focus the new option
     const node = methodRefs.current[next];
     if (node && node.focus) node.focus();
@@ -700,7 +846,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
                 tabIndex={method === id ? 0 : -1}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => setMethod(id)}
+                onClick={() => handlePaymentMethodChange(id)}
                 className={`flex items-center gap-3 p-3 rounded-lg border ${method === id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'} text-sm`}
               >
                 <div className={`p-2 rounded-md ${method === id ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700'}`}>

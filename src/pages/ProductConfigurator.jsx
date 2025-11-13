@@ -19,6 +19,7 @@ import { useMediaQuery } from '@/hooks/use-media-query';
 import PrintAreaSelector from '@/components/PrintAreaSelector';
 import MockupCanvas from '@/components/MockupCanvas';
 import PricePanel from '@/components/PricePanel';
+import { useActionLogger } from '@/hooks/useActionLogger';
 
 const DISCOUNT_RATE = 0.05;
 
@@ -29,6 +30,7 @@ const ProductConfigurator = () => {
   const { addToCart, updateCartItem, mergePayload, payload } = useCart();
   const { toast } = useToast();
   const location = useLocation();
+  const { record } = useActionLogger();
 
   const product = products.find(p => p.sku === sku);
   const discountClaimed = (() => {
@@ -51,6 +53,36 @@ const ProductConfigurator = () => {
   // selectedPrintAreas is an array of { areaKey, method } where method is 'print' or 'embo'
   const [selectedPrintAreas, setSelectedPrintAreas] = useState([]);
   const [uploadedDesigns, setUploadedDesigns] = useState({});
+
+  const handlePrintAreasChange = useCallback((next) => {
+    setSelectedPrintAreas(next);
+    try {
+      const normalized = Array.isArray(next)
+        ? next
+            .map((entry) => (typeof entry === 'string' ? { areaKey: entry, method: 'print' } : entry))
+            .filter((entry) => entry && entry.areaKey)
+        : [];
+      record('configurator_update_print_areas', {
+        sku,
+        count: normalized.length,
+        areas: normalized.map((entry) => entry.areaKey),
+        methods: normalized.reduce((acc, entry) => {
+          acc[entry.areaKey] = entry.method || 'print';
+          return acc;
+        }, {}),
+      });
+    } catch (_) {}
+  }, [record, sku]);
+
+  useEffect(() => {
+    if (!product) return;
+    try {
+      record('configurator_view_product', {
+        sku: product.sku,
+        language,
+      });
+    } catch (_) {}
+  }, [product, language, record]);
 
   // Do not preselect any color; user must actively choose
 
@@ -79,14 +111,14 @@ const ProductConfigurator = () => {
       if (prefill.selectedPrintAreas) {
         const s = prefill.selectedPrintAreas;
         if (Array.isArray(s) && s.length && typeof s[0] === 'string') {
-          setSelectedPrintAreas(s.map(k => ({ areaKey: k, method: 'print' })));
+          handlePrintAreasChange(s.map(k => ({ areaKey: k, method: 'print' })));
         } else {
-          setSelectedPrintAreas(s);
+          handlePrintAreasChange(s);
         }
       }
   if (prefill.uploadedDesigns) setUploadedDesigns(prefill.uploadedDesigns);
     }
-  }, [location, sku]);
+  }, [location, sku, handlePrintAreasChange]);
 
   // Persist sizeMatrices as user edits sizes per color
   useEffect(() => {
@@ -207,12 +239,22 @@ const ProductConfigurator = () => {
   const handleToggleColor = (color) => {
     setSelectedColors(prev => {
       const set = new Set(prev || []);
-      if (set.has(color)) set.delete(color);
+      const had = set.has(color);
+      if (had) set.delete(color);
       else set.add(color);
       const next = Array.from(set);
 
+      try {
+        record('configurator_toggle_color', {
+          sku,
+          color,
+          selected: !had,
+          totalSelected: next.length,
+        });
+      } catch (_) {}
+
       // After state updates, if the color was just added, scroll to its size matrix (all viewports)
-      if (next.includes(color)) {
+      if (!had && next.includes(color)) {
         // wait a tick for DOM to update
         setTimeout(() => {
           try {
@@ -372,7 +414,7 @@ const ProductConfigurator = () => {
       if (s.areaKey === areaKey) return { ...s, ...patch };
       return s;
     });
-    setSelectedPrintAreas(next);
+    handlePrintAreasChange(next);
     try { mergePayload({ selectedPrintAreas: next }); } catch (er) {}
   };
 
@@ -836,7 +878,7 @@ const ProductConfigurator = () => {
                 <PrintAreaSelector
                   availableAreas={product.activePrintAreas}
                   selectedAreas={selectedPrintAreas}
-                  onChange={setSelectedPrintAreas}
+                  onChange={handlePrintAreasChange}
                 />
                 {/* per-area comments/print color are rendered below with the upload area so they are tied to each selected area */}
               </motion.div>
