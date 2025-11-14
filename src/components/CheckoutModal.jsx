@@ -103,6 +103,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
   }, [currencyFormatter]);
 
   const cartItemCount = Array.isArray(cartItems) ? cartItems.length : 0;
+  const existingConversionTime = payload?.tracking?.metadata?.conversionTime || '';
 
   useEffect(() => {
     if (open && !loggedOpenRef.current) {
@@ -266,6 +267,20 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       return;
     }
 
+    const conversionTime = existingConversionTime || new Date().toISOString();
+    if (!existingConversionTime) {
+      try {
+        const nextTracking = {
+          ...(payload?.tracking || {}),
+          metadata: {
+            ...(payload?.tracking?.metadata || {}),
+            conversionTime,
+          },
+        };
+        mergePayload({ tracking: nextTracking });
+      } catch (_) {}
+    }
+
     // Merge contact + payment method into shared payload
     try {
       mergePayload({ contact: { name: name.trim(), phone: phone.trim(), email: email.trim() }, paymentMethod: method });
@@ -404,6 +419,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
             campaign: campaignValue,
             search: searchValue,
             device: deviceValue,
+            conversion_time: conversionTime,
             cart: { items: cartItemsPayload },
             customer: {
               name,
@@ -562,6 +578,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
         campaign: payload?.tracking?.googleAds?.campaign || '',
         search: payload?.tracking?.googleAds?.keyword || '',
         device: payload?.tracking?.metadata?.device || '',
+        conversion_time: conversionTime,
         customer: {
           name,
           phone,
