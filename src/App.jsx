@@ -4,7 +4,6 @@ import { Helmet } from 'react-helmet';
 import { Toaster } from '@/components/ui/toaster';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { CartProvider, useCart } from '@/contexts/CartContext';
-import { ActionLoggerProvider } from '@/hooks/useActionLogger';
 import DevErrorBoundary from '@/components/DevErrorBoundary';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -16,6 +15,7 @@ import Cart from '@/pages/Cart';
 import CheckoutResult from '@/pages/CheckoutResult';
 import ThankYou from '@/pages/ThankYou';
 import ThankYouCC from '@/pages/ThankYouCC';
+// Backend removed: iCount thank-you route may be unused but can remain if purely client-side
 import Admin from '@/pages/Admin';
 import Terms from '@/pages/Terms';
 import Privacy from '@/pages/Privacy';
@@ -29,11 +29,7 @@ import MethodsOfBranding from '@/pages/MethodsOfBranding';
 import AccessibilityStatement from '@/pages/AccessibilityStatement';
 import Works from '@/pages/Works';
 import Contact from '@/pages/Contact';
-import WinterCampaign from '@/pages/WinterCampaign';
 
-/* --------------------------------------------------------------------------
-   Scroll-to-top on route change
--------------------------------------------------------------------------- */
 function ScrollToTop() {
   const { pathname, search } = useLocation();
   useEffect(() => {
@@ -46,9 +42,7 @@ function ScrollToTop() {
   return null;
 }
 
-/* --------------------------------------------------------------------------
-   Google Ads + GA4 pageview tracking on SPA navigation
--------------------------------------------------------------------------- */
+// Send Google Ads and GA4 page_view on SPA route changes
 function AdsRouteTracker() {
   const { pathname, search } = useLocation();
   useEffect(() => {
@@ -57,14 +51,12 @@ function AdsRouteTracker() {
       if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
         const KEY = '__aw_last_path';
         const last = window[KEY];
-
+        // Avoid double-firing on initial load (index.html already called gtag config)
         if (last === path) return;
-
         if (last !== undefined) {
           window.gtag('config', 'AW-17646508237', { page_path: path });
           window.gtag('config', 'G-43KTYPJPNM', { page_path: path });
         }
-
         window[KEY] = path;
       }
     } catch {}
@@ -72,12 +64,11 @@ function AdsRouteTracker() {
   return null;
 }
 
-/* --------------------------------------------------------------------------
-   Google Ads tracking sync: gclid, utm_source, device, etc.
--------------------------------------------------------------------------- */
 function extractGclidFromCookieValue(raw) {
   if (!raw) return '';
   const value = String(raw).trim();
+  if (!value) return '';
+  // Google stores cookies in the format GCL.<timestamp>.<gclid>
   const segments = value.split('.');
   if (segments.length >= 3) {
     const candidate = segments[segments.length - 1];
@@ -91,7 +82,6 @@ function readGclidFromCookies() {
   try {
     const cookieSource = document.cookie || '';
     if (!cookieSource) return '';
-
     const entries = cookieSource.split(';');
     for (const entry of entries) {
       const pair = entry.trim();
@@ -99,65 +89,117 @@ function readGclidFromCookies() {
       const [key, ...rest] = pair.split('=');
       if (!key || rest.length === 0) continue;
       const lowerKey = key.trim().toLowerCase();
-
       if (lowerKey === 'gclid') {
-        return decodeURIComponent(rest.join('=')).trim();
+        const decoded = decodeURIComponent(rest.join('='));
+        const candidate = decoded.trim();
+        if (candidate) return candidate;
       }
-
       if (lowerKey === '_gcl_aw' || lowerKey === '_gcl_dc') {
-        return extractGclidFromCookieValue(decodeURIComponent(rest.join('=')));
+        const decoded = decodeURIComponent(rest.join('='));
+        const candidate = extractGclidFromCookieValue(decoded);
+        if (candidate) return candidate;
       }
     }
-  } catch {}
+  } catch (e) {
+    try { console.warn('[TrackingSync] Failed to parse cookies for gclid', e?.message || String(e)); } catch (_) {}
+  }
   return '';
 }
 
 function readStoredGoogleAds() {
   if (typeof window === 'undefined') return {};
-
   const readJson = (storage) => {
+    if (!storage || typeof storage.getItem !== 'function') return null;
     try {
-      const raw = storage?.getItem('printee:last-googleads');
+      const raw = storage.getItem('printee:last-googleads');
       if (!raw) return null;
-      return JSON.parse(raw);
-    } catch {
-      return null;
-    }
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') return parsed;
+    } catch (_) {}
+    return null;
   };
 
-  return (
-    readJson(window.sessionStorage) ||
-    readJson(window.localStorage) ||
-    {}
-  );
+  let data = null;
+  try { data = readJson(window.sessionStorage); } catch (_) {}
+  if (!data) {
+    try { data = readJson(window.localStorage); } catch (_) {}
+  }
+  if (data) {
+    if (!data.conversionTime) {
+      let storedConversion = '';
+      try { storedConversion = window.sessionStorage?.getItem('printee:last-conversion-time') || ''; } catch (_) {}
+      if (!storedConversion) {
+        try { storedConversion = window.localStorage?.getItem('printee:last-conversion-time') || ''; } catch (_) {}
+      }
+      if (storedConversion) data.conversionTime = storedConversion;
+    }
+    return data;
+  }
+
+  // Backwards compatibility for legacy storage key (gclid only)
+  const fallback = {};
+  let stored = '';
+  try { stored = (window.sessionStorage && window.sessionStorage.getItem('printee:last-gclid')) || ''; } catch (_) {}
+  if (!stored) {
+    try { stored = (window.localStorage && window.localStorage.getItem('printee:last-gclid')) || ''; } catch (_) {}
+  }
+  if (stored && typeof stored === 'string') fallback.gclid = stored.trim();
+  let storedConversion = '';
+  try { storedConversion = window.sessionStorage?.getItem('printee:last-conversion-time') || ''; } catch (_) {}
+  if (!storedConversion) {
+    try { storedConversion = window.localStorage?.getItem('printee:last-conversion-time') || ''; } catch (_) {}
+  }
+  if (storedConversion) fallback.conversionTime = storedConversion.trim();
+  return fallback;
 }
 
-function writeStoredGoogleAds(data) {
-  if (typeof window === 'undefined') return;
-  const serialized = JSON.stringify(data);
-  try { window.sessionStorage.setItem('printee:last-googleads', serialized); } catch {}
-  try { window.localStorage.setItem('printee:last-googleads', serialized); } catch {}
+function writeStoredGoogleAds(data, extras = {}) {
+  if (typeof window === 'undefined' || !data || typeof data !== 'object') return;
+  const payload = {
+    gclid: (data.gclid || '').trim(),
+    gbraid: (data.gbraid || '').trim(),
+    wbraid: (data.wbraid || '').trim(),
+    campaign: (data.campaign || '').trim(),
+    keyword: (data.keyword || '').trim(),
+    utmSource: (data.utmSource || '').trim(),
+    utmMedium: (data.utmMedium || '').trim(),
+    captureSource: (data.source || '').trim(),
+    lastCapturedAt: (data.lastCapturedAt || '').trim(),
+    conversionTime: (extras.conversionTime || data.conversionTime || '').trim(),
+  };
+  const serialized = JSON.stringify(payload);
+  try { if (window.sessionStorage) window.sessionStorage.setItem('printee:last-googleads', serialized); } catch (_) {}
+  try { if (window.localStorage) window.localStorage.setItem('printee:last-googleads', serialized); } catch (_) {}
 
-  if (data.gclid) {
-    try { window.sessionStorage.setItem('printee:last-gclid', data.gclid); } catch {}
-    try { window.localStorage.setItem('printee:last-gclid', data.gclid); } catch {}
+  if (payload.conversionTime) {
+    try { window.sessionStorage?.setItem('printee:last-conversion-time', payload.conversionTime); } catch (_) {}
+    try { window.localStorage?.setItem('printee:last-conversion-time', payload.conversionTime); } catch (_) {}
+  }
+
+  if (payload.gclid) {
+    try { if (window.sessionStorage) window.sessionStorage.setItem('printee:last-gclid', payload.gclid); } catch (_) {}
+    try { if (window.localStorage) window.localStorage.setItem('printee:last-gclid', payload.gclid); } catch (_) {}
   }
 }
 
 function detectDeviceCategory() {
   if (typeof navigator === 'undefined') return '';
-
-  const ua = navigator.userAgent || '';
-  const isTablet =
-    /ipad|tablet|nexus 7|nexus 9|nexus 10|xoom|silk|sm-t|kfapwi|kindle/i.test(ua) ||
-    (/android/i.test(ua) && !/mobile/i.test(ua));
-  if (isTablet) return 'tablet';
-
-  const isMobile =
-    /mobi|iphone|ipod|android.+mobile|blackberry|iemobile|opera mini/i.test(ua);
-  if (isMobile) return 'mobile';
-
-  return 'desktop';
+  try {
+    const nav = navigator;
+    if (nav.userAgentData && typeof nav.userAgentData === 'object') {
+      if (nav.userAgentData.mobile) return 'mobile';
+      const platform = String(nav.userAgentData.platform || '').toLowerCase();
+      if (platform.includes('android')) return 'tablet';
+    }
+    const ua = String(nav.userAgent || '');
+    const isTablet = /ipad|tablet|nexus 7|nexus 9|nexus 10|xoom|silk|sm-t|kfapwi|kindle/i.test(ua) || (/android/i.test(ua) && !/mobile/i.test(ua));
+    if (isTablet) return 'tablet';
+    const isMobile = /mobi|iphone|ipod|android.+mobile|blackberry|iemobile|opera mini/i.test(ua);
+    if (isMobile) return 'mobile';
+    return 'desktop';
+  } catch (_) {
+    return '';
+  }
 }
 
 function TrackingSync() {
@@ -165,187 +207,258 @@ function TrackingSync() {
   const location = useLocation();
   const hydratedRef = useRef(false);
 
-  // Initial hydration from cookie + saved storage
+  // On first mount, attempt to hydrate tracking data from storage or cookies.
   useEffect(() => {
     if (hydratedRef.current) return;
     hydratedRef.current = true;
-
+    const currentAds = payload?.tracking?.googleAds || {};
+    const currentMetadata = payload?.tracking?.metadata || {};
     const stored = readStoredGoogleAds();
     const cookieGclid = readGclidFromCookies();
-    const current = payload?.tracking?.googleAds || {};
-    const next = { ...current };
 
+    const nextAds = { ...currentAds };
+    const nextMetadata = { ...currentMetadata };
     let changed = false;
+    let metadataChanged = false;
 
-    if (!next.gclid) {
-      const gclid = stored?.gclid || cookieGclid;
+    const ensureConversionTime = (timestamp, overwrite = false) => {
+      if (!timestamp) return;
+      if (!overwrite && nextMetadata.conversionTime) return;
+      if (nextMetadata.conversionTime === timestamp) return;
+      nextMetadata.conversionTime = timestamp;
+      metadataChanged = true;
+    };
+
+    if (!nextAds.gclid) {
+      const gclid = (stored?.gclid || cookieGclid || '').trim();
       if (gclid) {
-        next.gclid = gclid;
-        next.source ||= stored?.source || 'cookie';
-        next.lastCapturedAt ||= stored?.lastCapturedAt || new Date().toISOString();
+        nextAds.gclid = gclid;
+        if (!nextAds.source) nextAds.source = stored?.captureSource || (stored?.gclid ? 'storage' : (cookieGclid ? 'cookie' : nextAds.source));
+        if (!nextAds.lastCapturedAt) nextAds.lastCapturedAt = stored?.lastCapturedAt || new Date().toISOString();
         changed = true;
+        ensureConversionTime(stored?.conversionTime || stored?.lastCapturedAt || new Date().toISOString(), !currentMetadata.conversionTime);
       }
     }
 
-    ['gbraid', 'wbraid', 'campaign', 'keyword', 'utmSource', 'utmMedium'].forEach((key) => {
-      if (!next[key] && stored?.[key]) {
-        next[key] = stored[key];
+    const copyField = (key, value, overwrite = false) => {
+      if (!value) return;
+      if (overwrite) {
+        if (nextAds[key] !== value) {
+          nextAds[key] = value;
+          changed = true;
+        }
+        return;
+      }
+      if (!nextAds[key]) {
+        nextAds[key] = value;
         changed = true;
       }
-    });
+    };
 
-    if (!changed) return;
+    copyField('gbraid', stored?.gbraid);
+    copyField('wbraid', stored?.wbraid);
+    copyField('campaign', stored?.campaign);
+    copyField('keyword', stored?.keyword);
+    copyField('utmSource', stored?.utmSource);
+    copyField('utmMedium', stored?.utmMedium);
+    copyField('source', stored?.captureSource);
+    copyField('lastCapturedAt', stored?.lastCapturedAt);
 
-    mergePayload({
-      tracking: {
-        ...(payload?.tracking || {}),
-        googleAds: next,
-      },
-    });
+    if (!nextMetadata.conversionTime && stored?.conversionTime) {
+      ensureConversionTime(stored.conversionTime);
+    }
 
-    writeStoredGoogleAds(next);
-  }, []);
+    if (!changed && !metadataChanged) return;
 
-  // Capture params from URL on route change
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const keys = [
-      'gclid',
-      'gbraid',
-      'wbraid',
-      'utm_campaign',
-      'utm_term',
-      'utm_source',
-      'utm_medium',
-    ];
-
-    let changed = false;
-
-    const current = payload?.tracking?.googleAds || {};
-    const next = { ...current };
-
-    const capturedAt = new Date().toISOString();
-
-    const gclid = params.get('gclid')?.trim();
-    const gbraid = params.get('gbraid')?.trim();
-    const wbraid = params.get('wbraid')?.trim();
-    const campaign = params.get('utm_campaign')?.trim();
-    const keyword = params.get('utm_term')?.trim();
-    const utmSource = params.get('utm_source')?.trim();
-    const utmMedium = params.get('utm_medium')?.trim();
-
-    if (gclid && gclid !== current.gclid) { next.gclid = gclid; changed = true; }
-    if (gbraid && gbraid !== current.gbraid) { next.gbraid = gbraid; changed = true; }
-    if (wbraid && wbraid !== current.wbraid) { next.wbraid = wbraid; changed = true; }
-    if (campaign && campaign !== current.campaign) { next.campaign = campaign; changed = true; }
-    if (keyword && keyword !== current.keyword) { next.keyword = keyword; changed = true; }
-    if (utmSource && utmSource !== current.utmSource) { next.utmSource = utmSource; changed = true; }
-    if (utmMedium && utmMedium !== current.utmMedium) { next.utmMedium = utmMedium; changed = true; }
-
-    if (!changed) return;
-
-    next.source = 'url_param';
-    next.lastCapturedAt = capturedAt;
-
-    mergePayload({
-      tracking: {
-        ...(payload?.tracking || {}),
-        googleAds: next,
-      },
-    });
-
-    writeStoredGoogleAds(next);
-  }, [location.search]);
-
-  // Track device type
-  useEffect(() => {
-    const device = detectDeviceCategory();
-    const current = payload?.tracking?.metadata?.device || '';
-    if (device && current !== device) {
+    try {
       mergePayload({
         tracking: {
           ...(payload?.tracking || {}),
-          metadata: { device },
+          googleAds: nextAds,
+          metadata: {
+            ...nextMetadata,
+          },
         },
       });
+    } catch (e) {
+      try { console.warn('[TrackingSync] mergePayload failed on hydrate', e?.message || String(e)); } catch (_) {}
     }
-  }, []);
+
+    writeStoredGoogleAds(nextAds, { conversionTime: nextMetadata.conversionTime });
+  }, [mergePayload, payload?.tracking]);
+
+  // On every route change, capture tracking params from the URL.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const search = location?.search || window.location.search || '';
+    if (!search) return;
+    const params = new URLSearchParams(search);
+    const gclidParam = (params.get('gclid') || '').trim();
+    const gbraidParam = (params.get('gbraid') || '').trim();
+    const wbraidParam = (params.get('wbraid') || '').trim();
+    const utmCampaignParam = (params.get('utm_campaign') || params.get('campaign') || '').trim();
+    const keywordParam = (params.get('utm_term') || params.get('keyword') || params.get('searchkeyword') || '').trim();
+    const utmSourceParam = (params.get('utm_source') || '').trim();
+    const utmMediumParam = (params.get('utm_medium') || '').trim();
+    if (!gclidParam && !gbraidParam && !wbraidParam && !utmCampaignParam && !keywordParam && !utmSourceParam && !utmMediumParam) return;
+
+    const currentAds = payload?.tracking?.googleAds || {};
+    const currentMetadata = payload?.tracking?.metadata || {};
+    const nextAds = { ...currentAds };
+    const nextMetadata = { ...currentMetadata };
+    const capturedAt = new Date().toISOString();
+    let changed = false;
+    let metadataChanged = false;
+
+    const ensureConversionTime = (timestamp, overwrite = false) => {
+      if (!timestamp) return;
+      if (!overwrite && nextMetadata.conversionTime) return;
+      if (nextMetadata.conversionTime === timestamp) return;
+      nextMetadata.conversionTime = timestamp;
+      metadataChanged = true;
+    };
+
+    if (gclidParam && gclidParam !== currentAds.gclid) {
+      nextAds.gclid = gclidParam;
+      changed = true;
+      ensureConversionTime(capturedAt, true);
+    }
+    if (gbraidParam && gbraidParam !== currentAds.gbraid) {
+      nextAds.gbraid = gbraidParam;
+      changed = true;
+    }
+    if (wbraidParam && wbraidParam !== currentAds.wbraid) {
+      nextAds.wbraid = wbraidParam;
+      changed = true;
+    }
+    if (utmCampaignParam && utmCampaignParam !== currentAds.campaign) {
+      nextAds.campaign = utmCampaignParam;
+      changed = true;
+    }
+    if (keywordParam && keywordParam !== currentAds.keyword) {
+      nextAds.keyword = keywordParam;
+      changed = true;
+    }
+    if (utmSourceParam && utmSourceParam !== currentAds.utmSource) {
+      nextAds.utmSource = utmSourceParam;
+      changed = true;
+    }
+    if (utmMediumParam && utmMediumParam !== currentAds.utmMedium) {
+      nextAds.utmMedium = utmMediumParam;
+      changed = true;
+    }
+
+    if (!changed && !metadataChanged) return;
+
+    nextAds.source = 'url_param';
+    nextAds.lastCapturedAt = capturedAt;
+
+    try {
+      mergePayload({
+        tracking: {
+          ...(payload?.tracking || {}),
+          googleAds: nextAds,
+          metadata: {
+            ...nextMetadata,
+          },
+        },
+      });
+    } catch (e) {
+      try { console.warn('[TrackingSync] mergePayload failed on route change', e?.message || String(e)); } catch (_) {}
+    }
+
+    writeStoredGoogleAds(nextAds, { conversionTime: nextMetadata.conversionTime });
+  }, [
+    location?.search,
+    mergePayload,
+    payload?.tracking?.googleAds?.gclid,
+    payload?.tracking?.googleAds?.gbraid,
+    payload?.tracking?.googleAds?.wbraid,
+    payload?.tracking?.googleAds?.campaign,
+    payload?.tracking?.googleAds?.keyword,
+    payload?.tracking?.googleAds?.utmSource,
+    payload?.tracking?.googleAds?.utmMedium,
+  ]);
+
+  useEffect(() => {
+    const device = detectDeviceCategory();
+    if (!device) return;
+    const currentDevice = payload?.tracking?.metadata?.device || '';
+    if (currentDevice === device) return;
+    try {
+      mergePayload({
+        tracking: {
+          ...(payload?.tracking || {}),
+          metadata: {
+            ...(payload?.tracking?.metadata || {}),
+            device,
+          },
+        },
+      });
+    } catch (e) {
+      try { console.warn('[TrackingSync] mergePayload failed on device detection', e?.message || String(e)); } catch (_) {}
+    }
+  }, [mergePayload, payload?.tracking?.metadata?.device]);
 
   return null;
 }
 
-/* --------------------------------------------------------------------------
-   App Component
--------------------------------------------------------------------------- */
 function App() {
   return (
     <LanguageProvider>
       <CartProvider>
-        <ActionLoggerProvider>
-          <DevErrorBoundary>
-            <Router>
-              <TrackingSync />
-              <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-                <Helmet>
-                  <title>Printeam – Custom Apparel Printing</title>
-                  <meta
-                    name="description"
-                    content="Custom apparel printing: design t-shirts, hoodies & more. Fast quotes, quality prints, delivery across Israel."
-                  />
-                </Helmet>
-
-                <Header />
-                <ScrollToTop />
-                <AdsRouteTracker />
-
-                <main className="min-h-screen">
-                  <Routes>
-                    <Route path="/" element={<Home />} />
-                    <Route path="/catalog" element={<Catalog />} />
-
-                    <Route
-                      path="/product/:sku"
-                      element={
-                        <Suspense fallback={<div className="min-h-screen" />}>
-                          <ProductConfigurator />
-                        </Suspense>
-                      }
-                    />
-
-                    <Route path="/cart" element={<Cart />} />
-                    <Route path="/checkout/success" element={<CheckoutResult success={true} />} />
-                    <Route path="/checkout/cancel" element={<CheckoutResult success={false} />} />
-
-                    <Route path="/thank-you" element={<ThankYou />} />
-                    <Route path="/thank-you-cc" element={<ThankYouCC />} />
-
-                    <Route path="/admin" element={<Admin />} />
-                    <Route path="/faq" element={<FAQ />} />
-                    <Route path="/print-quality" element={<PrintQuality />} />
-                    <Route path="/garments-quality" element={<GarmentsQuality />} />
-                    <Route path="/service-quality" element={<ServiceQuality />} />
-                    <Route path="/terms" element={<Terms />} />
-                    <Route path="/privacy" element={<Privacy />} />
-                    <Route path="/returns" element={<Returns />} />
-                    <Route path="/methods-of-branding" element={<MethodsOfBranding />} />
-                    <Route path="/accessibility" element={<AccessibilityStatement />} />
-                    <Route path="/works" element={<Works />} />
-                    <Route path="/contact" element={<Contact />} />
-                    <Route path="/winter-campaign" element={<WinterCampaign />} />
-
-                    {process.env.NODE_ENV !== 'production' && (
-                      <Route path="/dev/composer" element={<DevComposer />} />
-                    )}
-                  </Routes>
-                </main>
-
-                <Footer />
-                <Toaster />
-                <WhatsAppWidget />
-              </div>
-            </Router>
-          </DevErrorBoundary>
-        </ActionLoggerProvider>
+        <DevErrorBoundary>
+          <Router>
+            <TrackingSync />
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+            <Helmet>
+              <title>Printeam – Custom Apparel Printing</title>
+              <meta name="description" content="Custom apparel printing: design your own t‑shirts, hoodies and more. Fast quotes, quality prints, delivery across Israel." />
+            </Helmet>
+            <Header />
+            <ScrollToTop />
+            <AdsRouteTracker />
+            <main className="min-h-screen">
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/catalog" element={<Catalog />} />
+                <Route
+                  path="/product/:sku"
+                  element={
+                    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">{/* loading */}</div>}>
+                      <ProductConfigurator />
+                    </Suspense>
+                  }
+                />
+                <Route path="/cart" element={<Cart />} />
+                <Route path="/checkout/success" element={<CheckoutResult success={true} />} />
+                <Route path="/checkout/cancel" element={<CheckoutResult success={false} />} />
+                <Route path="/thank-you" element={<ThankYou />} />
+                <Route path="/thank-you-cc" element={<ThankYouCC />} />
+                { /* Backend removed: iCount thank-you route disabled */ }
+                <Route path="/admin" element={<Admin />} />
+                { /* Backend dev pages removed */ }
+                <Route path="/faq" element={<FAQ />} />
+                <Route path="/print-quality" element={<PrintQuality />} />
+                <Route path="/garments-quality" element={<GarmentsQuality />} />
+                <Route path="/service-quality" element={<ServiceQuality />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/returns" element={<Returns />} />
+                <Route path="/methods-of-branding" element={<MethodsOfBranding />} />
+                <Route path="/accessibility" element={<AccessibilityStatement />} />
+                <Route path="/works" element={<Works />} />
+                <Route path="/contact" element={<Contact />} />
+                {process.env.NODE_ENV !== 'production' && (
+                  <Route path="/dev/composer" element={<DevComposer />} />
+                )}
+              </Routes>
+            </main>
+            <Footer />
+            <Toaster />
+          </div>
+          </Router>
+        </DevErrorBoundary>
       </CartProvider>
     </LanguageProvider>
   );
