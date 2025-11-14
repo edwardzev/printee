@@ -708,8 +708,8 @@ export const printAreas = {
 export const pricingRules = {
   tshirt: {
     tiers: [
-      { min: 1, max: 9, price: 50 },
-      { min: 10, max: 19, price: 30 },
+      { min: 1, max: 9, price: 60 },
+      { min: 10, max: 19, price: 35 },
       { min: 20, max: 49, price: 20 },
       { min: 50, max: 99, price: 15 },
       { min: 100, max: Infinity, price: 10 }
@@ -717,8 +717,8 @@ export const pricingRules = {
   },
   hoodie: {
     tiers: [
-      { min: 1, max: 9, price: 75 },
-      { min: 10, max: 19, price: 55 },
+      { min: 1, max: 9, price: 85 },
+      { min: 10, max: 19, price: 65 },
       { min: 20, max: 49, price: 45 },
       { min: 50, max: 99, price: 40 },
       { min: 100, max: Infinity, price: 35 }
@@ -726,8 +726,8 @@ export const pricingRules = {
   },
   dryfit: {
     tiers: [
-      { min: 1, max: 9, price: 50 },
-      { min: 10, max: 19, price: 30 },
+      { min: 1, max: 9, price: 60 },
+      { min: 10, max: 19, price: 35 },
       { min: 20, max: 49, price: 20 },
       { min: 50, max: 99, price: 15 },
       { min: 100, max: Infinity, price: 10 }
