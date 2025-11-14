@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet';
 import { Toaster } from '@/components/ui/toaster';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { CartProvider, useCart } from '@/contexts/CartContext';
+import { ActionLoggerProvider } from '@/hooks/useActionLogger';
 import DevErrorBoundary from '@/components/DevErrorBoundary';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -351,8 +352,9 @@ function App() {
   return (
     <LanguageProvider>
       <CartProvider>
-        <DevErrorBoundary>
-          <Router>
+        <ActionLoggerProvider>
+          <DevErrorBoundary>
+            <Router>
             <TrackingSync />
             <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
             <Helmet>
@@ -402,7 +404,8 @@ function App() {
             <Toaster />
           </div>
           </Router>
-        </DevErrorBoundary>
+          </DevErrorBoundary>
+        </ActionLoggerProvider>
       </CartProvider>
     </LanguageProvider>
   );
