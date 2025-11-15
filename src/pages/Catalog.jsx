@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet';
@@ -6,9 +6,19 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { products, pricingRules } from '@/data/products';
 import { Button } from '@/components/ui/button';
 
+const QUICK_FILTERS = [
+  { key: 'all', labelEn: 'All', labelHe: 'כל המוצרים' },
+  { key: 'short_sleeve', labelEn: 'Short Sleeve', labelHe: 'שרוול קצר' },
+  // Keep winter defined but hidden until the collection is ready again
+  { key: 'winter', labelEn: 'Winter', labelHe: 'חורף', hidden: true }
+];
+
+const VISIBLE_FILTERS = QUICK_FILTERS.filter((filter) => !filter.hidden);
+
 const Catalog = () => {
   const { t, language } = useLanguage();
   const navigate = useNavigate();
+  const [activeFilter, setActiveFilter] = useState(VISIBLE_FILTERS[0]?.key || QUICK_FILTERS[0].key);
 
   // Preload first row images for faster first paint on catalog
   useEffect(() => {
@@ -60,6 +70,19 @@ const Catalog = () => {
     return m ? m[1] : null;
   };
 
+  const sortedProducts = useMemo(
+    () => [...products].sort((a, b) => (a.appearance || 0) - (b.appearance || 0)),
+    []
+  );
+
+  const filteredProducts = useMemo(() => {
+    if (activeFilter === 'all') return sortedProducts;
+    return sortedProducts.filter((product) => {
+      const tags = Array.isArray(product.search_tag) ? product.search_tag : ['all'];
+      return tags.includes(activeFilter);
+    });
+  }, [activeFilter, sortedProducts]);
+
   return (
     <>
       <Helmet>
@@ -85,9 +108,31 @@ const Catalog = () => {
             </p>
           </motion.div>
 
+          {/* Quick filter tabs */}
+          <div className="flex flex-wrap items-center justify-center gap-3 mb-10">
+            {VISIBLE_FILTERS.map((filter) => {
+              const isActive = filter.key === activeFilter;
+              return (
+                <button
+                  key={filter.key}
+                  type="button"
+                  className={`rounded-full border px-5 py-2 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 ${
+                    isActive
+                      ? 'bg-blue-600 text-white border-blue-600 shadow'
+                      : 'bg-white text-gray-700 border-gray-200 hover:border-blue-400'
+                  }`}
+                  onClick={() => setActiveFilter(filter.key)}
+                  aria-pressed={isActive}
+                >
+                  {language === 'he' ? filter.labelHe : filter.labelEn}
+                </button>
+              );
+            })}
+          </div>
+
           {/* Products Grid - show two products per row on mobile */}
           <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            {([...products].sort((a, b) => (a.appearance || 0) - (b.appearance || 0))).map((product, index) => (
+            {filteredProducts.map((product, index) => (
               <motion.div
                 key={product.sku}
                 initial={{ opacity: 0, y: 30 }}
