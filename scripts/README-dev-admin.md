@@ -32,3 +32,13 @@ Notes
 -----
 - The server reads/writes `data/dev-products.json`.
 - This is intentionally minimal and unsecured. Keep it local and do not expose it to the public.
+
+Automated product injection
+---------------------------
+You can take the JSON output from the admin UI and inject it directly into `src/data/products.js` using the shared validator/injector:
+
+```bash
+node scripts/apply-product-json.mjs path/to/product.json
+```
+
+The script validates the payload, ensures the SKU is unique, inserts the product in appearance order, and appends the pricing tiers to `pricingRules`. The same logic powers `/api/admin/add-product`, so you can either hit the API from the admin UI (while running locally) or run the CLI manually when working offline.

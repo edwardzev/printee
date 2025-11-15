@@ -1,6 +1,74 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
+
+const searchTagOptions = [
+  { value: 'all', label: 'All Products' },
+  { value: 'short_sleeve', label: 'Short Sleeve' },
+  { value: 'winter', label: 'Winter' },
+  { value: 'headwear', label: 'Headwear' },
+  { value: 'accessories', label: 'Accessories' }
+];
+
+const sharedSizeRange = ['s', 'm', 'l', 'xl', 'xxl', 'xxxl', 'xxxxl', 'xxxxxl'];
+const sharedPrintAreas = ['leftChest', 'rightChest', 'frontA4', 'frontA3', 'backA4', 'backA3', 'leftSleeve', 'rightSleeve'];
+
+const productTemplates = {
+  shortSleeve: {
+    label: 'Short Sleeve Apparel',
+    description: 'Use for tees, polos, and dry-fit garments.',
+    defaults: {
+      search_tag: ['all', 'short_sleeve'],
+      colors: ['white', 'black', 'gray', 'red', 'blue', 'navy', 'benetongreen', 'bottlegreen', 'orange', 'yellow', 'babypink', 'lightblue', 'olive'],
+      sizeRange: sharedSizeRange,
+      activePrintAreas: sharedPrintAreas,
+      pricingTiers: [
+        { min: 1, max: 9, price: 60 },
+        { min: 10, max: 19, price: 35 },
+        { min: 20, max: 49, price: 20 },
+        { min: 50, max: 99, price: 15 },
+        { min: 100, max: Infinity, price: 10 }
+      ],
+      basePrice: 50
+    }
+  },
+  winter: {
+    label: 'Winter Layers',
+    description: 'Ideal for hoodies, sweatshirts, fleece, and outerwear.',
+    defaults: {
+      search_tag: ['all', 'winter'],
+      colors: ['white', 'black', 'gray', 'navy', 'benetongreen', 'bottlegreen', 'bordo', 'purple', 'orange', 'yellow', 'babypink', 'lightblue', 'olive', 'brown'],
+      sizeRange: sharedSizeRange,
+      activePrintAreas: ['leftChest', 'rightChest', 'backA4', 'backA3', 'leftSleeve', 'rightSleeve'],
+      pricingTiers: [
+        { min: 1, max: 9, price: 85 },
+        { min: 10, max: 19, price: 65 },
+        { min: 20, max: 49, price: 45 },
+        { min: 50, max: 99, price: 40 },
+        { min: 100, max: Infinity, price: 35 }
+      ],
+      basePrice: 90
+    }
+  },
+  accessory: {
+    label: 'Accessories (Umbrella, Bags, etc.)',
+    description: 'Use for non-garment merch such as umbrellas or totes.',
+    defaults: {
+      search_tag: ['all', 'accessories'],
+      colors: ['black', 'white', 'navy', 'red', 'yellow'],
+      sizeRange: ['one-size'],
+      activePrintAreas: ['frontA3', 'backA3'],
+      pricingTiers: [
+        { min: 1, max: 9, price: 120 },
+        { min: 10, max: 19, price: 95 },
+        { min: 20, max: 49, price: 80 },
+        { min: 50, max: 99, price: 65 },
+        { min: 100, max: Infinity, price: 55 }
+      ],
+      basePrice: 110
+    }
+  }
+};
 
 const ProductForm = () => {
   const { toast } = useToast();
@@ -12,6 +80,7 @@ const ProductForm = () => {
     description: '',
     descriptionHe: '',
     tech: 'DTF',
+    search_tag: ['all'],
     colors: [],
     sizeRange: [],
     images: {},
@@ -36,6 +105,8 @@ const ProductForm = () => {
 
   const [showJsonPreview, setShowJsonPreview] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState('');
+  const [imageUploads, setImageUploads] = useState({ base1: null, base2: null, colors: {} });
 
   // Available options
   const availableColors = [
@@ -46,7 +117,19 @@ const ProductForm = () => {
     'benetongreen', 'bottlegreen', 'blue', 'offwhite', 'phospor_green', 'fuksia'
   ];
 
-  const availableSizes = ['s', 'm', 'l', 'xl', 'xxl', 'xxxl', 'xxxxl', 'xxxxxl', '4', '6', '8', '10', '12', '14', '16', '18'];
+  const availableSizes = ['s', 'm', 'l', 'xl', 'xxl', 'xxxl', 'xxxxl', 'xxxxxl', '4', '6', '8', '10', '12', '14', '16', '18', 'one-size'];
+
+  useEffect(() => {
+    setImageUploads((prev) => {
+      const nextColors = { ...prev.colors };
+      Object.keys(nextColors).forEach((colorKey) => {
+        if (!formData.colors.includes(colorKey)) {
+          delete nextColors[colorKey];
+        }
+      });
+      return { ...prev, colors: nextColors };
+    });
+  }, [formData.colors]);
 
   const availablePrintAreas = [
     'leftChest', 'rightChest', 'frontA4', 'frontA3', 'backA4', 'backA3',
@@ -76,14 +159,125 @@ const ProductForm = () => {
     });
   };
 
-  const handleImagePathChange = (color, paths) => {
+  const handleSearchTagToggle = (value) => {
+    if (value === 'all') return; // always keep "all" for discoverability
+    setFormData(prev => {
+      const current = new Set(prev.search_tag || ['all']);
+      if (current.has(value)) {
+        current.delete(value);
+      } else {
+        current.add(value);
+      }
+      current.add('all');
+      return { ...prev, search_tag: Array.from(current) };
+    });
+  };
+
+  const applyTemplateDefaults = (templateKey) => {
+    const template = productTemplates[templateKey];
+    if (!template) return;
     setFormData(prev => ({
       ...prev,
-      images: {
-        ...prev.images,
-        [color]: paths.split(',').map(p => p.trim()).filter(Boolean)
-      }
+      search_tag: template.defaults.search_tag ? [...template.defaults.search_tag] : prev.search_tag,
+      colors: template.defaults.colors ? [...template.defaults.colors] : prev.colors,
+      sizeRange: template.defaults.sizeRange ? [...template.defaults.sizeRange] : prev.sizeRange,
+      activePrintAreas: template.defaults.activePrintAreas ? [...template.defaults.activePrintAreas] : prev.activePrintAreas,
+      pricingTiers: template.defaults.pricingTiers
+        ? template.defaults.pricingTiers.map(tier => ({ ...tier }))
+        : prev.pricingTiers,
+      basePrice: template.defaults.basePrice ?? prev.basePrice
     }));
+    toast({
+      title: 'Template applied',
+      description: template.description || template.label
+    });
+  };
+
+  const copyJsonToClipboard = async () => {
+    try {
+      if (typeof navigator === 'undefined' || !navigator.clipboard) {
+        throw new Error('Clipboard API unavailable');
+      }
+      await navigator.clipboard.writeText(generateJSON());
+      toast({ title: 'JSON copied', description: 'Payload copied to clipboard.' });
+    } catch (error) {
+      console.error('Clipboard error:', error);
+      toast({
+        title: 'Clipboard unavailable',
+        description: 'Expand the JSON preview and copy manually.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleBaseImageUpload = (slot, file) => {
+    setImageUploads((prev) => ({
+      ...prev,
+      [slot]: file || null
+    }));
+  };
+
+  const handleColorImageUpload = (color, file) => {
+    setImageUploads((prev) => {
+      const nextColors = { ...prev.colors };
+      if (file) {
+        nextColors[color] = file;
+      } else {
+        delete nextColors[color];
+      }
+      return { ...prev, colors: nextColors };
+    });
+  };
+
+  const collectPendingUploads = () => {
+    const entries = [];
+    if (imageUploads.base1) entries.push({ field: 'base1', file: imageUploads.base1 });
+    if (imageUploads.base2) entries.push({ field: 'base2', file: imageUploads.base2 });
+    Object.entries(imageUploads.colors).forEach(([colorKey, file]) => {
+      if (file) entries.push({ field: colorKey, file });
+    });
+    return entries;
+  };
+
+  const uploadPendingImages = async () => {
+    const pending = collectPendingUploads();
+    if (pending.length === 0) return null;
+
+    if (!formData.sku) {
+      toast({
+        title: 'SKU required',
+        description: 'Enter a SKU before uploading images so we can place them in the correct folder.',
+        variant: 'destructive'
+      });
+      throw new Error('Missing SKU for uploads');
+    }
+
+    const payload = new FormData();
+    payload.append('sku', formData.sku);
+    pending.forEach(({ field, file }) => {
+      payload.append(field, file, file.name || `${field}.png`);
+    });
+
+    const response = await fetch('/api/admin/upload-product-images', {
+      method: 'POST',
+      body: payload
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      if (response.status === 501) {
+        toast({
+          title: 'Upload unavailable in production',
+          description: 'Run the dev server locally to upload images, or place files manually in public/product_images/<SKU>.',
+          variant: 'destructive'
+        });
+      }
+      throw new Error(data.error || data.details || 'Image upload failed');
+    }
+
+    setImageUploads({ base1: null, base2: null, colors: {} });
+    return data.images || null;
   };
 
   const handlePricingTierChange = (index, field, value) => {
@@ -115,21 +309,26 @@ const ProductForm = () => {
     const errors = [];
     
     if (!formData.sku) errors.push('SKU is required');
-    if (!formData.name) errors.push('Name (English) is required');
+    //if (!formData.name) errors.push('Name (English) is required');
     if (!formData.nameHe) errors.push('Name (Hebrew) is required');
-    if (!formData.description) errors.push('Description (English) is required');
+    //if (!formData.description) errors.push('Description (English) is required');
     if (!formData.descriptionHe) errors.push('Description (Hebrew) is required');
+    if (!formData.search_tag || formData.search_tag.length === 0) {
+      errors.push('Select at least one search tag');
+    } else if (!formData.search_tag.includes('all')) {
+      errors.push("Search tags must include 'all'");
+    }
     if (formData.colors.length === 0) errors.push('At least one color is required');
     if (formData.sizeRange.length === 0) errors.push('At least one size is required');
-    if (formData.basePrice <= 0) errors.push('Base price must be greater than 0');
-    if (!formData.specs.material) errors.push('Material (English) is required');
-    if (!formData.specs.materialHe) errors.push('Material (Hebrew) is required');
+    //if (formData.basePrice <= 0) errors.push('Base price must be greater than 0');
+    //if (!formData.specs.material) errors.push('Material (English) is required');
+    //if (!formData.specs.materialHe) errors.push('Material (Hebrew) is required');
 
     return errors;
   };
 
   const generateJSON = () => {
-    return JSON.stringify(formData, null, 2);
+    return JSON.stringify(formData, (key, value) => (value === Infinity ? 'Infinity' : value), 2);
   };
 
   const handleSubmit = async () => {
@@ -146,13 +345,45 @@ const ProductForm = () => {
 
     setIsSubmitting(true);
 
+    let payload = { ...formData };
+
+    try {
+      const uploadedImages = await uploadPendingImages();
+      if (uploadedImages) {
+        const mergedImages = { ...payload.images };
+        Object.entries(uploadedImages).forEach(([key, paths]) => {
+          mergedImages[key] = paths;
+        });
+        payload = {
+          ...payload,
+          images: mergedImages
+        };
+        setFormData((prev) => ({
+          ...prev,
+          images: {
+            ...prev.images,
+            ...mergedImages
+          }
+        }));
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      setIsSubmitting(false);
+      toast({
+        title: 'Image upload failed',
+        description: error.message || 'Could not upload images automatically',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     try {
       const response = await fetch('/api/admin/add-product', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
 
       const data = await response.json();
@@ -162,9 +393,9 @@ const ProductForm = () => {
         if (response.status === 501) {
           toast({
             title: 'Production Environment Detected',
-            description: 'The product data is validated and ready. Please copy the JSON below and manually add it to products.js, then redeploy.',
+            description: 'Copy the JSON preview and run "npm run admin:inject-product -- path/to/file.json" locally to update products.js.',
             variant: 'default',
-            duration: 10000
+            duration: 12000
           });
           // Show the JSON preview so they can copy it
           setShowJsonPreview(true);
@@ -175,7 +406,9 @@ const ProductForm = () => {
 
       toast({
         title: 'Success',
-        description: 'Product added successfully! You may need to rebuild and redeploy for changes to take effect.'
+        description: data?.warnings?.length
+          ? `Product added with warnings: ${data.warnings.join(' · ')}`
+          : 'Product added successfully! Rebuild and redeploy for changes to take effect.'
       });
 
       // Reset form
@@ -187,6 +420,7 @@ const ProductForm = () => {
         description: '',
         descriptionHe: '',
         tech: 'DTF',
+        search_tag: ['all'],
         colors: [],
         sizeRange: [],
         images: {},
@@ -222,19 +456,50 @@ const ProductForm = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap justify-between items-center gap-3">
         <h2 className="text-2xl font-bold">Add New Product</h2>
-        <Button
-          variant="outline"
-          onClick={() => setShowJsonPreview(!showJsonPreview)}
-        >
-          {showJsonPreview ? 'Hide' : 'Show'} JSON Preview
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowJsonPreview(!showJsonPreview)}
+          >
+            {showJsonPreview ? 'Hide' : 'Show'} JSON Preview
+          </Button>
+          <Button variant="outline" onClick={copyJsonToClipboard}>
+            Copy JSON
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Main Form */}
         <div className="space-y-4">
+          <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-lg">Use a Template</h3>
+                <p className="text-sm text-blue-900">Pre-fill common colors, sizes, pricing tiers, and search tags.</p>
+              </div>
+              <select
+                value={selectedTemplate}
+                onChange={(e) => {
+                  const key = e.target.value;
+                  setSelectedTemplate(key);
+                  if (key) applyTemplateDefaults(key);
+                }}
+                className="px-3 py-2 border rounded-md text-sm"
+              >
+                <option value="">Select template</option>
+                {Object.entries(productTemplates).map(([key, template]) => (
+                  <option key={key} value={key}>{template.label}</option>
+                ))}
+              </select>
+            </div>
+            {selectedTemplate && (
+              <p className="text-sm text-blue-800">{productTemplates[selectedTemplate]?.description}</p>
+            )}
+          </div>
+
           {/* Basic Information */}
           <div className="bg-gray-50 p-4 rounded-lg space-y-4">
             <h3 className="font-semibold text-lg">Basic Information</h3>
@@ -262,7 +527,7 @@ const ProductForm = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Name (English) *</label>
+              <label className="block text-sm font-medium mb-1">Name (English)</label>
               <input
                 type="text"
                 value={formData.name}
@@ -285,7 +550,7 @@ const ProductForm = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Description (English) *</label>
+              <label className="block text-sm font-medium mb-1">Description (English)</label>
               <textarea
                 value={formData.description}
                 onChange={(e) => handleInputChange('description', e.target.value)}
@@ -321,7 +586,7 @@ const ProductForm = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Base Price (₪) *</label>
+              <label className="block text-sm font-medium mb-1">Base Price (₪)</label>
               <input
                 type="number"
                 value={formData.basePrice}
@@ -329,6 +594,32 @@ const ProductForm = () => {
                 className="w-full px-3 py-2 border rounded-md"
                 placeholder="e.g., 50"
               />
+            </div>
+          </div>
+
+          <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-lg">Search Tabs *</h3>
+              <span className="text-xs uppercase tracking-wide text-gray-500">Shown on catalog quick filters</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {searchTagOptions.map((option) => {
+                const isActive = formData.search_tag.includes(option.value);
+                const isAll = option.value === 'all';
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => (!isAll ? handleSearchTagToggle(option.value) : null)}
+                    className={`px-3 py-1.5 rounded-full border text-sm font-medium transition-colors ${
+                      isActive ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300 text-gray-700 hover:border-blue-400'
+                    } ${isAll ? 'cursor-not-allowed opacity-80' : ''}`}
+                    aria-pressed={isActive}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -392,40 +683,74 @@ const ProductForm = () => {
           {/* Images */}
           <div className="bg-gray-50 p-4 rounded-lg space-y-4">
             <h3 className="font-semibold text-lg">Images</h3>
-            <p className="text-sm text-gray-600">Enter image paths for each color (comma-separated)</p>
-            
-            {/* Base images */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Base Images</label>
-              <input
-                type="text"
-                value={(formData.images.base1 || []).join(', ')}
-                onChange={(e) => handleImagePathChange('base1', e.target.value)}
-                className="w-full px-3 py-2 border rounded-md mb-2"
-                placeholder="/product_images/product/base1.png"
-              />
-              <input
-                type="text"
-                value={(formData.images.base2 || []).join(', ')}
-                onChange={(e) => handleImagePathChange('base2', e.target.value)}
-                className="w-full px-3 py-2 border rounded-md"
-                placeholder="/product_images/product/base2.png"
-              />
+            <p className="text-sm text-gray-600">
+              Upload JPG/PNG/PDF files for each base view and selected color. Files are stored under
+              {' '}
+              <span className="font-mono text-xs bg-white/70 px-1 py-0.5 rounded">
+                /public/product_images/&lt;SKU&gt;
+              </span>
+              {' '}and automatically converted to AVIF/WebP for performance.
+            </p>
+            {!formData.sku && (
+              <p className="text-sm text-red-600">Enter a SKU to enable uploads.</p>
+            )}
+
+            <div className="grid gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Base 1 Image</label>
+                <input
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.pdf"
+                  disabled={!formData.sku}
+                  onChange={(e) => handleBaseImageUpload('base1', e.target.files?.[0] || null)}
+                  className="w-full"
+                />
+                {imageUploads.base1 && (
+                  <p className="text-xs text-gray-600">Selected: {imageUploads.base1.name}</p>
+                )}
+                {formData.images.base1 && (
+                  <p className="text-xs text-gray-500">Existing: {formData.images.base1[formData.images.base1.length - 1]}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Base 2 Image</label>
+                <input
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.pdf"
+                  disabled={!formData.sku}
+                  onChange={(e) => handleBaseImageUpload('base2', e.target.files?.[0] || null)}
+                  className="w-full"
+                />
+                {imageUploads.base2 && (
+                  <p className="text-xs text-gray-600">Selected: {imageUploads.base2.name}</p>
+                )}
+                {formData.images.base2 && (
+                  <p className="text-xs text-gray-500">Existing: {formData.images.base2[formData.images.base2.length - 1]}</p>
+                )}
+              </div>
             </div>
 
-            {/* Color-specific images */}
-            {formData.colors.map(color => (
-              <div key={color}>
-                <label className="block text-sm font-medium mb-1">{color}</label>
-                <input
-                  type="text"
-                  value={(formData.images[color] || []).join(', ')}
-                  onChange={(e) => handleImagePathChange(color, e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md"
-                  placeholder={`/product_images/product/${color}_product.jpg`}
-                />
-              </div>
-            ))}
+            <div className="space-y-3">
+              {formData.colors.map(color => (
+                <div key={color}>
+                  <label className="block text-sm font-medium mb-1 capitalize">{color}</label>
+                  <input
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.pdf"
+                    disabled={!formData.sku}
+                    onChange={(e) => handleColorImageUpload(color, e.target.files?.[0] || null)}
+                    className="w-full"
+                  />
+                  {imageUploads.colors[color] && (
+                    <p className="text-xs text-gray-600">Selected: {imageUploads.colors[color].name}</p>
+                  )}
+                  {formData.images[color] && (
+                    <p className="text-xs text-gray-500">Existing: {formData.images[color][formData.images[color].length - 1]}</p>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Pricing Tiers */}

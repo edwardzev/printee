@@ -8,6 +8,7 @@
     "build": "vite build",
     "prebuild": "node scripts/generate-works-manifest.js",
     "preview": "vite preview",
+    "admin:inject-product": "node scripts/apply-product-json.mjs",
     "dev:test:order-api": "node scripts/dev-order-api-test.mjs",
     "generate-sitemap": "node scripts/generate-sitemap.mjs",
     "convert-hero-images": "node scripts/convert-hero-images.js",

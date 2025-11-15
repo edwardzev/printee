@@ -26,147 +26,58 @@ import * as t from '@babel/types';
 
 export default async function handler(req, res) {
   // Only allow POST requests
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  /**
+   * API endpoint to add a new product to products.js
+   * POST /api/admin/add-product
+   *
+   * SECURITY WARNING: This endpoint modifies source code files and is intended
+   * for development use only. It will no-op on production/serverless targets.
+   */
 
-  // Check if we're in a serverless environment
-  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
-    return res.status(501).json({ 
-      error: 'Not Implemented', 
-      details: 'This endpoint requires filesystem access and only works in local development. In production, products must be added manually to products.js and redeployed, or you can use a database-backed solution.' 
-    });
-  }
+  import { validateProductPayload, injectProduct } from '../../scripts/utils/productInjector.js';
 
-  // TODO: Add authentication check here
-  // Example: if (!isAuthenticated(req)) return res.status(401).json({ error: 'Unauthorized' });
+  export default async function handler(req, res) {
+    if (req.method !== 'POST') {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
 
-  try {
-    const productData = req.body;
-    console.log('Received product data:', productData);
+    if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+      return res.status(501).json({
+        error: 'Not Implemented',
+        details:
+          'Automatic product injection requires filesystem access and is only available in local development. Please run the CLI injector or edit products.js manually in production.'
+      });
+    }
 
-    // Enhanced validation
-    const requiredFields = ['sku', 'name', 'nameHe', 'description', 'descriptionHe', 'basePrice'];
-    for (const field of requiredFields) {
-      if (!productData[field]) {
-        return res.status(400).json({ error: `Missing required field: ${field}` });
+    const productData = req.body || {};
+    const validation = validateProductPayload(productData);
+
+    if (!validation.valid) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: validation.errors
+      });
+    }
+
+    try {
+      const result = injectProduct(productData);
+      return res.status(200).json({
+        success: true,
+        sku: result.sku,
+        warnings: validation.warnings
+      });
+    } catch (error) {
+      if (error.code === 'DUPLICATE_SKU' || error.code === 'DUPLICATE_PRICING_RULE') {
+        return res.status(409).json({ error: error.message });
       }
+
+      console.error('Error adding product:', error);
+      return res.status(500).json({
+        error: 'Failed to add product',
+        details: error.message
+      });
     }
-
-    // Validate data types and ranges
-    if (typeof productData.basePrice !== 'number' || productData.basePrice <= 0) {
-      return res.status(400).json({ error: 'Base price must be a positive number' });
-    }
-
-    // Validate string lengths to prevent excessively large data
-    const maxStringLength = 10000;
-    for (const field of ['sku', 'name', 'nameHe', 'description', 'descriptionHe']) {
-      if (typeof productData[field] === 'string' && productData[field].length > maxStringLength) {
-        return res.status(400).json({ error: `Field ${field} exceeds maximum length` });
-      }
-    }
-
-    // Validate SKU format (alphanumeric and hyphens only)
-    if (!/^[a-z0-9-]+$/i.test(productData.sku)) {
-      return res.status(400).json({ error: 'SKU must contain only alphanumeric characters and hyphens' });
-    }
-
-    // Validate arrays
-    if (!Array.isArray(productData.colors) || productData.colors.length === 0) {
-      return res.status(400).json({ error: 'At least one color is required' });
-    }
-
-    if (!Array.isArray(productData.sizeRange) || productData.sizeRange.length === 0) {
-      return res.status(400).json({ error: 'At least one size is required' });
-    }
-
-    // Path to products.js
-    const productsPath = path.join(process.cwd(), 'src', 'data', 'products.js');
-
-    // Read the current products.js file
-    let fileContent = fs.readFileSync(productsPath, 'utf-8');
-
-    // Parse the file into an AST
-    const ast = parse(fileContent, {
-      sourceType: 'module',
-      plugins: ['jsx']
-    });
-
-    // Find the products array and add the new product
-    let productsArrayFound = false;
-
-    traverse.default(ast, {
-      VariableDeclarator(path) {
-        // Look for: export const products = [...]
-        if (
-          path.node.id.name === 'products' &&
-          t.isArrayExpression(path.node.init)
-        ) {
-          productsArrayFound = true;
-
-          // Create the new product object as an AST node
-          const newProductNode = createProductASTNode(productData);
-
-          // Find the correct position to insert based on appearance value
-          const productsArray = path.node.init.elements;
-          let insertIndex = productsArray.length;
-
-          // Find insertion point based on appearance
-          for (let i = 0; i < productsArray.length; i++) {
-            const elem = productsArray[i];
-            if (t.isObjectExpression(elem)) {
-              const appearanceProp = elem.properties.find(
-                p => t.isObjectProperty(p) && 
-                     t.isIdentifier(p.key) && 
-                     p.key.name === 'appearance'
-              );
-              
-              if (appearanceProp && t.isNumericLiteral(appearanceProp.value)) {
-                if (appearanceProp.value.value > productData.appearance) {
-                  insertIndex = i;
-                  break;
-                }
-              }
-            }
-          }
-
-          // Insert the new product at the correct position
-          productsArray.splice(insertIndex, 0, newProductNode);
-        }
-      }
-    });
-
-    if (!productsArrayFound) {
-      return res.status(500).json({ error: 'Could not find products array in products.js' });
-    }
-
-    // Generate the modified code
-    const output = generate.default(ast, {
-      retainLines: false,
-      compact: false,
-      concise: false,
-      quotes: 'single'
-    }, fileContent);
-
-    // Write back to the file
-    fs.writeFileSync(productsPath, output.code, 'utf-8');
-
-    return res.status(200).json({ 
-      success: true, 
-      message: 'Product added successfully',
-      sku: productData.sku
-    });
-
-  } catch (error) {
-    console.error('Error adding product:', error);
-    console.error('Error stack:', error.stack);
-    return res.status(500).json({ 
-      error: 'Failed to add product',
-      details: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
   }
-}
 
 /**
  * Create an AST node for a product object

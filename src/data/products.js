@@ -10,6 +10,7 @@ export const products = [
 המתאימה לנשים ולגברים כאחד. עשויה מ-100% כותנה איכותית, במשקל 160 גרם,
 המבטיחה מגע רך ונעים לצד עמידות גבוהה לשימוש יומיומי.\n\nמאפייני המוצר:\nהרכב הבד: 100% כותנה, בד נעים ואיכותי.\nגזרה: יוניסקס – מתאימה לכולם.\nצווארון: דק ונוח, בעיצוב קלאסי.\nמשקל הבד: 160 גרם, מושלם לכל עונות השנה.\n\nלמה לבחור בחולצת הטריקו שלנו?\nחולצה זו מספקת שילוב של נוחות, עיצוב קלאסי וגמישות מרבית, ומתאימה לשימוש יומיומי, עבודה או פעילות פנאי.\n\nבחרו את החולצה שלכם עכשיו והבטיחו לעצמכם איכות מעולה ונוחות מרבית!`,
     tech: 'DTF',
+    search_tag: ['all', 'short_sleeve'],
   colors: [
   "white",
   "black",
@@ -89,6 +90,7 @@ export const products = [
 הרכב הבד:
 65% כותנה, 35% פוליאסטר, סרוק 2 חוטים.`,
     tech: 'DTF',
+    search_tag: ['all', 'winter'],
     colors: [
   'gray',
   'red',
@@ -152,6 +154,7 @@ export const products = [
 
 צווארון: 3 כפתורים.`,
     tech: 'DTF',
+    search_tag: ['all', 'short_sleeve'],
     colors: [
   'white',
   'black',
@@ -218,6 +221,7 @@ export const products = [
 
 צווארון: עגול`,
     tech: 'DTF',
+    search_tag: ['all', 'short_sleeve'],
     // use the same canonical color keys as other products (hoodie/polo/etc.)
     colors: [
       'white','black','gray','red','blue','navy','benetongreen','bottlegreen','bordo','purple','tourquise','orange','yellow','lilac','babypink','lightblue','olive','fuksia','brown','banana_yellow','apple_green','phosphor_yellow','phosphor_green','phosphor_pink'
@@ -274,6 +278,7 @@ export const products = [
 מעיל חמים ואיכותי
 מתאים לפעילויות חוץ ויום-יומית. המעילמציע את השילוב המושלם של נוחות, חום ועיצוב פונקציונלי, ומתאים לשימושים מגוונים.`,
     tech: 'DTF',
+    search_tag: ['all', 'winter'],
     colors: ['black','olive','navy'],
   sizeRange: ['s','m','l','xl','xxl','xxxl','xxxxl','xxxxxl'],
     images: {
@@ -311,6 +316,7 @@ export const products = [
 מדים לעובדים או חיילים.
 אירועים קבוצתיים ופרויקטים ממותגים.`,
     tech: 'DTF',
+    search_tag: ['all', 'winter'],
     colors: [
   'white',
   'black',
@@ -371,6 +377,7 @@ export const products = [
 מתאים לתנאי מזג אוויר משתנים.
 מעיל הסופטשל שלנו משלב עמידות, חום ונוחות, ומותאם לפעילות יומיומית, ספורטיבית או עבודה בתנאי מזג אוויר מאתגרים.`,
     tech: 'DTF',
+    search_tag: ['all', 'winter'],
     colors: ['black','olive'],
   sizeRange: ['s','m','l','xl','xxl','xxxl','xxxxl','xxxxxl'],
     images: {
@@ -406,6 +413,7 @@ export const products = [
 מתאים לשימוש יומיומי ולפעילויות ספורטיביות
 מתאים לגברים ולנשים כאחד`,
     tech: 'DTF',
+    search_tag: ['all', 'winter'],
     colors: [
   'white',
   'black',
@@ -469,6 +477,7 @@ export const products = [
 עמיד וקל לתחזוקה
 הרכב הבד: 70% כותנה, 30% פוליאסטר, בד 3 חוטים סרוק טבעות`,
     tech: 'DTF',
+    search_tag: ['all', 'winter'],
     colors: [
   'white',
   'black',
