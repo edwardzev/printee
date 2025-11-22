@@ -418,6 +418,7 @@ export const products = [{
   search_tag: ["all", "winter", "headwear", "accessories"],
   colors: ["black", "olive"],
   sizeRange: ["one-size"],
+  activePrintAreas: ["frontA4"],
   images: {
     base1: ["/product_images/beanie/base1_beanie.avif", "/product_images/beanie/base1_beanie.webp", "/product_images/beanie/base1_beanie.png"],
     base2: ["/product_images/beanie/base2_beanie.avif", "/product_images/beanie/base2_beanie.webp", "/product_images/beanie/base2_beanie.png"],
