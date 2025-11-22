@@ -45,20 +45,36 @@ function ScrollToTop() {
 // Send Google Ads and GA4 page_view on SPA route changes
 function AdsRouteTracker() {
   const { pathname, search } = useLocation();
+  const initialRenderRef = useRef(true);
   useEffect(() => {
     try {
       const path = `${pathname}${search || ''}`;
-      if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
-        const KEY = '__aw_last_path';
-        const last = window[KEY];
-        // Avoid double-firing on initial load (index.html already called gtag config)
-        if (last === path) return;
-        if (last !== undefined) {
-          window.gtag('config', 'AW-17646508237', { page_path: path });
-          window.gtag('config', 'G-43KTYPJPNM', { page_path: path });
-        }
+      if (typeof window === 'undefined') return;
+      const KEY = '__aw_last_path';
+
+      if (initialRenderRef.current) {
+        initialRenderRef.current = false;
         window[KEY] = path;
+        return;
       }
+
+      if (typeof window.gtag !== 'function') return;
+
+      const last = window[KEY];
+      if (last === path) return;
+
+      const pageLocation = (() => {
+        try {
+          return window.location?.href || path;
+        } catch {
+          return path;
+        }
+      })();
+      const basePayload = { page_location: pageLocation, page_path: path };
+
+      window.gtag('event', 'page_view', { ...basePayload, send_to: 'AW-17646508237' });
+      window.gtag('event', 'page_view', { ...basePayload, send_to: 'G-43KTYPJPNM' });
+      window[KEY] = path;
     } catch {}
   }, [pathname, search]);
   return null;
