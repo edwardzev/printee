@@ -9,8 +9,7 @@ import { Button } from '@/components/ui/button';
 const QUICK_FILTERS = [
   { key: 'all', labelEn: 'All', labelHe: 'כל המוצרים' },
   { key: 'short_sleeve', labelEn: 'Short Sleeve', labelHe: 'שרוול קצר' },
-  // Keep winter defined but hidden until the collection is ready again
-  { key: 'winter', labelEn: 'Winter', labelHe: 'חורף', hidden: true }
+  { key: 'winter', labelEn: 'Winter', labelHe: 'חורף' }
 ];
 
 const VISIBLE_FILTERS = QUICK_FILTERS.filter((filter) => !filter.hidden);

@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "vite",
+    "dev:api": "node scripts/dev-api-server.js",
     "build": "vite build",
     "prebuild": "node scripts/generate-works-manifest.js",
     "preview": "vite preview",

@@ -15,7 +15,8 @@ export function validateProductPayload(productData = {}) {
   const errors = [];
   const warnings = [];
 
-  const requiredStringFields = ['sku', 'name', 'nameHe', 'description', 'descriptionHe'];
+  // Required fields: sku, nameHe, descriptionHe
+  const requiredStringFields = ['sku', 'nameHe', 'descriptionHe'];
   requiredStringFields.forEach((field) => {
     if (!productData[field] || typeof productData[field] !== 'string') {
       errors.push(`${field} is required`);
@@ -24,9 +25,15 @@ export function validateProductPayload(productData = {}) {
     }
   });
 
-  if (!productData.basePrice || typeof productData.basePrice !== 'number' || productData.basePrice <= 0) {
-    errors.push('basePrice must be a positive number');
+  // Optional fields: name, description - validate length if provided
+  if (productData.name && typeof productData.name === 'string' && productData.name.length > MAX_STRING_LENGTH) {
+    errors.push(`name exceeds maximum length (${MAX_STRING_LENGTH})`);
   }
+  if (productData.description && typeof productData.description === 'string' && productData.description.length > MAX_STRING_LENGTH) {
+    errors.push(`description exceeds maximum length (${MAX_STRING_LENGTH})`);
+  }
+
+  // basePrice is optional - removed validation
 
   if (!productData.appearance || Number.isNaN(Number(productData.appearance))) {
     warnings.push('appearance is missing, defaulting to 10');
@@ -195,16 +202,16 @@ function normalizeProductPayload(data = {}) {
   const product = {
     sku: String(data.sku || '').trim(),
     appearance: Number.isFinite(Number(data.appearance)) ? Number(data.appearance) : 10,
-    name: String(data.name || '').trim(),
+    name: data.name ? String(data.name).trim() : '', // Optional
     nameHe: String(data.nameHe || '').trim(),
-    description: String(data.description || '').trim(),
+    description: data.description ? String(data.description).trim() : '', // Optional
     descriptionHe: String(data.descriptionHe || '').trim(),
     tech: data.tech ? String(data.tech).trim() : 'DTF',
     search_tag: dedupeArray(Array.isArray(data.search_tag) ? data.search_tag : ['all']),
     colors: dedupeArray(Array.isArray(data.colors) ? data.colors : []),
     sizeRange: dedupeArray(Array.isArray(data.sizeRange) ? data.sizeRange : []),
     activePrintAreas: dedupeArray(Array.isArray(data.activePrintAreas) ? data.activePrintAreas : []),
-    basePrice: Number.isFinite(Number(data.basePrice)) ? Number(data.basePrice) : 0,
+    basePrice: Number.isFinite(Number(data.basePrice)) ? Number(data.basePrice) : 0, // Optional, defaults to 0
     images: {},
     specs: {}
   };

@@ -309,10 +309,14 @@ const ProductForm = () => {
     const errors = [];
     
     if (!formData.sku) errors.push('SKU is required');
-    //if (!formData.name) errors.push('Name (English) is required');
-    if (!formData.nameHe) errors.push('Name (Hebrew) is required');
-    //if (!formData.description) errors.push('Description (English) is required');
-    if (!formData.descriptionHe) errors.push('Description (Hebrew) is required');
+    // English name is optional - removed validation
+    if (!formData.nameHe || typeof formData.nameHe !== 'string' || formData.nameHe.trim().length === 0) {
+      errors.push('Name (Hebrew) is required');
+    }
+    // English description is optional - removed validation
+    if (!formData.descriptionHe || typeof formData.descriptionHe !== 'string' || formData.descriptionHe.trim().length === 0) {
+      errors.push('Description (Hebrew) is required');
+    }
     if (!formData.search_tag || formData.search_tag.length === 0) {
       errors.push('Select at least one search tag');
     } else if (!formData.search_tag.includes('all')) {
@@ -320,9 +324,22 @@ const ProductForm = () => {
     }
     if (formData.colors.length === 0) errors.push('At least one color is required');
     if (formData.sizeRange.length === 0) errors.push('At least one size is required');
-    //if (formData.basePrice <= 0) errors.push('Base price must be greater than 0');
-    //if (!formData.specs.material) errors.push('Material (English) is required');
-    //if (!formData.specs.materialHe) errors.push('Material (Hebrew) is required');
+    // Base price is optional - removed validation
+    if (!formData.pricingTiers || !Array.isArray(formData.pricingTiers) || formData.pricingTiers.length === 0) {
+      errors.push('At least one pricing tier is required');
+    } else {
+      formData.pricingTiers.forEach((tier, index) => {
+        if (tier.min == null || Number.isNaN(Number(tier.min)) || Number(tier.min) <= 0) {
+          errors.push(`Pricing tier ${index + 1}: min quantity must be a positive number`);
+        }
+        if (tier.max != null && tier.max !== '' && tier.max !== Infinity && Number(tier.max) <= Number(tier.min)) {
+          errors.push(`Pricing tier ${index + 1}: max must be greater than min or left blank`);
+        }
+        if (tier.price == null || Number(tier.price) <= 0) {
+          errors.push(`Pricing tier ${index + 1}: price must be a positive number`);
+        }
+      });
+    }
 
     return errors;
   };
@@ -401,7 +418,29 @@ const ProductForm = () => {
           setShowJsonPreview(true);
           return;
         }
-        throw new Error(data.error || data.details || 'Failed to add product');
+        
+        // Show detailed validation errors from backend
+        let errorMessage = 'Failed to add product';
+        if (data.details) {
+          if (Array.isArray(data.details)) {
+            errorMessage = `Validation failed: ${data.details.join(', ')}`;
+          } else if (typeof data.details === 'string') {
+            errorMessage = data.details;
+          } else if (data.details.errors && Array.isArray(data.details.errors)) {
+            errorMessage = `Validation failed: ${data.details.errors.join(', ')}`;
+          }
+        } else if (data.error) {
+          errorMessage = data.error;
+        }
+        
+        toast({
+          title: 'Validation Error',
+          description: errorMessage,
+          variant: 'destructive',
+          duration: 10000
+        });
+        setIsSubmitting(false);
+        return;
       }
 
       toast({
