@@ -89,7 +89,7 @@ export const products = [{
     base1: ['/product_images/hoodie/base1_hoodie.png'],
     base2: ['/product_images/hoodie/base2_hoodie.png']
   },
-  activePrintAreas: ['leftChest', 'rightChest', 'frontA4', 'backA4', 'backA3', 'leftSleeve', 'rightSleeve'],
+  activePrintAreas: ['leftChest_long', 'rightChest_long', 'frontA4_long', 'backA4_long', 'backA3_long', 'leftSleeve_long', 'rightSleeve_long'],
   basePrice: 100
 }, {
   sku: 'polo',
@@ -227,7 +227,7 @@ export const products = [{
     base1: ['/product_images/fleece/base1_fleece.png'],
     base2: ['/product_images/fleece/base2_fleece.png']
   },
-  activePrintAreas: ['leftChest', 'rightChest', 'backA4', 'backA3', 'leftSleeve', 'rightSleeve'],
+  activePrintAreas: ['leftChest_long', 'rightChest_long', 'backA4_long', 'backA3_long', 'leftSleeve_long', 'rightSleeve_long'],
   basePrice: 120
 }, {
   sku: 'longsleeve',
@@ -360,7 +360,7 @@ export const products = [{
     base1: ['/product_images/zipped_hood/base1_zipped_hood.png'],
     base2: ['/product_images/zipped_hood/base2_zipped_hood.png']
   },
-  activePrintAreas: ['leftChest', 'rightChest', 'backA4', 'backA3', 'leftSleeve', 'rightSleeve'],
+  activePrintAreas: ['leftChest_long', 'rightChest_long', 'backA4_long', 'backA3_long', 'leftSleeve_long', 'rightSleeve_long'],
   basePrice: 110
 }, {
   sku: 'sweatshirt',
@@ -405,7 +405,7 @@ export const products = [{
     base1: ['/product_images/sweatshirt/base1_sweatshirt.png'],
     base2: ['/product_images/sweatshirt/base2_sweatshirt.png']
   },
-  activePrintAreas: ['leftChest', 'rightChest', 'frontA4', 'frontA3', 'backA4', 'backA3', 'leftSleeve', 'rightSleeve'],
+  activePrintAreas: ['leftChest_long', 'rightChest_long', 'frontA4_long', 'frontA3_long', 'backA4_long', 'backA3_long', 'leftSleeve_long', 'rightSleeve_long'],
   basePrice: 80
 }, {
   sku: "fleece_beanie",
@@ -424,7 +424,7 @@ export const products = [{
     black: ["/product_images/fleece_beanie/black_fleece_beanie.avif", "/product_images/fleece_beanie/black_fleece_beanie.webp", "/product_images/fleece_beanie/black_fleece_beanie.jpg"],
     olive: ["/product_images/fleece_beanie/olive_fleece_beanie.avif", "/product_images/fleece_beanie/olive_fleece_beanie.webp", "/product_images/fleece_beanie/olive_fleece_beanie.jpg"]
   },
-  activePrintAreas: ["rightChest"],
+  activePrintAreas: ["cap_front","cap_back"],
   basePrice: 1
 }, {
   sku: "beanie",
@@ -437,7 +437,7 @@ export const products = [{
   search_tag: ["all", "winter", "headwear", "accessories"],
   colors: ["black", "olive"],
   sizeRange: ["one-size"],
-  activePrintAreas: ["frontA4"],
+  activePrintAreas: ["cap_front","cap_back"],
   images: {
     base1: ["/product_images/beanie/base1_beanie.avif", "/product_images/beanie/base1_beanie.webp", "/product_images/beanie/base1_beanie.png"],
     base2: ["/product_images/beanie/base2_beanie.avif", "/product_images/beanie/base2_beanie.webp", "/product_images/beanie/base2_beanie.png"],
@@ -756,6 +756,36 @@ export const printAreas = {
     overlayH: 200,
     overlayRot: 0,
     priority: 8,
+    fee: 5
+  },
+  cap_front: {
+    key: 'cap_front',
+    label: 'Cap Front',
+    labelHe: 'חזית כובע',
+    emboAllowed: true,
+    maxWCm: 10,
+    maxHCm: 6,
+    overlayX: 250,
+    overlayY: 350,
+    overlayW: 300,
+    overlayH: 180,
+    overlayRot: 0,
+    priority: 9,
+    fee: 5
+  },
+  cap_back: {
+    key: 'cap_back',
+    label: 'Cap Back',
+    labelHe: 'גב כובע',
+    emboAllowed: true,
+    maxWCm: 10,
+    maxHCm: 4,
+    overlayX: 250,
+    overlayY: 350,
+    overlayW: 300,
+    overlayH: 180,
+    overlayRot: 0,
+    priority: 10,
     fee: 5
   }
 };
@@ -1077,6 +1107,77 @@ export const templatePresets = {
       y: 4,
       w: 24,
       h: 12,
+      rot: 0
+    },
+    // Long-sleeve variants - same coordinates as short sleeve
+    leftChest_long: {
+      x: 58,
+      y: 25,
+      w: 16,
+      h: 16,
+      rot: 0
+    },
+    rightChest_long: {
+      x: 28,
+      y: 27,
+      w: 16,
+      h: 16,
+      rot: 0
+    },
+    frontA4_long: {
+      x: 35,
+      y: 27,
+      w: 30,
+      h: 40,
+      rot: 0
+    },
+    frontA3_long: {
+      x: 30.5,
+      y: 25,
+      w: 40,
+      h: 55,
+      rot: 0
+    },
+    backA4_long: {
+      x: 35,
+      y: 23,
+      w: 30,
+      h: 40,
+      rot: 0
+    },
+    backA3_long: {
+      x: 30,
+      y: 22,
+      w: 40,
+      h: 55,
+      rot: 0
+    },
+    leftSleeve_long: {
+      x: 84,
+      y: 27,
+      w: 12,
+      h: 10,
+      rot: -10
+    },
+    rightSleeve_long: {
+      x: 3,
+      y: 27,
+      w: 12,
+      h: 10,
+      rot: 10
+    },
+    cap_front: {
+      x: 30,
+      y: 39,
+      w: 40,
+      h: 22,
+      rot: 0
+    },
+    cap_back: {
+      x: 30,
+      y: 41,
+      w: 40,
+      h: 14,
       rot: 0
     }
   }

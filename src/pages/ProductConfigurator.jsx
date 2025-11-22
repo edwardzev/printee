@@ -907,7 +907,14 @@ const ProductConfigurator = () => {
                           </h3>
                           <MockupCanvas
                             areaKey={areaKey}
-                            baseImage={`/schematics/${areaKey.startsWith('back') ? 'back' : 'front'}.png`}
+                            baseImage={(() => {
+                              if (areaKey.startsWith('cap_')) {
+                                return `/schematics/${areaKey.replace('cap_', '')}_cap.png`;
+                              }
+                              const side = areaKey.startsWith('back') ? 'back' : 'front';
+                              const suffix = areaKey.includes('_long') ? '_long' : '';
+                              return `/schematics/${side}${suffix}.png`;
+                            })()}
                             onFileUpload={(file) => handleFileUpload(areaKey, file)}
                             uploadedDesign={uploadedDesigns[areaKey]}
                             onColorChoice={(aKey, v) => updateAreaField(aKey, { printColor: v })}

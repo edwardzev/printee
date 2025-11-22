@@ -120,19 +120,39 @@ const PrintAreaSelector = ({ availableAreas, selectedAreas, onChange }) => {
               {/* area preview image */}
               <div className="w-full mx-auto mb-3 rounded-md overflow-hidden bg-gray-50 aspect-square">
                 <img
-                  src={`/areas/${areaKey}.jpg`}
+                  src={`/areas/${areaKey}.webp`}
                   alt={(language === 'he' ? area.labelHe : area.label) + ' preview'}
                   className="w-full h-full object-contain"
                   loading="lazy"
                   decoding="async"
                   onError={(e) => {
-                    if (e.currentTarget.src.endsWith('.jpg')) {
-                      e.currentTarget.src = e.currentTarget.src.replace('.jpg', '.jpeg');
-                    } else if (e.currentTarget.src.endsWith('.jpeg')) {
-                      e.currentTarget.src = e.currentTarget.src.replace('.jpeg', '.png');
-                    } else if (e.currentTarget.src.endsWith('.png')) {
-                      e.currentTarget.src = e.currentTarget.src.replace('.png', '.webp');
+                    const img = e.currentTarget;
+                    const attempts = parseInt(img.dataset.attempts || '0', 10) || 0;
+                    img.dataset.attempts = attempts + 1;
+
+                    // Try common extensions in order: .webp -> .jpg -> .jpeg -> .png
+                    if (img.src.endsWith('.webp')) {
+                      img.src = img.src.replace(/\.webp$/i, '.jpg');
+                      return;
                     }
+                    if (img.src.endsWith('.jpg')) {
+                      img.src = img.src.replace(/\.jpg$/i, '.jpeg');
+                      return;
+                    }
+                    if (img.src.endsWith('.jpeg')) {
+                      img.src = img.src.replace(/\.jpeg$/i, '.png');
+                      return;
+                    }
+
+                    // If we tried a "_long" variant and it failed, fall back to non-long name once
+                    if (img.src.includes('_long') && attempts < 5) {
+                      img.src = img.src.replace('_long', '');
+                      img.dataset.attempts = attempts + 1;
+                      return;
+                    }
+
+                    // final fallback: transparent 1x1 PNG
+                    img.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=';
                   }}
                 />
               </div>
