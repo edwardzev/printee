@@ -281,7 +281,7 @@ export const products = [{
     base1: ['/product_images/longsleeve/base1_longsleeve.png'],
     base2: ['/product_images/longsleeve/base2_longsleeve.png']
   },
-  activePrintAreas: ['leftChest', 'rightChest', 'frontA4', 'frontA3', 'backA4', 'backA3', 'leftSleeve', 'rightSleeve'],
+  activePrintAreas: ['leftChest_long', 'rightChest_long', 'frontA4_long', 'frontA3_long', 'backA4_long', 'backA3_long', 'leftSleeve_long', 'rightSleeve_long'],
   basePrice: 60
 }, {
   sku: 'softshell',
@@ -407,6 +407,25 @@ export const products = [{
   },
   activePrintAreas: ['leftChest', 'rightChest', 'frontA4', 'frontA3', 'backA4', 'backA3', 'leftSleeve', 'rightSleeve'],
   basePrice: 80
+}, {
+  sku: "fleece_beanie",
+  appearance: 122,
+  name: "fleece_beanie",
+  nameHe: "\u05DB\u05D5\u05D1\u05E2 \u05E4\u05DC\u05D9\u05E1",
+  description: "fleece_beanie",
+  descriptionHe: "\u05DB\u05D5\u05D1\u05E2 \u05E4\u05DC\u05D9\u05E1",
+  tech: "DTF",
+  search_tag: ["all", "winter", "headwear", "accessories"],
+  colors: ["black", "olive"],
+  sizeRange: ["one-size"],
+  images: {
+    base1: ["/product_images/fleece_beanie/base1_fleece_beanie.avif", "/product_images/fleece_beanie/base1_fleece_beanie.webp", "/product_images/fleece_beanie/base1_fleece_beanie.png"],
+    base2: ["/product_images/fleece_beanie/base2_fleece_beanie.avif", "/product_images/fleece_beanie/base2_fleece_beanie.webp", "/product_images/fleece_beanie/base2_fleece_beanie.png"],
+    black: ["/product_images/fleece_beanie/black_fleece_beanie.avif", "/product_images/fleece_beanie/black_fleece_beanie.webp", "/product_images/fleece_beanie/black_fleece_beanie.jpg"],
+    olive: ["/product_images/fleece_beanie/olive_fleece_beanie.avif", "/product_images/fleece_beanie/olive_fleece_beanie.webp", "/product_images/fleece_beanie/olive_fleece_beanie.jpg"]
+  },
+  activePrintAreas: ["rightChest"],
+  basePrice: 1
 }, {
   sku: "beanie",
   appearance: 10121,
@@ -617,6 +636,127 @@ export const printAreas = {
     overlayRot: 0,
     priority: 9,
     fee: 3
+  },
+  // Long sleeve versions - same labels, different images
+  leftChest_long: {
+    key: 'leftChest_long',
+    label: 'Left Chest',
+    labelHe: 'חזה שמאל',
+    emboAllowed: true,
+    maxWCm: 10,
+    maxHCm: 10,
+    overlayX: 150,
+    overlayY: 200,
+    overlayW: 120,
+    overlayH: 120,
+    overlayRot: 0,
+    priority: 1,
+    fee: 5
+  },
+  rightChest_long: {
+    key: 'rightChest_long',
+    label: 'Right Chest',
+    labelHe: 'חזה ימין',
+    emboAllowed: true,
+    maxWCm: 10,
+    maxHCm: 10,
+    overlayX: 530,
+    overlayY: 200,
+    overlayW: 120,
+    overlayH: 120,
+    overlayRot: 0,
+    priority: 2,
+    fee: 5
+  },
+  frontA4_long: {
+    key: 'frontA4_long',
+    label: 'Front A4',
+    labelHe: 'חזית A4',
+    emboAllowed: false,
+    maxWCm: 20,
+    maxHCm: 30,
+    overlayX: 250,
+    overlayY: 250,
+    overlayW: 300,
+    overlayH: 400,
+    overlayRot: 0,
+    priority: 3,
+    fee: 10
+  },
+  frontA3_long: {
+    key: 'frontA3_long',
+    label: 'Front A3',
+    labelHe: 'חזית A3',
+    emboAllowed: false,
+    maxWCm: 30,
+    maxHCm: 40,
+    overlayX: 200,
+    overlayY: 200,
+    overlayW: 400,
+    overlayH: 500,
+    overlayRot: 0,
+    priority: 4,
+    fee: 15
+  },
+  backA4_long: {
+    key: 'backA4_long',
+    label: 'Back A4',
+    labelHe: 'גב A4',
+    emboAllowed: false,
+    maxWCm: 20,
+    maxHCm: 30,
+    overlayX: 250,
+    overlayY: 250,
+    overlayW: 300,
+    overlayH: 400,
+    overlayRot: 0,
+    priority: 5,
+    fee: 10
+  },
+  backA3_long: {
+    key: 'backA3_long',
+    label: 'Back A3',
+    labelHe: 'גב A3',
+    emboAllowed: false,
+    maxWCm: 30,
+    maxHCm: 40,
+    overlayX: 200,
+    overlayY: 200,
+    overlayW: 400,
+    overlayH: 500,
+    overlayRot: 0,
+    priority: 6,
+    fee: 15
+  },
+  leftSleeve_long: {
+    key: 'leftSleeve_long',
+    label: 'Left Sleeve',
+    labelHe: 'שרוול שמאל',
+    emboAllowed: true,
+    maxWCm: 8,
+    maxHCm: 8,
+    overlayX: 50,
+    overlayY: 300,
+    overlayW: 80,
+    overlayH: 200,
+    overlayRot: 0,
+    priority: 7,
+    fee: 5
+  },
+  rightSleeve_long: {
+    key: 'rightSleeve_long',
+    label: 'Right Sleeve',
+    labelHe: 'שרוול ימין',
+    emboAllowed: true,
+    maxWCm: 8,
+    maxHCm: 8,
+    overlayX: 670,
+    overlayY: 300,
+    overlayW: 80,
+    overlayH: 200,
+    overlayRot: 0,
+    priority: 8,
+    fee: 5
   }
 };
 export const pricingRules = {
@@ -828,6 +968,29 @@ export const pricingRules = {
     }]
   },
   beanie: {
+    tiers: [{
+      min: 1,
+      max: 9,
+      price: 50
+    }, {
+      min: 10,
+      max: 19,
+      price: 30
+    }, {
+      min: 20,
+      max: 49,
+      price: 20
+    }, {
+      min: 50,
+      max: 99,
+      price: 15
+    }, {
+      min: 100,
+      max: Infinity,
+      price: 10
+    }]
+  },
+  fleece_beanie: {
     tiers: [{
       min: 1,
       max: 9,

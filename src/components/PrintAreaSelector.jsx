@@ -120,16 +120,16 @@ const PrintAreaSelector = ({ availableAreas, selectedAreas, onChange }) => {
               {/* area preview image */}
               <div className="w-full mx-auto mb-3 rounded-md overflow-hidden bg-gray-50 aspect-square">
                 <img
-                  src={`/areas/${areaKey}.jpeg`}
+                  src={`/areas/${areaKey}.jpg`}
                   alt={(language === 'he' ? area.labelHe : area.label) + ' preview'}
                   className="w-full h-full object-contain"
                   loading="lazy"
                   decoding="async"
                   onError={(e) => {
-                    if (e.currentTarget.src.endsWith('.jpeg')) {
-                      e.currentTarget.src = e.currentTarget.src.replace('.jpeg', '.jpg');
-                    } else if (e.currentTarget.src.endsWith('.jpg')) {
-                      e.currentTarget.src = e.currentTarget.src.replace('.jpg', '.png');
+                    if (e.currentTarget.src.endsWith('.jpg')) {
+                      e.currentTarget.src = e.currentTarget.src.replace('.jpg', '.jpeg');
+                    } else if (e.currentTarget.src.endsWith('.jpeg')) {
+                      e.currentTarget.src = e.currentTarget.src.replace('.jpeg', '.png');
                     } else if (e.currentTarget.src.endsWith('.png')) {
                       e.currentTarget.src = e.currentTarget.src.replace('.png', '.webp');
                     }
