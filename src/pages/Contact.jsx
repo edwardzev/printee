@@ -3,7 +3,7 @@ import { Helmet } from 'react-helmet';
 
 export default function Contact() {
   // WhatsApp configuration as per requirements
-  const whatsappPhone = '9725074497';
+  const whatsappPhone = '972555074497';
   const whatsappMessage = 'שלום, הגעתי מאתר printeam.co.il\nיש לי שאלה -';
   const whatsappLink = `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(whatsappMessage)}`;
   

@@ -424,7 +424,27 @@ export const products = [{
     black: ["/product_images/fleece_beanie/black_fleece_beanie.avif", "/product_images/fleece_beanie/black_fleece_beanie.webp", "/product_images/fleece_beanie/black_fleece_beanie.jpg"],
     olive: ["/product_images/fleece_beanie/olive_fleece_beanie.avif", "/product_images/fleece_beanie/olive_fleece_beanie.webp", "/product_images/fleece_beanie/olive_fleece_beanie.jpg"]
   },
-  activePrintAreas: ["cap_front","cap_back"],
+  activePrintAreas: ["cap_front", "cap_back"],
+  basePrice: 1
+}, {
+  sku: "scarf",
+  appearance: 123,
+  name: "scarf",
+  nameHe: "\u05D7\u05DE\u05E6\u05D5\u05D5\u05D0\u05E8 \u05E4\u05DC\u05D9\u05E1",
+  description: "scarf",
+  descriptionHe: "\u05D7\u05DE\u05E6\u05D5\u05D5\u05D0\u05E8 \u05E4\u05DC\u05D9\u05E1",
+  tech: "DTF",
+  search_tag: ["all", "headwear", "winter"],
+  colors: ["black", "olive", "navy"],
+  sizeRange: ["one-size"],
+  activePrintAreas: ["cap_front", "cap_back"],
+  images: {
+    base1: ["/product_images/scarf/base1_scarf.avif", "/product_images/scarf/base1_scarf.webp", "/product_images/scarf/base1_scarf.png"],
+    base2: ["/product_images/scarf/base2_scarf.avif", "/product_images/scarf/base2_scarf.webp", "/product_images/scarf/base2_scarf.png"],
+    black: ["/product_images/scarf/black_scarf.avif", "/product_images/scarf/black_scarf.webp", "/product_images/scarf/black_scarf.png"],
+    olive: ["/product_images/scarf/olive_scarf.avif", "/product_images/scarf/olive_scarf.webp", "/product_images/scarf/olive_scarf.png"],
+    navy: ["/product_images/scarf/navy_scarf.avif", "/product_images/scarf/navy_scarf.webp", "/product_images/scarf/navy_scarf.jpg"]
+  },
   basePrice: 1
 }, {
   sku: "beanie",
@@ -437,7 +457,7 @@ export const products = [{
   search_tag: ["all", "winter", "headwear", "accessories"],
   colors: ["black", "olive"],
   sizeRange: ["one-size"],
-  activePrintAreas: ["cap_front","cap_back"],
+  activePrintAreas: ["cap_front", "cap_back"],
   images: {
     base1: ["/product_images/beanie/base1_beanie.avif", "/product_images/beanie/base1_beanie.webp", "/product_images/beanie/base1_beanie.png"],
     base2: ["/product_images/beanie/base2_beanie.avif", "/product_images/beanie/base2_beanie.webp", "/product_images/beanie/base2_beanie.png"],
@@ -1021,6 +1041,52 @@ export const pricingRules = {
     }]
   },
   fleece_beanie: {
+    tiers: [{
+      min: 1,
+      max: 9,
+      price: 50
+    }, {
+      min: 10,
+      max: 19,
+      price: 30
+    }, {
+      min: 20,
+      max: 49,
+      price: 20
+    }, {
+      min: 50,
+      max: 99,
+      price: 15
+    }, {
+      min: 100,
+      max: Infinity,
+      price: 10
+    }]
+  },
+  rerr: {
+    tiers: [{
+      min: 1,
+      max: 9,
+      price: 50
+    }, {
+      min: 10,
+      max: 19,
+      price: 30
+    }, {
+      min: 20,
+      max: 49,
+      price: 20
+    }, {
+      min: 50,
+      max: 99,
+      price: 15
+    }, {
+      min: 100,
+      max: Infinity,
+      price: 10
+    }]
+  },
+  scarf: {
     tiers: [{
       min: 1,
       max: 9,

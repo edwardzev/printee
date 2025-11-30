@@ -11,7 +11,7 @@ export default function WhatsAppWidget({
   size = 40,
 }) {
   const rawEnv = (import.meta?.env?.VITE_WHATSAPP_NUMBER || '').toString();
-  const phone = phoneProp || rawEnv || '972546969974'; // default
+  const phone = phoneProp || rawEnv || '972555074497'; // default
 
   const normalized = useMemo(() => {
     try {

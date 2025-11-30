@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
+import { printAreas as printAreaMap } from '@/data/products';
 
 const searchTagOptions = [
   { value: 'all', label: 'All Products' },
@@ -12,6 +13,18 @@ const searchTagOptions = [
 
 const sharedSizeRange = ['s', 'm', 'l', 'xl', 'xxl', 'xxxl', 'xxxxl', 'xxxxxl'];
 const sharedPrintAreas = ['leftChest', 'rightChest', 'frontA4', 'frontA3', 'backA4', 'backA3', 'leftSleeve', 'rightSleeve'];
+const orderedPrintAreaEntries = Object.values(printAreaMap)
+  .sort((a, b) => (a.priority ?? 999) - (b.priority ?? 999));
+const availablePrintAreas = orderedPrintAreaEntries.map(area => area.key);
+
+const formatPrintAreaLabel = (key) => {
+  const entry = printAreaMap[key];
+  if (!entry) return key;
+  if (key.endsWith('_long')) {
+    return `${entry.label} (Long Fit)`;
+  }
+  return entry.label;
+};
 
 const productTemplates = {
   shortSleeve: {
@@ -130,11 +143,6 @@ const ProductForm = () => {
       return { ...prev, colors: nextColors };
     });
   }, [formData.colors]);
-
-  const availablePrintAreas = [
-    'leftChest', 'rightChest', 'frontA4', 'frontA3', 'backA4', 'backA3',
-    'leftSleeve', 'rightSleeve', 'neckLabel'
-  ];
 
   const technologies = ['DTF', 'DTG', 'Embroidery', 'Screen Print'];
 
@@ -710,7 +718,10 @@ const ProductForm = () => {
                     onChange={() => handleArrayToggle('activePrintAreas', area)}
                     className="rounded"
                   />
-                  <span className="text-sm">{area}</span>
+                  <span className="text-sm">
+                    {formatPrintAreaLabel(area)}
+                    <span className="ml-1 text-xs text-gray-500">({area})</span>
+                  </span>
                 </label>
               ))}
             </div>
