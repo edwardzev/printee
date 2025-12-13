@@ -9,6 +9,7 @@ import Trash2 from 'lucide-react/dist/esm/icons/trash-2.js';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCart } from '@/contexts/CartContext';
 import { products, printAreas, pricingRules, colorLabelsHe } from '@/data/products';
+import { EMBO_DEV_FEE, EMBO_UNIT_FEE } from '@/lib/pricingConstants';
 import { Button } from '@/components/ui/button';
 import { pdfToDataUrl } from '@/lib/pdfToImage';
 import { useToast } from '@/components/ui/use-toast';
@@ -282,9 +283,6 @@ const ProductConfigurator = () => {
       </div>
     );
   }
-
-  const EMBO_DEV_FEE = 200; // גלופה one-time per cart item if any embo chosen
-  const EMBO_UNIT_FEE = 10; // per-unit fee for embo small areas
 
   const calculatePrice = () => {
     // total across all selected color matrices

@@ -15,6 +15,8 @@ import { deriveDiscountedPricing, DEFAULT_DISCOUNT_RATE } from '@/lib/discountHe
 import { buildCartItemsForAirtable } from '@/lib/buildCartItemsForAirtable';
 import { useActionLogger } from '@/hooks/useActionLogger';
 import { getGoogleAdsSnapshot, getTrackingMetadataSnapshot } from '@/lib/googleAdsTracking';
+import { printAreas } from '@/data/products';
+import { EMBO_DEV_FEE, EMBO_UNIT_FEE } from '@/lib/pricingConstants';
 
 const sumSizeMatrixQuantities = (matrix = {}) => Object.values(matrix || {}).reduce((sum, qty) => sum + (Number(qty) || 0), 0);
 
@@ -43,6 +45,67 @@ const normalizePrintAreas = (item) => (item?.selectedPrintAreas || [])
     return entry.areaKey || null;
   })
   .filter(Boolean);
+
+const computePrintAreaFees = (item, quantity) => {
+  const qty = Number(quantity) || 0;
+  if (!item || qty <= 0) return [];
+  const selections = Array.isArray(item.selectedPrintAreas) ? item.selectedPrintAreas : [];
+  const breakdown = [];
+  let hasEmbo = false;
+  selections.forEach((entry) => {
+    const areaKey = typeof entry === 'string' ? entry : (entry?.areaKey || '');
+    if (!areaKey) return;
+    const method = typeof entry === 'object' && entry?.method ? entry.method : 'print';
+    if (method === 'embo') hasEmbo = true;
+    let perUnitFee = 0;
+    if (method === 'print') {
+      perUnitFee = Number(printAreas[areaKey]?.fee || 0);
+    } else if (method === 'embo') {
+      perUnitFee = EMBO_UNIT_FEE;
+    }
+    if (!Number.isFinite(perUnitFee) || perUnitFee <= 0) return;
+    const total = Number((perUnitFee * qty).toFixed(2));
+    breakdown.push({
+      type: 'print_area',
+      areaKey,
+      method,
+      label: printAreas[areaKey]?.label || areaKey,
+      labelHe: printAreas[areaKey]?.labelHe || '',
+      quantity: qty,
+      unit_fee: perUnitFee,
+      total,
+    });
+  });
+  if (hasEmbo) {
+    breakdown.push({
+      type: 'embo_setup',
+      areaKey: 'embo_setup',
+      method: 'embo',
+      label: 'Embo setup fee',
+      labelHe: 'דמי גלופת אמבו',
+      quantity: 1,
+      unit_fee: EMBO_DEV_FEE,
+      total: EMBO_DEV_FEE,
+    });
+  }
+  return breakdown;
+};
+
+const formatBreakdownLine = (label, quantity, unitPrice, totalPrice, formatCurrencyFn) => {
+  if (!label || typeof formatCurrencyFn !== 'function') return '';
+  const qty = Number(quantity);
+  const qtyText = Number.isFinite(qty) && qty > 0 ? `${qty}pcs` : '';
+  const unit = Number(unitPrice);
+  const total = Number(totalPrice);
+  const unitText = Number.isFinite(unit) ? formatCurrencyFn(unit) : formatCurrencyFn(0);
+  const totalText = Number.isFinite(total)
+    ? formatCurrencyFn(total)
+    : (Number.isFinite(unit) && Number.isFinite(qty) ? formatCurrencyFn(unit * qty) : formatCurrencyFn(0));
+  const parts = [label.trim()];
+  if (qtyText) parts.push(qtyText);
+  parts.push('x', unitText, '=', totalText);
+  return parts.join(' ').replace(/\s+/g, ' ').trim();
+};
 // Lazy import for PDF generation to avoid bundle bloat when not needed
 let pdfLibPromise = null;
 async function ensurePdfLib() {
@@ -344,8 +407,15 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       }
       const derived = deriveDiscountedPricing(i, { discountClaimed, defaultRate: DEFAULT_DISCOUNT_RATE });
       const effectiveDiscountRate = derived.discountApplied ? (derived.discountRate || DEFAULT_DISCOUNT_RATE) : 0;
+      const itemQuantity = computeItemQuantity(rest);
+      const unitPriceBeforeDiscount = itemQuantity > 0
+        ? Number((derived.subtotalBefore / itemQuantity).toFixed(2))
+        : null;
+      const printAreaFees = computePrintAreaFees(rest, itemQuantity);
       return {
         ...rest,
+        quantity: itemQuantity,
+        unitPrice: unitPriceBeforeDiscount,
         totalPrice: derived.subtotalAfter,
         subtotalAfterDiscount: derived.subtotalAfter,
         subtotalBeforeDiscount: derived.subtotalBefore,
@@ -355,12 +425,14 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
         discountClaimed: derived.discountApplied || rest?.discountClaimed || discountClaimed,
         priceBreakdown: {
           ...(rest?.priceBreakdown || {}),
+          unitPrice: unitPriceBeforeDiscount,
           discountAmount: derived.discountAmount,
           discountRate: effectiveDiscountRate,
           subtotalAfterDiscount: derived.subtotalAfter,
           totalBeforeDiscount: derived.subtotalBefore,
           totalAfterDiscount: derived.subtotalAfter,
           merchandiseTotal: derived.subtotalBefore,
+          printAreaFees,
         },
         uploadedDesigns: sanitizedDesigns,
       };
@@ -374,21 +446,62 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
         ? Number(item.subtotalAfterDiscount)
         : (Number.isFinite(item.totalPrice) ? Number(item.totalPrice) : null);
       const discountValue = Number.isFinite(item.discountAmount) ? Number(item.discountAmount) : 0;
+      const quantity = Number.isFinite(item.quantity) ? Number(item.quantity) : computeItemQuantity(item);
       const unitPrice = Number.isFinite(item.priceBreakdown?.unitPrice)
         ? Number(item.priceBreakdown.unitPrice)
-        : (Number.isFinite(item.unitPrice) ? Number(item.unitPrice) : null);
+        : (Number.isFinite(item.unitPrice) ? Number(item.unitPrice) : (quantity > 0 && Number.isFinite(subtotalBefore)
+          ? Number((subtotalBefore / quantity).toFixed(2))
+          : null));
+      const baseUnitPrice = Number.isFinite(item.priceBreakdown?.unitBase)
+        ? Number(item.priceBreakdown.unitBase)
+        : null;
+      const baseTotal = baseUnitPrice != null && quantity > 0
+        ? Number((baseUnitPrice * quantity).toFixed(2))
+        : null;
+      const printAreaFees = Array.isArray(item.priceBreakdown?.printAreaFees)
+        ? item.priceBreakdown.printAreaFees
+        : computePrintAreaFees(item, quantity);
+      const productLabel = item.productName || item.name || item.productSku || 'Product';
+      const skuLabel = item.productSku ? `${item.productSku} • ${productLabel}` : productLabel;
+      const lineText = formatBreakdownLine(skuLabel, quantity, unitPrice, subtotalBefore, formatCurrency);
+      const areaTexts = printAreaFees
+        .map((area) => formatBreakdownLine(`- ${area.label || area.areaKey}`, area.quantity, area.unit_fee, area.total, formatCurrency))
+        .filter(Boolean);
       return {
         sku: item.productSku || item.product || '',
         name: item.productName || item.name || '',
         colors: normalizeItemColors(item),
-        quantity: computeItemQuantity(item),
+        quantity,
         unit_price: unitPrice,
         subtotal_before_discount: subtotalBefore,
         discount: discountValue,
         subtotal_after_discount: subtotalAfter,
         selected_print_areas: normalizePrintAreas(item),
+        base_unit_price: baseUnitPrice,
+        base_total: baseTotal,
+        print_area_breakdown: printAreaFees,
+        line_text: lineText,
+        area_texts: areaTexts,
       };
     });
+
+    const financeBreakdownLines = financeLineItems.reduce((lines, entry) => {
+      if (entry?.line_text) lines.push(entry.line_text);
+      if (Array.isArray(entry?.area_texts)) {
+        entry.area_texts.forEach((text) => { if (text) lines.push(text); });
+      }
+      return lines;
+    }, []);
+    financeBreakdownLines.push(`Delivery = ${formatCurrency(deliveryCost)}`);
+    if (discountAmount > 0) {
+      financeBreakdownLines.push(`Discount ${discountRatePercent}% = -${formatCurrency(discountAmount)}`);
+    }
+    if (cardDiscount > 0) {
+      financeBreakdownLines.push(`Card discount 3% = -${formatCurrency(cardDiscount)}`);
+    }
+    financeBreakdownLines.push(`Total before VAT = ${formatCurrency(vatBase)}`);
+    financeBreakdownLines.push(`VAT 17% = ${formatCurrency(vatAmount)}`);
+    financeBreakdownLines.push(`Total = ${formatCurrency(paymentTotal)}`);
 
     const totalsBreakdown = {
       merchandise_before_discount: subtotalBeforeDiscount,
@@ -399,6 +512,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       total_before_payment_method_adjustments: baseTotal,
       total_after_payment_method_adjustments: paymentTotal,
     };
+    totalsBreakdown.total_before_vat = vatBase;
     if (cardDiscount) {
       totalsBreakdown.payment_method_adjustments = { card_discount: cardDiscount };
     }
@@ -415,11 +529,18 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       currency: 'ILS',
       totals_breakdown: totalsBreakdown,
     };
+    financialBlock.vat_base = vatBase;
+    financialBlock.discount_rate_percent = discountRatePercent;
     if (cardDiscount) {
       financialBlock.payment_adjustments = { card_discount: cardDiscount };
+      financialBlock.card_discount = cardDiscount;
     }
     if (financeLineItems.length) {
       financialBlock.line_items = financeLineItems;
+    }
+    if (financeBreakdownLines.length) {
+      financialBlock.breakdown_lines = financeBreakdownLines;
+      financialBlock.breakdown_text = financeBreakdownLines.join('\n');
     }
     if (payload?.financial?.dropbox_shared_link) {
       financialBlock.dropbox_shared_link = payload.financial.dropbox_shared_link;
@@ -433,8 +554,10 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
     const baseFinancialForDocs = {
       subtotal: financialBlock.subtotal,
       delivery: financialBlock.delivery,
+      vat_base: vatBase,
       vat: financialBlock.vat,
       total: financialBlock.total,
+      total_after_payment_adjustments: financialBlock.total_after_payment_adjustments,
       payment_method: financialBlock.payment_method,
     };
 

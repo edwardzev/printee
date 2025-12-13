@@ -611,11 +611,26 @@ export default async function handler(req, res) {
               // Initial pre-payment post: write finance_text (totals/method/links) as before
               const financePayload = {
                 subtotal: Number(financial.subtotal || 0),
+                subtotal_before_discount: Number(financial.subtotal_before_discount || financial.subtotal || 0),
+                discount: Number(financial.discount || 0),
                 delivery: Number(financial.delivery || 0),
+                vat_base: Number(financial.vat_base || 0),
                 vat: Number(financial.vat || 0),
                 total: Number(financial.total || 0),
+                total_after_payment_adjustments: Number(financial.total_after_payment_adjustments || financial.total || 0),
                 payment_method: String(financial.payment_method || financial.paymentMethod || ''),
               };
+              if (financial.currency) financePayload.currency = String(financial.currency);
+              if (Array.isArray(financial.line_items)) financePayload.line_items = financial.line_items;
+              if (financial.totals_breakdown && typeof financial.totals_breakdown === 'object') {
+                financePayload.totals_breakdown = financial.totals_breakdown;
+              }
+              if (financial.payment_adjustments) {
+                financePayload.payment_adjustments = financial.payment_adjustments;
+              }
+              if (Array.isArray(financial.breakdown_lines)) {
+                financePayload.breakdown_lines = financial.breakdown_lines;
+              }
               if (financial.dropbox_shared_link) {
                 financePayload.dropbox_shared_link = normalizeDropboxFolderView(String(financial.dropbox_shared_link));
               }
@@ -640,7 +655,15 @@ export default async function handler(req, res) {
                 if (keys.length === 1) financePayload.dropbox_worksheet_link = financePayload.dropbox_worksheet_links[keys[0]];
               }
               // Ignore invrec in pre-payment stage; it isn't present yet
-              patchFields[fFinanceText] = formatForAirtableLongText(financePayload);
+              const structuredText = formatForAirtableLongText(financePayload);
+              if (financial.breakdown_text) {
+                const lines = String(financial.breakdown_text || '').trim();
+                patchFields[fFinanceText] = lines
+                  ? `${lines}${structuredText ? `\n\n---\n${structuredText}` : ''}`
+                  : structuredText;
+              } else {
+                patchFields[fFinanceText] = structuredText;
+              }
             }
           }
           if (fCartText && (cart || (Array.isArray(cartUploads) && cartUploads.length))) {

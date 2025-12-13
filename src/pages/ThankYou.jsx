@@ -5,6 +5,7 @@ import { Helmet } from 'react-helmet';
 import CheckCircle from 'lucide-react/dist/esm/icons/check-circle.js';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/contexts/CartContext';
+import { useToast } from '@/components/ui/use-toast';
 
 function safeGet(obj, path, fallback = '') {
   try {
@@ -20,6 +21,8 @@ export default function ThankYou() {
   const [marked, setMarked] = useState(false);
   // no-op: bump for redeploy cache-bust
   const sentRef = useRef(false);
+  const bitToastRef = useRef(null);
+  const { toast } = useToast();
 
   // QA helper: allow clearing local duplicate guard via ?clear_gtag=1
   useEffect(() => {
@@ -42,6 +45,28 @@ export default function ThankYou() {
   const customerName = safeGet(payload, 'customer.name') || safeGet(payload, 'contact.name') || safeGet(payload, 'contact?.name');
   const customerEmail = safeGet(payload, 'customer.email') || safeGet(payload, 'contact.email');
   const totals = safeGet(payload, 'order.totals') || safeGet(payload, 'cartSummary') || {};
+  const paymentMethod = String(payload?.paymentMethod || payload?.financial?.payment_method || '').toLowerCase();
+  const isBitPayment = paymentMethod === 'bit';
+
+  useEffect(() => {
+    if (!isBitPayment) {
+      if (bitToastRef.current) {
+        try { bitToastRef.current.dismiss?.(); } catch (_) {}
+        bitToastRef.current = null;
+      }
+      return undefined;
+    }
+    const nextToast = toast({
+      title: 'Bit / Paybox',
+      description: 'העבירו לאמצעי התשלום: 054-696-9974 ושלחו צילום אישור ל-info@printmarket.co.il',
+      duration: Infinity,
+    });
+    bitToastRef.current = nextToast;
+    return () => {
+      try { nextToast?.dismiss?.(); } catch (_) {}
+      bitToastRef.current = null;
+    };
+  }, [isBitPayment, toast]);
 
   // Fire Google Ads conversion event (AW) once per order
   useEffect(() => {
