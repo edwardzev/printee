@@ -29,6 +29,12 @@ import MethodsOfBranding from '@/pages/MethodsOfBranding';
 import AccessibilityStatement from '@/pages/AccessibilityStatement';
 import Works from '@/pages/Works';
 import Contact from '@/pages/Contact';
+import {
+  readStoredGoogleAds,
+  writeStoredGoogleAds,
+  readGclidFromCookies,
+  detectDeviceCategory,
+} from '@/lib/googleAdsTracking';
 
 function ScrollToTop() {
   const { pathname, search } = useLocation();
@@ -80,143 +86,7 @@ function AdsRouteTracker() {
   return null;
 }
 
-function extractGclidFromCookieValue(raw) {
-  if (!raw) return '';
-  const value = String(raw).trim();
-  if (!value) return '';
-  // Google stores cookies in the format GCL.<timestamp>.<gclid>
-  const segments = value.split('.');
-  if (segments.length >= 3) {
-    const candidate = segments[segments.length - 1];
-    return candidate ? candidate.trim() : '';
-  }
-  return value;
-}
-
-function readGclidFromCookies() {
-  if (typeof document === 'undefined') return '';
-  try {
-    const cookieSource = document.cookie || '';
-    if (!cookieSource) return '';
-    const entries = cookieSource.split(';');
-    for (const entry of entries) {
-      const pair = entry.trim();
-      if (!pair) continue;
-      const [key, ...rest] = pair.split('=');
-      if (!key || rest.length === 0) continue;
-      const lowerKey = key.trim().toLowerCase();
-      if (lowerKey === 'gclid') {
-        const decoded = decodeURIComponent(rest.join('='));
-        const candidate = decoded.trim();
-        if (candidate) return candidate;
-      }
-      if (lowerKey === '_gcl_aw' || lowerKey === '_gcl_dc') {
-        const decoded = decodeURIComponent(rest.join('='));
-        const candidate = extractGclidFromCookieValue(decoded);
-        if (candidate) return candidate;
-      }
-    }
-  } catch (e) {
-    try { console.warn('[TrackingSync] Failed to parse cookies for gclid', e?.message || String(e)); } catch (_) {}
-  }
-  return '';
-}
-
-function readStoredGoogleAds() {
-  if (typeof window === 'undefined') return {};
-  const readJson = (storage) => {
-    if (!storage || typeof storage.getItem !== 'function') return null;
-    try {
-      const raw = storage.getItem('printee:last-googleads');
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object') return parsed;
-    } catch (_) {}
-    return null;
-  };
-
-  let data = null;
-  try { data = readJson(window.sessionStorage); } catch (_) {}
-  if (!data) {
-    try { data = readJson(window.localStorage); } catch (_) {}
-  }
-  if (data) {
-    if (!data.conversionTime) {
-      let storedConversion = '';
-      try { storedConversion = window.sessionStorage?.getItem('printee:last-conversion-time') || ''; } catch (_) {}
-      if (!storedConversion) {
-        try { storedConversion = window.localStorage?.getItem('printee:last-conversion-time') || ''; } catch (_) {}
-      }
-      if (storedConversion) data.conversionTime = storedConversion;
-    }
-    return data;
-  }
-
-  // Backwards compatibility for legacy storage key (gclid only)
-  const fallback = {};
-  let stored = '';
-  try { stored = (window.sessionStorage && window.sessionStorage.getItem('printee:last-gclid')) || ''; } catch (_) {}
-  if (!stored) {
-    try { stored = (window.localStorage && window.localStorage.getItem('printee:last-gclid')) || ''; } catch (_) {}
-  }
-  if (stored && typeof stored === 'string') fallback.gclid = stored.trim();
-  let storedConversion = '';
-  try { storedConversion = window.sessionStorage?.getItem('printee:last-conversion-time') || ''; } catch (_) {}
-  if (!storedConversion) {
-    try { storedConversion = window.localStorage?.getItem('printee:last-conversion-time') || ''; } catch (_) {}
-  }
-  if (storedConversion) fallback.conversionTime = storedConversion.trim();
-  return fallback;
-}
-
-function writeStoredGoogleAds(data, extras = {}) {
-  if (typeof window === 'undefined' || !data || typeof data !== 'object') return;
-  const payload = {
-    gclid: (data.gclid || '').trim(),
-    gbraid: (data.gbraid || '').trim(),
-    wbraid: (data.wbraid || '').trim(),
-    campaign: (data.campaign || '').trim(),
-    keyword: (data.keyword || '').trim(),
-    utmSource: (data.utmSource || '').trim(),
-    utmMedium: (data.utmMedium || '').trim(),
-    captureSource: (data.source || '').trim(),
-    lastCapturedAt: (data.lastCapturedAt || '').trim(),
-    conversionTime: (extras.conversionTime || data.conversionTime || '').trim(),
-  };
-  const serialized = JSON.stringify(payload);
-  try { if (window.sessionStorage) window.sessionStorage.setItem('printee:last-googleads', serialized); } catch (_) {}
-  try { if (window.localStorage) window.localStorage.setItem('printee:last-googleads', serialized); } catch (_) {}
-
-  if (payload.conversionTime) {
-    try { window.sessionStorage?.setItem('printee:last-conversion-time', payload.conversionTime); } catch (_) {}
-    try { window.localStorage?.setItem('printee:last-conversion-time', payload.conversionTime); } catch (_) {}
-  }
-
-  if (payload.gclid) {
-    try { if (window.sessionStorage) window.sessionStorage.setItem('printee:last-gclid', payload.gclid); } catch (_) {}
-    try { if (window.localStorage) window.localStorage.setItem('printee:last-gclid', payload.gclid); } catch (_) {}
-  }
-}
-
-function detectDeviceCategory() {
-  if (typeof navigator === 'undefined') return '';
-  try {
-    const nav = navigator;
-    if (nav.userAgentData && typeof nav.userAgentData === 'object') {
-      if (nav.userAgentData.mobile) return 'mobile';
-      const platform = String(nav.userAgentData.platform || '').toLowerCase();
-      if (platform.includes('android')) return 'tablet';
-    }
-    const ua = String(nav.userAgent || '');
-    const isTablet = /ipad|tablet|nexus 7|nexus 9|nexus 10|xoom|silk|sm-t|kfapwi|kindle/i.test(ua) || (/android/i.test(ua) && !/mobile/i.test(ua));
-    if (isTablet) return 'tablet';
-    const isMobile = /mobi|iphone|ipod|android.+mobile|blackberry|iemobile|opera mini/i.test(ua);
-    if (isMobile) return 'mobile';
-    return 'desktop';
-  } catch (_) {
-    return '';
-  }
-}
+// helper functions moved to lib/googleAdsTracking.js
 
 function TrackingSync() {
   const { payload, mergePayload } = useCart();

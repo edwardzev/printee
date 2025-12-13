@@ -14,6 +14,35 @@ import { composeWorksheetImage } from '@/lib/composeWorksheetImage';
 import { deriveDiscountedPricing, DEFAULT_DISCOUNT_RATE } from '@/lib/discountHelpers';
 import { buildCartItemsForAirtable } from '@/lib/buildCartItemsForAirtable';
 import { useActionLogger } from '@/hooks/useActionLogger';
+import { getGoogleAdsSnapshot, getTrackingMetadataSnapshot } from '@/lib/googleAdsTracking';
+
+const sumSizeMatrixQuantities = (matrix = {}) => Object.values(matrix || {}).reduce((sum, qty) => sum + (Number(qty) || 0), 0);
+
+const computeItemQuantity = (item) => {
+  if (!item) return 0;
+  if (item.sizeMatrices && typeof item.sizeMatrices === 'object') {
+    return Object.values(item.sizeMatrices).reduce((sum, matrix) => sum + sumSizeMatrixQuantities(matrix), 0);
+  }
+  if (item.sizeMatrix && typeof item.sizeMatrix === 'object') {
+    return sumSizeMatrixQuantities(item.sizeMatrix);
+  }
+  if (typeof item.quantity === 'number') return item.quantity;
+  return 0;
+};
+
+const normalizeItemColors = (item) => {
+  if (Array.isArray(item?.selectedColors) && item.selectedColors.length) return item.selectedColors;
+  if (item?.color) return [item.color];
+  return [];
+};
+
+const normalizePrintAreas = (item) => (item?.selectedPrintAreas || [])
+  .map((entry) => {
+    if (!entry) return null;
+    if (typeof entry === 'string') return entry;
+    return entry.areaKey || null;
+  })
+  .filter(Boolean);
 // Lazy import for PDF generation to avoid bundle bloat when not needed
 let pdfLibPromise = null;
 async function ensurePdfLib() {
@@ -103,7 +132,10 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
   }, [currencyFormatter]);
 
   const cartItemCount = Array.isArray(cartItems) ? cartItems.length : 0;
+  const googleAdsSnapshot = getGoogleAdsSnapshot(payload?.tracking?.googleAds);
+  const metadataSnapshot = getTrackingMetadataSnapshot(payload?.tracking?.metadata);
   const existingConversionTime = payload?.tracking?.metadata?.conversionTime || '';
+  const snapshotConversionTime = metadataSnapshot.conversionTime || '';
 
   useEffect(() => {
     if (open && !loggedOpenRef.current) {
@@ -267,7 +299,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       return;
     }
 
-    const conversionTime = existingConversionTime || new Date().toISOString();
+    const conversionTime = existingConversionTime || snapshotConversionTime || new Date().toISOString();
     if (!existingConversionTime) {
       try {
         const nextTracking = {
@@ -334,6 +366,78 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       };
     });
 
+    const financeLineItems = sanitizedCart.map((item) => {
+      const subtotalBefore = Number.isFinite(item.subtotalBeforeDiscount)
+        ? Number(item.subtotalBeforeDiscount)
+        : (Number.isFinite(item.totalBeforeDiscount) ? Number(item.totalBeforeDiscount) : null);
+      const subtotalAfter = Number.isFinite(item.subtotalAfterDiscount)
+        ? Number(item.subtotalAfterDiscount)
+        : (Number.isFinite(item.totalPrice) ? Number(item.totalPrice) : null);
+      const discountValue = Number.isFinite(item.discountAmount) ? Number(item.discountAmount) : 0;
+      const unitPrice = Number.isFinite(item.priceBreakdown?.unitPrice)
+        ? Number(item.priceBreakdown.unitPrice)
+        : (Number.isFinite(item.unitPrice) ? Number(item.unitPrice) : null);
+      return {
+        sku: item.productSku || item.product || '',
+        name: item.productName || item.name || '',
+        colors: normalizeItemColors(item),
+        quantity: computeItemQuantity(item),
+        unit_price: unitPrice,
+        subtotal_before_discount: subtotalBefore,
+        discount: discountValue,
+        subtotal_after_discount: subtotalAfter,
+        selected_print_areas: normalizePrintAreas(item),
+      };
+    });
+
+    const totalsBreakdown = {
+      merchandise_before_discount: subtotalBeforeDiscount,
+      discount: discountAmount,
+      merchandise_after_discount: subtotalAfterDiscount,
+      delivery: deliveryCost,
+      vat: vatAmount,
+      total_before_payment_method_adjustments: baseTotal,
+      total_after_payment_method_adjustments: paymentTotal,
+    };
+    if (cardDiscount) {
+      totalsBreakdown.payment_method_adjustments = { card_discount: cardDiscount };
+    }
+
+    const financialBlock = {
+      subtotal: subtotalAfterDiscount,
+      subtotal_before_discount: subtotalBeforeDiscount,
+      discount: discountAmount,
+      delivery: deliveryCost,
+      vat: vatAmount,
+      total: baseTotal,
+      total_after_payment_adjustments: paymentTotal,
+      payment_method: method,
+      currency: 'ILS',
+      totals_breakdown: totalsBreakdown,
+    };
+    if (cardDiscount) {
+      financialBlock.payment_adjustments = { card_discount: cardDiscount };
+    }
+    if (financeLineItems.length) {
+      financialBlock.line_items = financeLineItems;
+    }
+    if (payload?.financial?.dropbox_shared_link) {
+      financialBlock.dropbox_shared_link = payload.financial.dropbox_shared_link;
+    }
+    if (payload?.financial?.dropbox_worksheet_link) {
+      financialBlock.dropbox_worksheet_link = payload.financial.dropbox_worksheet_link;
+    }
+    if (payload?.financial?.dropbox_worksheet_links) {
+      financialBlock.dropbox_worksheet_links = payload.financial.dropbox_worksheet_links;
+    }
+    const baseFinancialForDocs = {
+      subtotal: financialBlock.subtotal,
+      delivery: financialBlock.delivery,
+      vat: financialBlock.vat,
+      total: financialBlock.total,
+      payment_method: financialBlock.payment_method,
+    };
+
     const toSend = {
       ...payload,
       cart: sanitizedCart,
@@ -397,14 +501,9 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
       let dropboxSharedLink = payload?.financial?.dropbox_shared_link || '';
       let airtableRecordId = airtableRecordIdRef.current || '';
 
-      const subtotal0 = subtotalAfterDiscount;
-      const delivery0 = deliveryCost;
-      const vat0 = vatAmount;
-      const total0 = baseTotal;
-
       try {
-        const googleAds = payload?.tracking?.googleAds || {};
-        const trackingMetadata = payload?.tracking?.metadata || {};
+        const googleAds = googleAdsSnapshot;
+        const trackingMetadata = metadataSnapshot;
         const gclidValue = googleAds.gclid || '';
         const campaignValue = googleAds.campaign || '';
         const searchValue = googleAds.keyword || '';
@@ -428,7 +527,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
               address_street: payload?.contact?.street || payload?.contact?.address_street || '',
               address_city: payload?.contact?.city || payload?.contact?.address_city || '',
             },
-            financial: { subtotal: subtotal0, delivery: delivery0, vat: vat0, total: total0, payment_method: method },
+            financial: financialBlock,
             cart: {
               items: (cartItems || []).map((i) => ({
                 productSku: i.productSku,
@@ -465,6 +564,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
         }
         if (dropboxSharedLink) {
           try { mergePayload({ financial: { ...(payload?.financial || {}), dropbox_shared_link: dropboxSharedLink } }); } catch {}
+          financialBlock.dropbox_shared_link = dropboxSharedLink;
         }
         if (!airtableRecordId && payload?.airtable_record_id) {
           airtableRecordId = payload.airtable_record_id;
@@ -535,7 +635,7 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
                   idempotencyKey: idempotencyKeyRef.current,
                   orderNumber: (orderIdFromAirtable || payload?.airtable_order_id || ''),
                   customer: { name, phone, email, address_street: payload?.contact?.street || payload?.contact?.address_street || '', address_city: payload?.contact?.city || payload?.contact?.address_city || '' },
-                  financial: { subtotal: subtotal0, delivery: delivery0, vat: vat0, total: total0, payment_method: method },
+                  financial: baseFinancialForDocs,
                   delivery: { method: payload?.withDelivery ? 'Delivery' : 'Pickup', notes: payload?.deliveryNotes || '' },
                   returnMeta: true,
                   startColorIndex,
@@ -565,19 +665,14 @@ export default function CheckoutModal({ open, onClose, cartSummary, prefillConta
         } catch (e) { return []; }
       })();
 
-      const subtotal = subtotalAfterDiscount;
-      const delivery = deliveryCost;
-      const vat = vatAmount;
-      const total = baseTotal;
-      const financialBlock = { subtotal, delivery, vat, total, payment_method: method };
       const builtUploads = await uploads;
       const cartItemsPayload = buildCartItemsForAirtable(cartItems);
       const enriched = {
         idempotency_key: idempotencyKeyRef.current,
-        gclid: payload?.tracking?.googleAds?.gclid || '',
-        campaign: payload?.tracking?.googleAds?.campaign || '',
-        search: payload?.tracking?.googleAds?.keyword || '',
-        device: payload?.tracking?.metadata?.device || '',
+        gclid: googleAdsSnapshot.gclid || '',
+        campaign: googleAdsSnapshot.campaign || '',
+        search: googleAdsSnapshot.keyword || '',
+        device: metadataSnapshot.device || '',
         conversion_time: conversionTime,
         customer: {
           name,

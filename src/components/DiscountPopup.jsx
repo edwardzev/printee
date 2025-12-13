@@ -12,10 +12,13 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useCart } from '@/contexts/CartContext';
 import { buildUploadsFromCart } from '@/lib/buildUploadsFromCart';
 import { buildCartItemsForAirtable } from '@/lib/buildCartItemsForAirtable';
+import { getGoogleAdsSnapshot, getTrackingMetadataSnapshot } from '@/lib/googleAdsTracking';
 
 const DiscountPopup = ({ open, onOpenChange, savingsAmount = '' }) => {
   const { t } = useLanguage();
   const { mergePayload, payload, cartItems } = useCart();
+  const googleAdsSnapshot = getGoogleAdsSnapshot(payload?.tracking?.googleAds);
+  const metadataSnapshot = getTrackingMetadataSnapshot(payload?.tracking?.metadata);
   
   const [name, setName] = useState(payload?.contact?.name || '');
   const [phone, setPhone] = useState(payload?.contact?.phone || '');
@@ -66,16 +69,13 @@ const DiscountPopup = ({ open, onOpenChange, savingsAmount = '' }) => {
         fileName: u.fileName,
       }));
       
-      const googleAds = payload?.tracking?.googleAds || {};
-      const metadata = payload?.tracking?.metadata || {};
-
       // Send webhook to Airtable with customer and attribution details
       const body = JSON.stringify({
         idempotency_key: idem,
-        gclid: googleAds.gclid || '',
-        campaign: googleAds.campaign || '',
-        search: googleAds.keyword || '',
-        device: metadata.device || '',
+        gclid: googleAdsSnapshot.gclid || '',
+        campaign: googleAdsSnapshot.campaign || '',
+        search: googleAdsSnapshot.keyword || '',
+        device: metadataSnapshot.device || '',
         cart: { items: cartItemsPayload },
         cartUploads,
         customer: {
